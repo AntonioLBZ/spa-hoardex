@@ -1,0 +1,11 @@
+.button {
+    background-color: var(--color-accent);
+    border: none;
+    border-radius: var(--size-border-radius);
+    color: var(--color-content-on-accent);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    min-height: 2.75rem;
+    padding-inline: var(--size-100);
+}

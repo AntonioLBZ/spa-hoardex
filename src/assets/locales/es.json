@@ -1,0 +1,54 @@
+{
+    "app": {
+        "name": "Hoardex",
+        "tagline": "Tu biblioteca de Steam, de un vistazo.",
+        "language": "Idioma"
+    },
+    "entry": {
+        "label": "Perfil de Steam",
+        "placeholder": "URL del perfil, nombre personalizado o SteamID64",
+        "submit": "Ver biblioteca",
+        "invalid": "Eso no parece un perfil de Steam. Prueba con la URL del perfil, un nombre personalizado o un SteamID64.",
+        "hint": "El perfil y los detalles de sus juegos tienen que ser públicos."
+    },
+    "profile": {
+        "loadingProfile": "Cargando perfil…",
+        "loadingLibrary": "Cargando biblioteca…",
+        "games": "{count, plural, one {# juego} other {# juegos}}",
+        "back": "Buscar otro perfil",
+        "retry": "Reintentar"
+    },
+    "problem": {
+        "notFound": {
+            "title": "Perfil no encontrado",
+            "body": "No hemos encontrado ese perfil de Steam. Revisa la URL, el nombre personalizado o el SteamID64."
+        },
+        "profilePrivate": {
+            "title": "Este perfil es privado",
+            "body": "Su dueño tiene que hacer público el perfil para poder mostrarlo aquí."
+        },
+        "libraryPrivate": {
+            "title": "La biblioteca de juegos es privada",
+            "body": "El perfil es público, pero los detalles de sus juegos no. Su dueño puede cambiarlo en los ajustes de privacidad de Steam."
+        },
+        "wishlistPrivate": {
+            "title": "La lista de deseados es privada",
+            "body": "Su dueño tiene que hacer pública la lista de deseados para poder mostrarla aquí."
+        },
+        "rateLimited": {
+            "title": "Steam está saturado",
+            "body": "Steam está limitando las peticiones ahora mismo. Inténtalo de nuevo en unos minutos."
+        },
+        "upstream": {
+            "title": "Algo ha salido mal",
+            "body": "No hemos podido conectar con Steam o ha respondido algo inesperado. Inténtalo de nuevo en un momento."
+        }
+    },
+    "notFound": {
+        "title": "Página no encontrada",
+        "body": "Esa página no existe."
+    },
+    "footer": {
+        "disclaimer": "Hoardex es un proyecto independiente. No está afiliado ni respaldado por Valve Corporation. Steam y el logotipo de Steam son marcas comerciales y/o marcas registradas de Valve Corporation en EE. UU. y/u otros países."
+    }
+}

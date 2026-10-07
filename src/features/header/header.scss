@@ -1,0 +1,25 @@
+.header {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-inline: auto;
+    max-width: var(--size-content-width);
+    padding: var(--size-100);
+    width: 100%;
+}
+
+.header__brand {
+    color: var(--color-content);
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.header__language {
+    background-color: var(--color-bg-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-border-radius);
+    color: var(--color-content);
+    font: inherit;
+    padding: var(--size-25) var(--size-50);
+}

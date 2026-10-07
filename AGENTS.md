@@ -7,7 +7,7 @@ Web dashboard for a Steam library (hours, backlog, achievements, wishlist) with 
 Phase 1 in progress. **Read `ARCHITECTURE.md` (Spanish) before any work: it is the source of truth** for decisions, Steam API behavior, cache keys/TTLs and the roadmap. This file only distills the rules that are easy to break. If a decision changes, update `ARCHITECTURE.md` first, then this file.
 
 - Phase 0 spike passed its gate (`ARCHITECTURE.md` §14): Vite + Hono as one Vercel project works, so Plan B (thin Next.js 16) is not needed.
-- Built so far: `core/domain`, `core/backlog`, `core/adapters/steam`, `core/cache` (store, budget, cached adapter), the API (`GET /api/profile/:input`, `GET /api/library/:id`), fixtures and the privacy-leak test. The front is still the spike's placeholder.
+- Built so far: `core/domain`, `core/backlog`, `core/adapters/steam`, `core/cache` (store, budget, cached adapter), the API (`GET /api/profile/:input`, `GET /api/library/:id`), fixtures and the privacy-leak test. The front is a skeleton: entry screen, `/p/$profile` showing the profile and the game count, `en`/`es`, Valve footer. No charts yet.
 - Items marked *(secundaria)* or *(sin verificar)* in `ARCHITECTURE.md` are unverified. Private-library and private-wishlist behavior cannot be tested with the key owner's own account.
 - Open decisions (license, domain, whether to merge *Pausado* into *En curso*): ask the owner, don't pick silently.
 
@@ -19,9 +19,10 @@ pnpm only. Pin dependencies exactly (no `^`): pnpm 11 ignores `save-exact` in `.
 pnpm dev                       # Vite (use `vercel dev` to also serve /api)
 pnpm build                     # tsc --noEmit && vite build
 pnpm typecheck                 # tsc --noEmit over src, api, core, scripts, fixtures, tests
-pnpm test                      # vitest run (includes the privacy-leak test)
+pnpm test                      # vitest run: `node` project (core, server, scripts, tests) + `front` project (jsdom, src/)
 pnpm exec vitest run <path>    # a single test file
 pnpm format / format:check     # Prettier
+pnpm lint:css / lint:css:fix    # stylelint over **/*.scss
 node scripts/extract-fixtures.ts [--anonymize]   # Postman -> fixtures/full/postman (and /anon); gitignored
 node scripts/init-private-terms.ts               # writes fixtures/full/private-terms.json for the leak test
 node --env-file=.env.local scripts/spike-steam.ts <resolve|probe|items|burst>   # spike 0B, needs the real key
@@ -39,7 +40,7 @@ Vite 8 + React 19 + TypeScript SPA, Hono API in one Vercel Function (`api/index.
 core/       pure domain + logic: domain/, adapters/steam/, cache/, backlog/
 api/        Vercel entry point only: every file under api/ becomes a function
 server/     Hono app: routes, input validation, CDN headers, env wiring (`deps.ts`)
-src/        SPA: views, components, TanStack Query hooks, i18n, SCSS
+src/        SPA: routes/ (file-based), features/, components/, lib/ (api, i18n, query client), assets/ (locales, styles)
 fixtures/   anonymized or synthetic only (full ones are gitignored)
 scripts/    extract + anonymize fixtures from the Postman collection
 ```
@@ -78,20 +79,23 @@ The library arrives in one call and the dashboard renders. Then the **client** r
 
 ## Frontend rules
 
-- Router: TanStack Router, file-based via its Vite plugin; list filters live in typed search params.
+- Router: TanStack Router, file-based via its Vite plugin; list filters live in typed search params. `src/routeTree.gen.ts` is generated but committed (`tsc` runs before `vite build`); Prettier ignores it.
+- Layout follows `spa-anicalendar`: a folder per component/feature (`name.tsx`, `name.scss`, `index.ts`), BEM class names, no cross-imports from `components/` into `features/`.
+- The entry screen canonicalizes input with `parseProfileInput` (import that file only, never the adapter index: it pulls Zod into the bundle). `src/lib/profile-slug.ts` is the one place the front touches the Steam adapter.
+- Front tests render the real route tree with `renderApp` and a fake `fetch` (`stubApi`) from `src/lib/test/render-app.tsx` (no MSW until demo mode); the setup file stubs `window.scrollTo`.
 - TanStack Query 5: `useQuery` for profile/library, `useQueries` + `combine` for achievement batches. `streamedQuery` is experimental, don't use it.
 - **Motion** (`LazyMotion` + `domMax`): layout, exit, counters. **GSAP** (`useGSAP`, grid stagger, `ScrollTrigger.batch`): grid entrances. **Never both on the same element or property.** Never run GSAP on nodes that `AnimatePresence` unmounts, or inside Recharts SVG. Motion `layout` does not work in SVG.
 - Recharts 3 for standard charts; heatmap and rarity are hand-built SVG (d3-scale + Motion).
 - Animate only `transform` and `opacity`. Respect `prefers-reduced-motion` (`MotionConfig reducedMotion="user"`, `gsap.matchMedia`). Custom charts need a table or text alternative.
 - 300 covers: `content-visibility: auto` + lazy images, no virtualization. Lenis stays out of the app shell.
-- Styles: SCSS + CSS variables (light/dark), BEM kebab-case, stylelint configured as in `dev-portfolio` / `spa-anicalendar`. No Tailwind.
+- Styles: SCSS + CSS variables (light/dark via `prefers-color-scheme`), BEM kebab-case, stylelint copied from `dev-portfolio` (`.stylelintrc.mjs`, no `!important`, alphabetical properties). No Tailwind.
 - i18n: `en` (default) and `es` with `use-intl` (same API as `next-intl` in `spa-anicalendar`): messages in `src/assets/locales/{en,es}.json`, locale from stored preference → `navigator.language` → `en`, not in the URL. The UI language maps to Steam's `l=` (`english`/`spanish`); `cc` for prices comes from the language with a manual selector and is part of the item cache key.
 
 ## Fixtures and testing
 
 - Vitest, MSW 3 (ESM-only, Node ≥ 22.12; same handlers for `setupServer` in tests and `setupWorker` in dev/demo), Testing Library, jsdom.
 - Fixtures come from the owner's Postman collection, which contains their real SteamID, `realname` and avatar. **Never commit the collection, `.env*`, `.vercel/` or `fixtures/full/`.**
-- Fake SteamID64s live in the window `76561198000000000` + 10 000 (`scripts/lib/anonymize.ts`). The Steam adapter takes `fetch` by injection, so its tests need no MSW; MSW arrives with demo mode.
+- Fake SteamID64s live in the window `76561198000000000` + 10 000 (`scripts/lib/anonymize.ts`). **Those ids can belong to real people** (a live lookup of one returned a stranger's profile): never send a fixture id to the live API, not even in a manual check, and never render or link a fixture profile URL as if it were fake. The Steam adapter takes `fetch` by injection, so its tests need no MSW; MSW arrives with demo mode.
 - Anonymize with a **fake-ID map**, not hashes (SteamIDs are enumerable). Touch `steamid`, `personaname`, `realname`, avatars, `profileurl`, `primaryclanid`. Public fixtures are cut-down or synthetic.
 - `tests/privacy-leak.test.ts` fails if any tracked or untracked-not-ignored file carries a SteamID64 outside the fake window, a term from `fixtures/full/private-terms.json`, or the `STEAM_API_KEY` from `.env.local`. Docs are scanned too: don't name the owner's profile in them. Every fixture must parse with its Zod schema and normalize to the expected domain output.
 

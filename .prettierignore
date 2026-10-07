@@ -2,3 +2,4 @@ dist
 pnpm-lock.yaml
 fixtures/full
 *.md
+src/routeTree.gen.ts

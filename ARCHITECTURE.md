@@ -29,7 +29,7 @@ Dashboard web de la biblioteca de Steam de un usuario: horas jugadas, backlog, l
 | Estilos | **SCSS** + variables CSS, sin Tailwind | Reutilizar convenciones de tus repos (stylelint + BEM) |
 | Animación | **Motion** + **GSAP** (§10) | Cada uno donde es mejor; nunca sobre el mismo elemento |
 | Gráficas | **Recharts 3** + SVG a mano | ECharts 6 queda como alternativa "espectacular" |
-| Router | **TanStack Router** (rutas por ficheros con el plugin de Vite) | Parámetros de búsqueda tipados para los filtros en la URL; misma familia que Query. Sus peers aceptan React 19 y el plugin acepta Vite 8 (metadatos de npm); **sin verificar en la práctica** hasta instalarlo en la fase 1 |
+| Router | **TanStack Router** (rutas por ficheros con el plugin de Vite) | Parámetros de búsqueda tipados para los filtros en la URL; misma familia que Query. Sus peers aceptan React 19 y el plugin acepta Vite 8 (metadatos de npm); **verificado en la práctica** (fase 1, paso 4): con Vite 8.3 el plugin genera `routeTree.gen.ts` y parte el código por ruta |
 | i18n | `en` (por defecto) y `es` con **`use-intl`** | Núcleo de `next-intl`, que ya usas en `spa-anicalendar`: mismo JSON anidado, ICU y `useTranslations`/`useFormatter`, sin paso de compilación. Lingui exige Babel dentro de Vite 8; `react-i18next`, otra API |
 | Logros | **Lotes de ~12 juegos** pedidos por el cliente | `GetAchievementsProgress` no funciona con key de desarrollador (§16) |
 | Historial | **Solo con login y opt-in** (fase 4) | No guardar datos de terceros sin consentimiento |
@@ -191,7 +191,8 @@ Respuestas `GET` públicas de `/api` con `Cache-Control: s-maxage=…, stale-whi
 - **Normalizar siempre** el SteamID antes de usarlo como clave (un vanity y su ID resuelto deben compartir caché de datos).
 - **Implementación (Fase 1, paso 3):** `core/cache` (`CacheStore`, `createCachedAdapter`, `createDailyBudget`) y `server/` (Hono). Las lecturas se validan con Zod: una entrada con otra forma cuenta como fallo de caché. Si Redis falla, la petición sigue contra Steam; si falla el contador, se deja pasar. Superado el presupuesto, `withBudget` responde como un 429 de Steam y el adapter devuelve `rateLimited`. Sin caché negativa para 429 de Steam hasta observarlo.
 - **Medido en local con Steam y Upstash reales (2026-10-07):** el contador sube solo con llamadas reales a Steam (caliente = 0); los TTL salen como en la tabla; la biblioteca normalizada de 334 juegos pesa **144 KB** (~430 B por juego), más que las "decenas de KB" estimadas, aún muy por debajo de 5 MB. Si molesta se puede recortar (`iconUrl` se deriva del hash, `platforms`). Tiempos locales (España → Steam/Upstash): ~1,9 s en frío, ~0,8 s en caliente; no son referencia para producción.
-- **Sin verificar:** el comportamiento desplegado (cabeceras de CDN, `x-vercel-cache`, imports ESM de `server/`) y la contabilidad de comandos de Upstash.
+- **Verificado desplegado (2026-10-07, producción):** los imports ESM de `server/` funcionan, Redis de producción responde, `x-vercel-cache: HIT` en repeticiones (el cliente ve `cache-control: public`), función en `iad1` servida desde el borde `cdg1`. Biblioteca fría ~0,7 s, en el CDN ~0,1–0,2 s. **Sin verificar:** la contabilidad de comandos de Upstash.
+- **Ids falsos de las fixtures:** el rango reservado puede coincidir con cuentas reales. Las fixtures solo se usan sin red, pero `profileUrl` apunta a `steamcommunity.com/profiles/{id}`: el modo demo no debe enlazar ese perfil.
 
 ## 9. Carga progresiva de logros
 
@@ -214,6 +215,7 @@ Respuestas `GET` públicas de `/api` con `Cache-Control: s-maxage=…, stale-whi
 - `useQuery` para el perfil y la biblioteca. `useQueries` con `combine` para los lotes de logros, con concurrencia limitada.
 - `streamedQuery` sigue **experimental** en TanStack Query: no se usa.
 - Perfil privado y demás `ProfileAccess` se tratan como **datos** (`retry: false`), no como excepciones.
+- **Implementación (Fase 1, paso 4):** `src/routes` (`__root`, `/`, `/p/$profile`), `src/features` (header, footer, entry-form, profile-page), `src/components` (button, state-message), `src/lib` (`api`, `i18n`, `query-client`, `profile-slug`). La pantalla de entrada normaliza lo escrito con `parseProfileInput` (solo importa `profile-input.ts`, sin Zod en el bundle) y navega a `/p/{vanity en minúsculas | id64}`; una entrada inválida se rechaza sin tocar la red. `QueryClient` con `retry: false`, `refetchOnWindowFocus: false` y `staleTime` de 60 s (igual que el `s-maxage`). El perfil y la biblioteca son dos queries: si la biblioteca es privada, el perfil se sigue mostrando. `routeTree.gen.ts` va **commiteado** (`tsc` corre antes de `vite build`) y Prettier lo ignora. Los tests del front usan el árbol de rutas real con historial en memoria y un `fetch` falso (`src/lib/test/render-app.tsx`); 29 tests, proyecto `front` de Vitest (jsdom).
 - Router de cliente: **TanStack Router** con rutas por ficheros (`@tanstack/router-plugin/vite`, que genera `routeTree.gen.ts`). Rutas previstas: `/` (introducir perfil) y `/p/$profile` (dashboard) con los filtros (estado, orden, vista) como parámetros de búsqueda tipados. Alternativa descartada: React Router 8 (sin búsqueda tipada).
 
 ### Animación y gráficas
@@ -237,7 +239,7 @@ Respuestas `GET` públicas de `/api` con `Cache-Control: s-maxage=…, stale-whi
 SCSS + variables CSS (tema claro/oscuro), BEM y stylelint con la configuración que ya usas en `dev-portfolio` y `spa-anicalendar`. Sin Tailwind.
 
 ### i18n
-UI en `en` (por defecto) y `es` con `use-intl` (`IntlProvider` + mensajes en `src/assets/locales/{en,es}.json`, como en `spa-anicalendar`). El idioma sale de la preferencia guardada, luego de `navigator.language` y por defecto `en`; **no va en la URL**: el routing por prefijo es de `next-intl`, no de `use-intl`. Las claves se tipan declarando `Messages` y `useFormatter` da números, fechas, tiempos relativos y precios. Que `use-intl` funcione sin Next en un SPA de Vite es lo documentado, pero está **sin verificar** hasta usarlo en la fase 1.
+UI en `en` (por defecto) y `es` con `use-intl` (`IntlProvider` + mensajes en `src/assets/locales/{en,es}.json`, como en `spa-anicalendar`). El idioma sale de la preferencia guardada, luego de `navigator.language` y por defecto `en`; **no va en la URL**: el routing por prefijo es de `next-intl`, no de `use-intl`. Las claves se tipan declarando `Messages` y `useFormatter` da números, fechas, tiempos relativos y precios. **Verificado** (fase 1, paso 4): `use-intl` funciona sin Next en el SPA de Vite; las claves están tipadas (`tsc` rechaza una clave inexistente) y `Record<AppLocale, typeof en>` hace fallar el build si `es` pierde o sobra una clave. El selector de idioma guarda la preferencia en `localStorage` (con `try/catch`) y actualiza `<html lang>`.
 
 El idioma de la UI se traduce al parámetro `l=` de Steam (`english`, `spanish`). El país para precios (`cc`) se deriva del idioma con selector manual; entra en la clave de caché de ítems.
 
@@ -370,6 +372,7 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 - Tamaño máximo de lote de `GetItems` → spike 0B. Contabilidad de comandos de Upstash (¿`HSET` con N campos cuenta 1?) contra el panel de uso.
 - Si una respuesta en streaming se cachea en el CDN, y si el tope de 4,5 MB aplica al streaming (no lo usamos, pero conviene saberlo).
 - Mínimo real del vanity (2 o 3 caracteres).
+- **Rewrite de SPA en `vercel.json`** (`/(.*)` → `/index.html`, después del de `/api`): en local, con el servidor de Vite, la carga directa de `/p/...` funciona, pero el comportamiento desplegado (rutas profundas y assets) **no está verificado** hasta el próximo despliegue.
 - Cuota gratuita y tamaño total de Runtime Cache en Hobby.
 - Si Valve tolera de hecho las consultas a terceros.
 - **Decisiones abiertas:** licencia del repo (sin licencia = visible pero no reutilizable), restricciones de PR en GitHub (revisar los ajustes del repo), dominio propio frente a `*.vercel.app`, y si fusionar *Pausado* con *En curso*.

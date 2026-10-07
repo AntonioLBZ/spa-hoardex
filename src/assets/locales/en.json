@@ -1,0 +1,54 @@
+{
+    "app": {
+        "name": "Hoardex",
+        "tagline": "Your Steam library, at a glance.",
+        "language": "Language"
+    },
+    "entry": {
+        "label": "Steam profile",
+        "placeholder": "Profile URL, custom name or SteamID64",
+        "submit": "View library",
+        "invalid": "That does not look like a Steam profile. Try a profile URL, a custom name or a SteamID64.",
+        "hint": "The profile and its game details must be public."
+    },
+    "profile": {
+        "loadingProfile": "Loading profile…",
+        "loadingLibrary": "Loading library…",
+        "games": "{count, plural, one {# game} other {# games}}",
+        "back": "Look up another profile",
+        "retry": "Try again"
+    },
+    "problem": {
+        "notFound": {
+            "title": "Profile not found",
+            "body": "We could not find that Steam profile. Check the URL, custom name or SteamID64."
+        },
+        "profilePrivate": {
+            "title": "This profile is private",
+            "body": "The owner has to make the profile public before it can be shown here."
+        },
+        "libraryPrivate": {
+            "title": "The game library is private",
+            "body": "The profile is public but its game details are not. The owner can change that in their Steam privacy settings."
+        },
+        "wishlistPrivate": {
+            "title": "The wishlist is private",
+            "body": "The owner has to make the wishlist public before it can be shown here."
+        },
+        "rateLimited": {
+            "title": "Steam is busy",
+            "body": "Steam is limiting requests right now. Try again in a few minutes."
+        },
+        "upstream": {
+            "title": "Something went wrong",
+            "body": "We could not reach Steam or got an unexpected answer. Try again in a moment."
+        }
+    },
+    "notFound": {
+        "title": "Page not found",
+        "body": "That page does not exist."
+    },
+    "footer": {
+        "disclaimer": "Hoardex is an independent project. It is not affiliated with or endorsed by Valve Corporation. Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the U.S. and/or other countries."
+    }
+}

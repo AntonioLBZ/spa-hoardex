@@ -1,0 +1,13 @@
+.root {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+}
+
+.root__main {
+    flex: 1;
+    margin-inline: auto;
+    max-width: var(--size-content-width);
+    padding: var(--size-100);
+    width: 100%;
+}

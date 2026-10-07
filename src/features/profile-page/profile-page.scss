@@ -1,0 +1,22 @@
+.profile-page {
+    display: grid;
+    gap: var(--size-150);
+}
+
+.profile-page__header {
+    align-items: center;
+    display: flex;
+    gap: var(--size-100);
+}
+
+.profile-page__avatar {
+    border-radius: var(--size-border-radius);
+}
+
+.profile-page__name {
+    font-size: 1.5rem;
+}
+
+.profile-page__games {
+    font-size: 1.125rem;
+}

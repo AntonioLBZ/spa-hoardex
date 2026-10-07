@@ -1,0 +1,23 @@
+.state-message {
+    background-color: var(--color-bg-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-border-radius);
+    display: grid;
+    gap: var(--size-50);
+    padding: var(--size-150);
+}
+
+.state-message__title {
+    font-size: 1.125rem;
+}
+
+.state-message__body {
+    color: var(--color-content-muted);
+}
+
+.state-message__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-75);
+    margin-block-start: var(--size-50);
+}
