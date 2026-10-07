@@ -19,7 +19,7 @@ None yet. Add the real ones (dev, build, lint, test, single test) here when the 
 
 ## Architecture
 
-Vite 8 + React 19 + TypeScript SPA, Hono API in a Vercel Function (`api/[[...route]].ts` via `hono/vercel`), same origin.
+Vite 8 + React 19 + TypeScript SPA, Hono API in one Vercel Function (`api/index.ts` via `hono/vercel`, with `vercel.json` rewriting `/api/:path*` to `/api`), same origin. `vercel.json` also pins `"framework": "vite"`: Vercel auto-detects the `hono` dependency as the backend preset and the deploy fails with "No entrypoint found". Catch-all file names (`[[...route]].ts`, `[...route].ts`) only match one path segment outside Next.js. Relative imports inside `api/` and `core/` need a `.js` extension (`'../core/cache/redis.js'`): the project is `"type": "module"` and Vercel emits ESM, so extensionless imports crash the function with `ERR_MODULE_NOT_FOUND`.
 
 ```
 core/       pure domain + logic: domain/, adapters/steam/, cache/, backlog/
@@ -33,7 +33,7 @@ scripts/    extract + anonymize fixtures from the Postman collection
 - **Raw Steam types never leave `core/adapters/steam`.** The front only knows the domain model (`Profile`, `Game`, `Playtime`, `Achievement`, `WishlistItem`), keyed by `{ source, externalId }`.
 - Each adapter declares **capabilities** (achievements per game / per batch / none; wishlist yes/no). The UI reads them and hides panels that don't apply, so adding a store doesn't touch views.
 - **`ProfileAccess` is data, not an exception:** `ok | profilePrivate | libraryPrivate | wishlistPrivate | notFound | rateLimited`. Queries use `retry: false` for it.
-- **Decide privacy by response body and `x-eresult`, never by HTTP status alone.** Steam returns 200 `{}` for both a private and an empty wishlist (`x-eresult` 15 vs 1). A public profile (`communityvisibilitystate` 3) does not imply a visible library.
+- **Decide privacy by response body and `x-eresult`, never by HTTP status alone.** Steam returns 200 `{}` for both a private and an empty wishlist (`x-eresult` 15 vs 1). A public profile (`communityvisibilitystate` 3) does not imply visible achievements: "game details" (library, wishlist, achievements, playtime) is a separate setting that `GetPlayerSummaries` does not expose. Privacy can't be tested on the key owner's own account: `GetOwnedGames`/`GetWishlist` ignored the setting there, only achievements returned 403.
 - **Zod at the border:** `safeParse`, `z.looseObject`, optional fields, `.catch()` on dubious enums. On shape drift, log it; don't throw.
 - **Backlog state is a pure function in `core/backlog`** with configurable thresholds. First match wins: Completado (100 % achievements, total > 0) → Sin tocar (0 min) → Probado (< 60 min) → En curso (≥ 60 min, played ≤ 90 d ago) → Pausado (90 d–12 mo) → Acabado (> 12 mo; inactivity heuristic, not a real "finished"). Backlog = Sin tocar + Probado. Only Completado needs achievements.
 
@@ -41,6 +41,7 @@ scripts/    extract + anonymize fixtures from the Postman collection
 
 - **Redis (Upstash free, 500k commands/month) is the source of truth; the CDN (`s-maxage` + SWR) is only an optimization** (regional, best-effort). Never rely on it for correctness.
 - Budget commands: per-user achievements are **one hash** (`ach:{steamid}`, field = appid); the library is stored **normalized**, not raw (~190 KB → tens of KB); use `MGET`/pipelines.
+- Prefix every key with the environment (`VERCEL_ENV`: `production:`, `preview:`, `development:`); the free plan gives one database and all environments share it (`core/cache/redis.ts` `nsKey`).
 - Always normalize the SteamID before using it in a key, so a vanity and its resolved ID share cache.
 - Achievement invalidation by fingerprint `hash(playtime_forever, rtime_last_played)`. Per-user progress is language-neutral; texts are shared per `(appid, lang)`.
 
@@ -56,7 +57,7 @@ The library arrives in one call and the dashboard renders. Then the **client** r
 - Input validation: SteamID64 `^765611\d{11}$`; vanity `^[A-Za-z0-9_-]{2,32}$`; accept SteamID2/3 via `BigInt`; extract from `/id/<vanity>` and `/profiles/<id64>` URLs.
 - 429 is HTTP 429 with `x-eresult: 84`, body `{"response":{}}` and **no `Retry-After`**; the bucket seems shared. Surface it as `rateLimited`.
 - Quirks: `percent` in global achievement rarity is a **string**; `playtime_forever` is the truth (platform breakdown is approximate); hidden achievements have an empty `description`; `GetPlayerBans` is PascalCase.
-- Unusable: `GetAchievementsProgress` (401 with a developer key). Wishlist = `GetWishlist` + `IStoreBrowseService/GetItems` (no key, ~150 ids per call; 300 gives 400).
+- Unusable: `GetAchievementsProgress` (401 with a developer key). Wishlist = `GetWishlist` + `IStoreBrowseService/GetItems` (no key; the limit is URL length, so keep it to ≤ 150 ids per GET: 275 gives 414; omit `data_request` to get name + price at ~0.8 KB per item).
 - Steam terms only clearly cover data "as requested by the end user", and Valve can revoke the key anytime. Keep the Steam layer isolated in the adapter, keep per-user caches short, and keep the **demo mode on fixtures** working without a key. The footer needs a Valve trademark notice and a non-affiliation disclaimer, and the site needs a privacy policy. There is no literal "Powered by Steam".
 
 ## Frontend rules

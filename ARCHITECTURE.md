@@ -69,7 +69,7 @@ scripts/         extracción y anonimizado de fixtures desde Postman
 | `ISteamUserStats/GetGlobalAchievementPercentagesForApp` | rareza | no | `percent` llega como **string** |
 | `IWishlistService/GetWishlist` | appid, prioridad, fecha | sí | |
 | `IWishlistService/GetWishlistItemCount` | sonda barata de wishlist | sí | |
-| `IStoreBrowseService/GetItems` | nombre, precio, assets en lote | no | ~150 ids por llamada; con 300 da 400 (URL larga); `Cache-Control: public, max-age=120` |
+| `IStoreBrowseService/GetItems` | nombre, precio, assets en lote | no | GET con `input_json`: el límite es la **longitud de la URL** (250 ids ok, 275 → 414, 300 → 400); usar ≤ 150 con margen. Sin `data_request` trae nombre y precio (`best_purchase_option`) a ~0,8 KB/ítem (verificado). `Cache-Control: public, max-age=120` |
 | `IPlayerService/GetSteamLevel`, `GetBadges` | extras cosméticos del perfil | sí | opcional |
 
 ### 5.2 Endpoints que no usamos
@@ -101,13 +101,19 @@ scripts/         extracción y anonimizado de fixtures desde Postman
 |---|---|---|
 | Wishlist privada | 200, `{"response":{}}`, `x-eresult: 15` | (verificado) |
 | Wishlist pública y vacía | 200, `{"response":{}}`, `x-eresult: 1` | (verificado) |
-| `GetOwnedGames`, perfil o "game details" privado | 200, `{"response":{}}` (sin `game_count`) | (secundaria) |
+| `GetOwnedGames`, perfil público con biblioteca visible | 200, `x-eresult: 1`, `game_count` + `games` (334 juegos, ~109 KB con `include_appinfo`) | (verificado) |
+| `GetOwnedGames`, perfil o "game details" privado | 200, `{"response":{}}` (sin `game_count`) | (secundaria) → spike 0B privado |
 | `GetOwnedGames`, público sin juegos | 200, `{"response":{"game_count":0}}` | (secundaria) |
-| `GetPlayerAchievements`, perfil privado | 403, `"Profile is not public"` | (secundaria) |
-| `GetPlayerAchievements`, juego sin stats | 400, `"Requested app has no stats"` | (secundaria) |
-| `GetPlayerAchievements`, poseído y nunca lanzado | 500 | (secundaria) |
+| `GetPlayerAchievements`, "game details" privado con perfil público (`communityvisibilitystate: 3`) | 403, `{"playerstats":{"error":"Profile is not public","success":false}}` | (verificado) |
+| `GetPlayerAchievements`, perfil de solo amigos o privado | 403 esperado | (sin verificar) → spike 0B.6 |
+| `GetOwnedGames`, `GetWishlist` y `GetWishlistItemCount` con "game details" privado, **consultando la propia cuenta del dueño de la key** | 200 con **todos** los datos, idénticos a los del perfil público (probado dos veces, con minutos de diferencia) | (verificado). Parece que la key ve los datos de su propia cuenta (sin verificar); **no sirve para probar privacidad** |
+| `GetPlayerAchievements`, juego sin stats (con o sin horas) | 400, `{"playerstats":{"error":"Requested app has no stats","success":false}}` | (verificado) |
+| `GetPlayerAchievements`, poseído, 0 min y con stats | **200 con la lista completa de logros** (el 500 que citaban fuentes secundarias no se reprodujo) | (verificado) |
+| `GetPlayerAchievements`, perfil público con logros | 200, `playerstats.achievements[]` | (verificado) |
+| `GetWishlist`, pública con ítems | 200, `x-eresult: 1`, `response.items[]` | (verificado) |
+| `GetPlayerSummaries` | 200, sin `x-eresult`; `communityvisibilitystate: 3` si es público | (verificado) |
 
-Que `communityvisibilitystate` sea 3 **no** implica biblioteca visible: "game details" es un ajuste aparte. El spike confirma todo esto con la key real (§14).
+Que `communityvisibilitystate` sea 3 **no** implica logros visibles: "game details" es un ajuste aparte y su valor no aparece en `GetPlayerSummaries` (verificado: con 3 y detalles privados, los logros dan 403). "Detalles de los juegos" controla juntos la lista de juegos, la wishlist, los logros y el tiempo de juego; la wishlist **no tiene ajuste propio** (verificado en los ajustes de Steam). Para validar los casos de biblioteca y wishlist privadas hace falta una cuenta **distinta** de la del dueño de la key (§14).
 
 ## 6. Dominio y adapters
 
@@ -278,11 +284,33 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 4. `vercel dev` en local con el mismo comportamiento.
 5. Upstash Redis desde el Marketplace: ping, `SET`/`GET`, contar comandos, y tamaño máximo de valor.
 
+**Resultados de 0A (2026-10-07, verificados con previews reales)**
+- **Un solo proyecto Vite + Hono funciona en Vercel Hobby.** Los puntos 1 a 4 están cerrados. El 5 (Upstash) está cerrado salvo el recuento de comandos contra el panel de uso.
+- **`/api/resolve/gabelogannewell` con la key real** devuelve `{"response":{"steamid":"76561197960287930","success":1}}` en preview y en `vercel dev`. `ResolveVanityURL` no envía `x-eresult`.
+- **`s-maxage` produce `x-vercel-cache: HIT`** en la segunda petición a `/api/health` (MISS → HIT → HIT). Vercel quita `s-maxage` de la cabecera que ve el cliente (queda `public`). Las respuestas 4xx/5xx sin `Cache-Control` explícito no se cachean.
+- **`vercel dev` reproduce el enrutado y las cabeceras** del preview; arranca Vite como dev command.
+- **Preset de framework:** Vercel detecta `hono` en `dependencies` y asigna el preset de backend Hono, que falla con `No entrypoint found`. Solución: `"framework": "vite"` en `vercel.json`.
+- **`api/[[...route]].ts` no sirve fuera de Next.js:** ni `[[...route]]` ni `[...route]` enrutan más de un segmento (`/api/a/b` da 404 de la plataforma, `x-vercel-error: NOT_FOUND`). Solución: `api/index.ts` + `rewrites: [{ "source": "/api/:path*", "destination": "/api" }]`. Hono recibe la ruta original, así que `basePath('/api')` sigue valiendo.
+- **Imports relativos con extensión `.js`:** con `"type": "module"` Vercel compila `api/index.ts` a ESM y Node exige extensión. `import … from '../core/cache/redis'` dio `ERR_MODULE_NOT_FOUND` (`FUNCTION_INVOCATION_FAILED`, también en rutas que no usaban Redis); `'../core/cache/redis.js'` funciona en preview, en `vercel dev`, con `tsc` y con Vite. Vale para todo import relativo dentro de `api/` y `core/`.
+- **Upstash (verificado en preview desde `iad1` y en local):** `ping`, `SET`/`GET` con JSON, `HSET` con varios campos y `HGETALL` funcionan. Latencia desde la función: 5–60 ms por comando; desde España, ~110 ms. **Tamaño de valor:** un `SET` de 5 MB y un `HSET` de ~4,9 MB en un comando funcionaron sin error en el plan free (no se probó más arriba); nuestros valores serán de decenas de KB. Un `HSET` con varios campos es **una sola petición**; no se ha comprobado cómo lo contabiliza el panel de uso de Upstash.
+- **Claves con prefijo de entorno** (`production:`, `preview:`, `development:`, de `VERCEL_ENV`): el plan free solo da una base y todos los entornos la comparten. Las rutas `/api/spike/*` devuelven 404 en producción.
+- Los previews llevan Vercel Authentication; para probarlos con `curl` se usa `vercel curl <ruta> --deployment <url>`.
+- Una variable creada solo para *Production* no llega a los previews (verificado: el preview daba "STEAM_API_KEY is not set"). Hay que añadirla también a *Preview*. Para local, `vercel env pull` solo trae las variables asignadas a *Development*: con la key solo en Production trajo únicamente `VERCEL_OIDC_TOKEN`; al asignarla también a Development, trajo `STEAM_API_KEY` con su valor (tipo "Secret" en `vercel env ls`; no está claro si eso equivale a la marca "sensitive").
+- Las integraciones del Marketplace (Upstash) se conectan por entorno; si se omite *Development*, `.env.local` no recibe sus variables.
+
 **0B. Steam con la key real**
 6. Poner tu propio perfil en privado, solo amigos y con "game details" privado, y registrar HTTP, cuerpo y `x-eresult` de `GetPlayerSummaries`, `GetOwnedGames`, `GetPlayerAchievements`, `GetWishlist` y `GetWishlistItemCount` (cierra la tabla de §5.4).
 7. Códigos reales de un juego sin logros y de uno poseído pero nunca lanzado.
 8. `GetItems`: tamaño máximo de lote que funciona, campos necesarios y precio por `cc`.
 9. Comportamiento del 429 con key.
+
+**Resultados de 0B (2026-10-07, perfil `lanzor_`, `scripts/spike-steam.ts`)**
+- **Línea base con perfil público** (tabla de §5.4): todos los endpoints responden 200 con la forma esperada, salvo `GetPlayerAchievements` de juegos sin stats (400). Falta repetirlo con el perfil en privado (punto 6).
+- **Punto 7:** un juego con stats y 0 minutos devuelve 200 con los logros; uno sin stats devuelve 400 tenga horas o no. El 500 de las fuentes secundarias no existe en estos casos. Consecuencia: el candidato a logros puede ser `has_community_visible_stats` presente aunque `playtime_forever` sea 0, pero seguimos excluyendo los de 0 min por coste.
+- **Punto 6, parcial (perfil público + "game details" privado):** `communityvisibilitystate` sigue en 3 y los logros dan **403 `Profile is not public`**. `GetOwnedGames`, `GetWishlist` y `GetWishlistItemCount` devuelven todo igual que en público: la key no permite probar la privacidad de su propia cuenta. **Esto limita el spike:** `libraryPrivate` y `wishlistPrivate` no se pueden validar con `lanzor_`; hace falta otra cuenta privada (propia o de alguien que preste su SteamID64). Mientras tanto, esos dos casos se implementan según la tabla secundaria de §5.4 y quedan marcados sin verificar.
+- **Punto 6, con "Mi perfil" en privado (cuenta del dueño de la key):** la página de la comunidad ya lo veía privado (`privacyState: private`, `visibilityState: 1` en `steamcommunity.com/id/<vanity>/?xml=1`, y "This profile is private" en el HTML), pero la Web API con la key siguió devolviendo `communityvisibilitystate: 3`, la biblioteca (334 juegos) y la wishlist (94) completas, sin cabeceras de caché; un parámetro para saltarse la caché y `GetPlayerSummaries` v1 dieron lo mismo. Los logros siguieron en 403 `Profile is not public`, y los juegos sin stats en 400 (esa comprobación va antes que la de privacidad). Sin resolver si es un estado atrasado en el servidor o que la key ve su propia cuenta; se recomprueba pasados unos minutos.
+- **Punto 8, `GetItems`:** 50–250 ids funcionan; 275 da **414** y 300 da 400, porque el límite es la longitud de la URL (~8 KB). Tamaño de respuesta: 80 KB por 100 ítems sin `data_request`, 120 KB con `include_basic_info`, 177 KB añadiendo `include_assets`. El precio cambia por país (`US $1.99` / `ES 1,95€` para el mismo appid), así que `cc` va en la clave de caché.
+- **Punto 9, 429 con key:** **no se reprodujo.** 100 peticiones en serie (~15/s) y 200 con 8 en vuelo (~137/s) a `GetPlayerAchievements`, todas 200. El 429 de §5.3 (con `x-eresult: 84`) viene de endpoints sin key; si aparece con key, se vigila en producción.
 
 **0C. Animación (puede aplazarse a la fase 1)**
 10. 300 portadas + 3 gráficas con datos entrando por lotes; medir fps en un móvil modesto con Motion y GSAP.
@@ -326,9 +354,8 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 
 ## 17. Sin verificar y decisiones abiertas
 
-- Que la combinación SPA + `/api` + Hono en **un solo proyecto** de Vercel funcione sin fricción (solo vista en fuentes de terceros) → spike 0A.
-- Respuestas de privacidad con key real (§5.4) → spike 0B.
-- Tamaño máximo de lote de `GetItems` y de valor en Upstash → spike.
+- Respuestas de privacidad con key real con el perfil en privado (§5.4) → spike 0B.6.
+- Tamaño máximo de lote de `GetItems` → spike 0B. Contabilidad de comandos de Upstash (¿`HSET` con N campos cuenta 1?) contra el panel de uso.
 - Si una respuesta en streaming se cachea en el CDN, y si el tope de 4,5 MB aplica al streaming (no lo usamos, pero conviene saberlo).
 - Mínimo real del vanity (2 o 3 caracteres).
 - Cuota gratuita y tamaño total de Runtime Cache en Hobby.
