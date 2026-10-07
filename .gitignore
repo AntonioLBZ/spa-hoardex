@@ -1,0 +1,31 @@
+# dependencies
+/node_modules
+
+# build
+/dist
+*.tsbuildinfo
+
+# env (keep the example)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# fixtures: only cut-down or synthetic ones are tracked
+/fixtures/full/
+
+# Steam source data (real SteamID, realname, avatar)
+*.postman_collection.json
+
+# logs
+npm-debug.log*
+pnpm-debug.log*
+
+# misc
+.DS_Store
+*.pem
+
+# editor
+.vscode/
+.idea/
