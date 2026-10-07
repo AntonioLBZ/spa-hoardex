@@ -6,5 +6,5 @@ export const Route = createFileRoute('/p/$profile')({ component: ProfileRoute })
 
 function ProfileRoute() {
     const { profile } = Route.useParams();
-    return <ProfilePage input={profile} />;
+    return <ProfilePage source={{ kind: 'steam', input: profile }} />;
 }

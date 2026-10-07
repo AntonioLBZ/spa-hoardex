@@ -16,3 +16,12 @@
 .profile-page__name {
     font-size: 1.5rem;
 }
+
+.profile-page__notice {
+    background-color: var(--color-bg-raised);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--size-border-radius);
+    color: var(--color-content-muted);
+    font-size: 0.875rem;
+    padding: var(--size-75) var(--size-100);
+}

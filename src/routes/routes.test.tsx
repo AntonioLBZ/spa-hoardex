@@ -29,6 +29,8 @@ const LIBRARY: Library = {
 
 const PROFILE_PATH = '/api/profile/someone';
 const LIBRARY_PATH = `/api/library/${STEAM_ID}`;
+const DEMO_PROFILE_PATH = '/api/demo/profile';
+const DEMO_LIBRARY_PATH = '/api/demo/library';
 
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.unstubAllGlobals());
@@ -36,7 +38,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe('entry screen', () => {
     it('explains an input that is not a profile and stays put', async () => {
         const { router, user } = renderApp('/');
-        await user.type(await screen.findByLabelText('Steam profile'), 'x');
+        await user.type(await screen.findByLabelText('Your Steam profile'), 'x');
         await user.click(screen.getByRole('button', { name: 'View library' }));
 
         expect((await screen.findByRole('alert')).textContent).toMatch(/does not look like a Steam profile/);
@@ -46,7 +48,7 @@ describe('entry screen', () => {
     it('submits with Enter', async () => {
         stubApi({ [PROFILE_PATH]: { body: { kind: 'notFound' } } });
         const { router, user } = renderApp('/');
-        await user.type(await screen.findByLabelText('Steam profile'), 'someone{Enter}');
+        await user.type(await screen.findByLabelText('Your Steam profile'), 'someone{Enter}');
 
         await screen.findByText('Profile not found');
         expect(router.state.location.pathname).toBe('/p/someone');
@@ -55,7 +57,7 @@ describe('entry screen', () => {
     it('opens the canonical profile route for a profile URL', async () => {
         stubApi({ [PROFILE_PATH]: { body: { kind: 'notFound' } } });
         const { router, user } = renderApp('/');
-        await user.type(await screen.findByLabelText('Steam profile'), 'https://steamcommunity.com/id/Someone/');
+        await user.type(await screen.findByLabelText('Your Steam profile'), 'https://steamcommunity.com/id/Someone/');
         await user.click(screen.getByRole('button', { name: 'View library' }));
 
         await screen.findByText('Profile not found');
@@ -134,12 +136,52 @@ describe('profile page', () => {
     });
 });
 
+describe('demo', () => {
+    const DEMO_ANSWERS = {
+        [DEMO_PROFILE_PATH]: { body: { kind: 'ok', data: PROFILE } },
+        [DEMO_LIBRARY_PATH]: { body: { kind: 'ok', data: LIBRARY } },
+    };
+
+    it('is reachable from the entry screen', async () => {
+        stubApi(DEMO_ANSWERS);
+        const { router, user } = renderApp('/');
+        await user.click(await screen.findByRole('link', { name: /explore a demo library/ }));
+
+        await screen.findByRole('note');
+        expect(router.state.location.pathname).toBe('/demo');
+    });
+
+    it('shows the fictional library with a notice and reads only the demo endpoints', async () => {
+        const fetchMock = stubApi(DEMO_ANSWERS);
+        renderApp('/demo');
+
+        expect((await screen.findByRole('note')).textContent).toMatch(/fictional library/);
+        expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Test Person');
+        expect(await screen.findByText('Hours played')).toBeTruthy();
+        expect(fetchMock.mock.calls.map(([input]) => String(input)).sort()).toEqual([
+            DEMO_LIBRARY_PATH,
+            DEMO_PROFILE_PATH,
+        ]);
+    });
+
+    it('does not show the notice for a real profile', async () => {
+        stubApi({
+            [PROFILE_PATH]: { body: { kind: 'ok', data: PROFILE } },
+            [LIBRARY_PATH]: { body: { kind: 'libraryPrivate' } },
+        });
+        renderApp('/p/someone');
+
+        await screen.findByText('The game library is private');
+        expect(screen.queryByRole('note')).toBeNull();
+    });
+});
+
 describe('app shell', () => {
     it('switches language and remembers it', async () => {
         const { user } = renderApp('/');
         await user.selectOptions(await screen.findByLabelText('Language'), 'es');
 
-        expect(await screen.findByLabelText('Perfil de Steam')).toBeTruthy();
+        expect(await screen.findByLabelText('Tu perfil de Steam')).toBeTruthy();
         expect(document.documentElement.lang).toBe('es');
         expect(localStorage.getItem('hoardex:locale')).toBe('es');
     });
@@ -148,15 +190,23 @@ describe('app shell', () => {
         localStorage.setItem('hoardex:locale', 'es');
         renderApp('/');
 
-        expect(await screen.findByLabelText('Perfil de Steam')).toBeTruthy();
+        expect(await screen.findByLabelText('Tu perfil de Steam')).toBeTruthy();
     });
 
-    it('shows the Valve disclaimer', async () => {
+    it('shows the Valve disclaimer and trademark notice', async () => {
         renderApp('/');
 
-        expect((await screen.findByRole('contentinfo')).textContent).toMatch(
-            /not affiliated with or endorsed by Valve/
+        const footer = (await screen.findByRole('contentinfo')).textContent;
+        expect(footer).toMatch(/not affiliated with or endorsed by Valve/);
+        expect(footer).toContain(
+            `©${new Date().getFullYear()} Valve Corporation. Steam and the Steam logo are trademarks`
         );
+    });
+
+    it("asks for the visitor's own profile", async () => {
+        renderApp('/');
+
+        expect((await screen.findByText(/Enter your own profile/)).textContent).toMatch(/must be public/);
     });
 
     it('answers an unknown route with a not-found page', async () => {

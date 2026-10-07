@@ -172,3 +172,44 @@ describe('GET /api/health', () => {
         expect(await response.json()).toEqual({ ok: true });
     });
 });
+
+describe('GET /api/demo/*', () => {
+    // A config error from getData would fail every other route
+    function demoApp() {
+        const app = createApp(() => {
+            throw new ConfigError('STEAM_API_KEY is not set');
+        });
+        return async (path: string) => {
+            const response = await app.request(path);
+            return { response, body: (await response.json()) as Record<string, unknown> };
+        };
+    }
+
+    it('serves the fictional profile without a key', async () => {
+        const { response, body } = await demoApp()('/api/demo/profile');
+
+        expect(response.status).toBe(200);
+        expect(body).toMatchObject({ kind: 'ok', data: { displayName: 'Demo Hoarder' } });
+    });
+
+    it('serves the fictional library without a key', async () => {
+        const { response, body } = await demoApp()('/api/demo/library');
+
+        expect(response.status).toBe(200);
+        expect(body).toMatchObject({ kind: 'ok', data: { games: expect.any(Array) } });
+        expect((body.data as { games: unknown[] }).games).toHaveLength(96);
+    });
+
+    it('lets the CDN hold it for an hour', async () => {
+        const { response } = await demoApp()('/api/demo/library');
+
+        expect(response.headers.get('cache-control')).toBe('public, s-maxage=3600, stale-while-revalidate=86400');
+    });
+
+    it('answers unknown demo routes with a JSON 404', async () => {
+        const { response, body } = await demoApp()('/api/demo/nope');
+
+        expect(response.status).toBe(404);
+        expect(body).toEqual({ error: 'notFound' });
+    });
+});

@@ -1,4 +1,5 @@
 import { Hono, type Context } from 'hono';
+import { createDemoData, type DemoData } from '../core/adapters/steam/index.js';
 import { UpstreamError } from '../core/adapters/types.js';
 import type { CachedAdapter } from '../core/cache/cached-adapter.js';
 import type { ProfileAccess, ProfileAccessKind } from '../core/domain/index.js';
@@ -14,9 +15,11 @@ const CACHE_CONTROL: Record<ProfileAccessKind, string> = {
     rateLimited: 'no-store',
 };
 const NO_STORE = 'no-store';
+// The demo never changes meaningfully, so the CDN can hold it for long
+const DEMO_CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate=86400';
 
-function access(c: Context, result: ProfileAccess<unknown>) {
-    c.header('Cache-Control', CACHE_CONTROL[result.kind]);
+function access(c: Context, result: ProfileAccess<unknown>, cacheControl = CACHE_CONTROL[result.kind]) {
+    c.header('Cache-Control', cacheControl);
     return c.json(result);
 }
 
@@ -25,8 +28,8 @@ function failure(c: Context, error: string, status: 400 | 404 | 500 | 502) {
     return c.json({ error }, status);
 }
 
-// `getData` runs per request: a config error is a 500
-export function createApp(getData: () => CachedAdapter) {
+// `getData` runs per request: a config error is a 500. The demo never touches it
+export function createApp(getData: () => CachedAdapter, demo: DemoData = createDemoData()) {
     const app = new Hono().basePath('/api');
 
     app.get('/health', (c) => {
@@ -49,6 +52,10 @@ export function createApp(getData: () => CachedAdapter) {
         if (input.kind !== 'id') return failure(c, 'invalidInput', 400);
         return access(c, await data.getLibrary(input.id));
     });
+
+    // Fictional library through the real adapter: needs no key, Redis or Steam
+    app.get('/demo/profile', async (c) => access(c, await demo.getProfile(), DEMO_CACHE_CONTROL));
+    app.get('/demo/library', async (c) => access(c, await demo.getLibrary(), DEMO_CACHE_CONTROL));
 
     app.notFound((c) => failure(c, 'notFound', 404));
 

@@ -8,6 +8,7 @@ export function Footer() {
     return (
         <footer className="footer">
             <p className="footer__disclaimer">{t('disclaimer')}</p>
+            <p className="footer__disclaimer">{t('trademark', { year: new Date().getFullYear() })}</p>
         </footer>
     );
 }

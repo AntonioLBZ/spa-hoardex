@@ -5,18 +5,20 @@
         "language": "Idioma"
     },
     "entry": {
-        "label": "Perfil de Steam",
+        "label": "Tu perfil de Steam",
         "placeholder": "URL del perfil, nombre personalizado o SteamID64",
         "submit": "Ver biblioteca",
         "invalid": "Eso no parece un perfil de Steam. Prueba con la URL del perfil, un nombre personalizado o un SteamID64.",
-        "hint": "El perfil y los detalles de sus juegos tienen que ser públicos."
+        "hint": "Introduce tu propio perfil. El perfil y los detalles de sus juegos tienen que ser públicos.",
+        "demo": "O explora una biblioteca de demostración con datos ficticios."
     },
     "profile": {
         "loadingProfile": "Cargando perfil…",
         "loadingLibrary": "Cargando biblioteca…",
         "back": "Buscar otro perfil",
         "retry": "Reintentar",
-        "emptyLibrary": "Esta biblioteca no tiene juegos."
+        "emptyLibrary": "Esta biblioteca no tiene juegos.",
+        "demoNotice": "Esto es una demo con una biblioteca ficticia. No interviene ninguna cuenta real de Steam."
     },
     "problem": {
         "notFound": {
@@ -49,7 +51,8 @@
         "body": "Esa página no existe."
     },
     "footer": {
-        "disclaimer": "Hoardex es un proyecto independiente. No está afiliado ni respaldado por Valve Corporation. Steam y el logotipo de Steam son marcas comerciales y/o marcas registradas de Valve Corporation en EE. UU. y/u otros países."
+        "disclaimer": "Hoardex es un proyecto independiente. No está afiliado ni respaldado por Valve Corporation.",
+        "trademark": "©{year} Valve Corporation. Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the U.S. and/or other countries."
     },
     "dashboard": {
         "kpi": {

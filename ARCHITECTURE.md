@@ -33,11 +33,11 @@ Dashboard web de la biblioteca de Steam de un usuario: horas jugadas, backlog, l
 | i18n | `en` (por defecto) y `es` con **`use-intl`** | Núcleo de `next-intl`, que ya usas en `spa-anicalendar`: mismo JSON anidado, ICU y `useTranslations`/`useFormatter`, sin paso de compilación. Lingui exige Babel dentro de Vite 8; `react-i18next`, otra API |
 | Logros | **Lotes de ~12 juegos** pedidos por el cliente | `GetAchievementsProgress` no funciona con key de desarrollador (§16) |
 | Historial | **Solo con login y opt-in** (fase 4) | No guardar datos de terceros sin consentimiento |
-| Tests | Vitest + MSW 3 + fixtures anonimizados | §13 |
+| Tests | Vitest + Testing Library + `fetch` inyectado + fixtures anonimizados o sintéticos | §13. **MSW descartado el 2026-10-07**: el modo demo vive en el servidor (§10) y los tests ya inyectan `fetch`; un service worker habría quedado instalado en el navegador de los visitantes |
 
 ## 3. Stack (versiones a 2026-10-07)
 
-React 19.3 · Vite 8.3 · TypeScript · Hono 4.13 · Zod 4.6 · TanStack Query 5.104 · Motion 14 · GSAP 3.15 + `@gsap/react` · Recharts 3.10 · use-intl 4.14 · TanStack Router 1.170 · Vitest 5 · MSW 3 (ESM-only, Node ≥ 22.12) · `sass` · pnpm (como en tus otros repos).
+React 19.3 · Vite 8.3 · TypeScript · Hono 4.13 · Zod 4.6 · TanStack Query 5.104 · Motion 14 · GSAP 3.15 + `@gsap/react` · Recharts 3.10 · use-intl 4.14 · TanStack Router 1.170 · Vitest 5 · `sass` · pnpm (como en tus otros repos).
 
 ## 4. Estructura propuesta del repo
 
@@ -192,7 +192,7 @@ Respuestas `GET` públicas de `/api` con `Cache-Control: s-maxage=…, stale-whi
 - **Implementación (Fase 1, paso 3):** `core/cache` (`CacheStore`, `createCachedAdapter`, `createDailyBudget`) y `server/` (Hono). Las lecturas se validan con Zod: una entrada con otra forma cuenta como fallo de caché. Si Redis falla, la petición sigue contra Steam; si falla el contador, se deja pasar. Superado el presupuesto, `withBudget` responde como un 429 de Steam y el adapter devuelve `rateLimited`. Sin caché negativa para 429 de Steam hasta observarlo.
 - **Medido en local con Steam y Upstash reales (2026-10-07):** el contador sube solo con llamadas reales a Steam (caliente = 0); los TTL salen como en la tabla; la biblioteca normalizada de 334 juegos pesa **144 KB** (~430 B por juego), más que las "decenas de KB" estimadas, aún muy por debajo de 5 MB. Si molesta se puede recortar (`iconUrl` se deriva del hash, `platforms`). Tiempos locales (España → Steam/Upstash): ~1,9 s en frío, ~0,8 s en caliente; no son referencia para producción.
 - **Verificado desplegado (2026-10-07, producción):** los imports ESM de `server/` funcionan, Redis de producción responde, `x-vercel-cache: HIT` en repeticiones (el cliente ve `cache-control: public`), función en `iad1` servida desde el borde `cdg1`. Biblioteca fría ~0,7 s, en el CDN ~0,1–0,2 s. **Sin verificar:** la contabilidad de comandos de Upstash.
-- **Ids falsos de las fixtures:** el rango reservado puede coincidir con cuentas reales. Las fixtures solo se usan sin red, pero `profileUrl` apunta a `steamcommunity.com/profiles/{id}`: el modo demo no debe enlazar ese perfil.
+- **Ids falsos de las fixtures:** el rango reservado puede coincidir con cuentas reales. Las fixtures solo se usan sin red, pero `profileUrl` apunta a `steamcommunity.com/profiles/{id}`. El modo demo lo respeta: su perfil usa `https://example.invalid/demo` (un test lo exige) y la UI no enlaza ningún perfil.
 
 ## 9. Carga progresiva de logros
 
@@ -217,6 +217,7 @@ Respuestas `GET` públicas de `/api` con `Cache-Control: s-maxage=…, stale-whi
 - Perfil privado y demás `ProfileAccess` se tratan como **datos** (`retry: false`), no como excepciones.
 - **Implementación (Fase 1, paso 4):** `src/routes` (`__root`, `/`, `/p/$profile`), `src/features` (header, footer, entry-form, profile-page), `src/components` (button, state-message), `src/lib` (`api`, `i18n`, `query-client`, `profile-slug`). La pantalla de entrada normaliza lo escrito con `parseProfileInput` (solo importa `profile-input.ts`, sin Zod en el bundle) y navega a `/p/{vanity en minúsculas | id64}`; una entrada inválida se rechaza sin tocar la red. `QueryClient` con `retry: false`, `refetchOnWindowFocus: false` y `staleTime` de 60 s (igual que el `s-maxage`). El perfil y la biblioteca son dos queries: si la biblioteca es privada, el perfil se sigue mostrando. `routeTree.gen.ts` va **commiteado** (`tsc` corre antes de `vite build`) y Prettier lo ignora. Los tests del front usan el árbol de rutas real con historial en memoria y un `fetch` falso (`src/lib/test/render-app.tsx`); 29 tests, proyecto `front` de Vitest (jsdom).
 - **Implementación (Fase 1, paso 5):** `core/stats` (`summarizeLibrary`: totales, horas recientes, backlog, recuento por estado, top 10 por horas, minutos por año de última partida; función pura con 10 tests) y `src/features/dashboard` (KPIs, donut de estados con leyenda, top de juegos con barras CSS `scaleX`, barras por año con tabla oculta). *Completado* no se muestra hasta tener logros (fase 2). Verificado en navegador real con datos sintéticos inyectados en `fetch` (sin cuentas reales): el `fill` en los datos funciona sin `Cell` (deprecado en Recharts 3), el modo de movimiento reducido pinta el estado final y no hay desbordamiento horizontal a 320, 360 y 414 px. **Las animaciones de Recharts no avanzan en una pestaña oculta** (usan `requestAnimationFrame`), así que una captura automática las ve a medias.
+- **Implementación (Fase 1, paso 6, modo demo):** `GET /api/demo/profile` y `GET /api/demo/library` (`server/app.ts`), con `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`. No tocan `getData()`: funcionan sin key, sin Redis y sin red. La biblioteca es **sintética y determinista** (`core/adapters/steam/demo.ts`): 96 juegos con nombres ficticios (`Crimson Orbit`…), appids desde 4 200 000 000 (fuera de cualquier app real), cuota fija por estado (36 sin tocar, 9 probados, 12 en curso, 11 pausados, 28 acabados), unas 3 700 h, jugados repartidos de 2020 a 2026 y fechas **relativas al reloj** (así los estados no envejecen; un test lo comprueba moviendo el reloj dos años). Se sirve por el **adapter real de Steam** con un `fetch` falso (`GetPlayerSummaries` y `GetOwnedGames`), así que ejercita Zod y el normalizador. Id `76561198000009999` (ventana ficticia, nunca enviado a Steam) y avatar `public/demo-avatar.svg`. En el cliente, la ruta `/demo` reutiliza `ProfilePage` con `source: { kind: 'demo' }` y muestra un aviso de datos ficticios; la pantalla de entrada enlaza a ella. `vercel.json` lleva su regla de rewrite. **Para la cuadrícula de portadas (fase 1):** los appids de la demo no existen en Steam, así que la demo no puede pedir imágenes a su CDN; necesita portadas de relleno.
 - Router de cliente: **TanStack Router** con rutas por ficheros (`@tanstack/router-plugin/vite`, que genera `routeTree.gen.ts`). Rutas previstas: `/` (introducir perfil) y `/p/$profile` (dashboard) con los filtros (estado, orden, vista) como parámetros de búsqueda tipados. Alternativa descartada: React Router 8 (sin búsqueda tipada).
 
 ### Animación y gráficas
@@ -265,12 +266,12 @@ El idioma de la UI se traduce al parámetro `l=` de Steam (`english`, `spanish`)
 
 - **Riesgo principal:** los términos dicen que solo se recuperan datos de un usuario "as requested by the end user" (steamcommunity.com/dev/apiterms, versión de 2010). Consultar perfiles de terceros **no queda amparado expresamente**, y Valve puede revocar la key "at any time for any reason, without notice" (§11). Que Valve lo tolere de hecho es una suposición.
 - **Mitigaciones:**
-  1. Texto de la UI que pide el perfil **propio**.
+  1. Texto de la UI que pide el perfil **propio** (hecho: etiqueta «Tu perfil de Steam» y aviso «Introduce tu propio perfil»).
   2. Cachés cortas para datos por usuario; sin historial salvo opt-in.
   3. Login con Steam como vía limpia, en cuanto exista (fase 4).
-  4. **Modo demo con fixtures anonimizados:** la demo del portfolio sigue funcionando aunque la key se pierda.
+  4. **Modo demo con datos sintéticos:** la demo del portfolio sigue funcionando aunque la key se pierda (hecho, §10).
   5. Plan de contingencia: la capa Steam está aislada en el adapter.
-- **Obligaciones:** política de privacidad (qué datos, dónde se guardan, cuánto tiempo), atribución a Valve, no parecer oficial, borrar copias cuando corresponda. No existe el literal "Powered by Steam": el pie debe incluir el aviso de marcas de Valve (revisar el texto exacto en `partner.steamgames.com/doc/marketing/branding`) y un descargo de no afiliación.
+- **Obligaciones:** política de privacidad (qué datos, dónde se guardan, cuánto tiempo), atribución a Valve, no parecer oficial, borrar copias cuando corresponda. No existe el literal "Powered by Steam": el pie debe incluir el aviso de marcas de Valve y un descargo de no afiliación. **Texto comprobado el 2026-10-07** en `partner.steamgames.com/doc/marketing/branding` (público, sin login; leído mediante un resumen automático, así que conviene un vistazo humano): «©{año} Valve Corporation. Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the U.S. and/or other countries.» Se mantiene en inglés en los dos idiomas (texto legal); el descargo de no afiliación sí se traduce.
 - **Uso no comercial:** requisito de Vercel Hobby (§1).
 
 ## 13. Testing y fixtures
@@ -283,7 +284,7 @@ El idioma de la UI se traduce al parámetro `l=` de Steam (`english`, `spanish`)
 - **Fixtures públicas** (`fixtures/steam/<Endpoint>.<caso>.json`, forma `{ status, eresult, body }`): sintéticas, con la forma real de Steam y todos los casos de §7 (0 min, 59/60 min, 10/120/400 días, `has_community_visible_stats` ausente, desgloses que no suman). `GetPlayerSummaries.friends/.private` son **inferidas**, no observadas. `GetOwnedGames.private` reproduce lo observado en una cuenta ajena de solo amigos (200, `x-eresult: 15`, `{"response":{}}`). `ResolveVanityURL.notFound` y `GetPlayerSummaries.empty` coinciden con la respuesta real (verificado).
 - **Contrato:** cada fixture debe parsear con su schema Zod, y el normalizador debe producir el dominio esperado.
 - **Unitarios:** clasificación de backlog (todas las ramas de §7), validación de entrada, huellas de caché.
-- **Adapter de Steam:** recibe `fetch` por inyección, así que sus tests usan un `fetch` falso sin MSW. **MSW 3** llega con el modo demo y los tests del front: `setupServer` en Vitest y `setupWorker` en dev/modo demo, con los mismos handlers. Soporte de streaming sin confirmar (no lo necesitamos: usamos lotes).
+- **Adapter de Steam:** recibe `fetch` por inyección, así que sus tests usan un `fetch` falso sin MSW. Los tests del front usan un `fetch` falso (`stubApi`). **MSW queda descartado** (decisión del 2026-10-07): el modo demo no necesita interceptar nada en el navegador.
 - **Herramientas:** Vitest, Testing Library y jsdom, como en `spa-anicalendar`.
 
 ## 14. Roadmap y spike
@@ -332,6 +333,16 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 
 ### Fases del producto
 
+**Estado de la fase 1 (2026-10-07).** Hecho: `core` (dominio, adapter, backlog, caché, stats), API con Redis y presupuesto (verificada desplegada), esqueleto del front (router, i18n, Query, entrada), dashboard base (KPIs, estados, top, horas por año), aviso de marcas de Valve, modo demo en el servidor. **Pendiente:**
+- Vista de biblioteca: cuadrícula de portadas (respaldo a `header.jpg`), filtros y orden como parámetros de búsqueda tipados (§10).
+- Animación: instalar Motion y GSAP, contadores y entradas; spike 0C (300 portadas, fps en móvil modesto).
+- Botón de refresco con cooldown `refresh:{steamid}` (§8).
+- Política de privacidad (ruta nueva: necesita su regla en `vercel.json`), `README` público, favicon, título y metadatos por ruta.
+- Cabeceras de seguridad: `Content-Security-Policy` (§11).
+- Verificar tras el despliegue: rewrites de SPA para `/p/...` y `/demo`, y `/api/demo/*` con `x-vercel-cache: HIT` (§17).
+- Sin verificar con datos reales: contabilidad de comandos de Upstash, `libraryPrivate`/`wishlistPrivate` (cuenta ajena), mínimo del vanity.
+- Decisiones del dueño: licencia, dominio, restricciones de PR, fusionar *Pausado* con *En curso* (§17).
+
 | Fase | Contenido |
 |---|---|
 | 1 | Perfil → biblioteca, horas, estados de backlog (excepto Completado), gráficas, caché, i18n base, modo demo con fixtures |
@@ -373,7 +384,7 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 - Tamaño máximo de lote de `GetItems` → spike 0B. Contabilidad de comandos de Upstash (¿`HSET` con N campos cuenta 1?) contra el panel de uso.
 - Si una respuesta en streaming se cachea en el CDN, y si el tope de 4,5 MB aplica al streaming (no lo usamos, pero conviene saberlo).
 - Mínimo real del vanity (2 o 3 caracteres).
-- **Rewrite de SPA en `vercel.json`:** una regla por ruta del cliente (`/p/:profile` → `/index.html`, después de la de `/api`). **No usar un comodín `/(.*)`**: `vercel dev` reescribe también `/src/main.tsx` y `/@vite/client` a `index.html` y Vite falla con "Failed to parse source for import analysis" (reproducido 2026-10-07). Con la regla acotada, `vercel dev` sirve los módulos como JavaScript y la carga directa de `/p/...` funciona (verificado en local, incluido en navegador). Consecuencias: cada ruta nueva del cliente necesita su regla, y una ruta desconocida fuera de `/p/` la contesta el 404 de Vercel, no la página 404 del SPA. El comportamiento **desplegado** sigue sin verificarse hasta el próximo despliegue.
+- **Rewrite de SPA en `vercel.json`:** una regla por ruta del cliente (`/p/:profile` → `/index.html`, después de la de `/api`). **No usar un comodín `/(.*)`**: `vercel dev` reescribe también `/src/main.tsx` y `/@vite/client` a `index.html` y Vite falla con "Failed to parse source for import analysis" (reproducido 2026-10-07). Con la regla acotada, `vercel dev` sirve los módulos como JavaScript y la carga directa de `/p/...` funciona (verificado en local, incluido en navegador). Reglas actuales: `/p/:profile` y `/demo`. Consecuencias: cada ruta nueva del cliente necesita su regla, y una ruta desconocida fuera de `/p/` la contesta el 404 de Vercel, no la página 404 del SPA. El comportamiento **desplegado** sigue sin verificarse hasta el próximo despliegue.
 - Cuota gratuita y tamaño total de Runtime Cache en Hobby.
 - Si Valve tolera de hecho las consultas a terceros.
 - **Decisiones abiertas:** licencia del repo (sin licencia = visible pero no reutilizable), restricciones de PR en GitHub (revisar los ajustes del repo), dominio propio frente a `*.vercel.app`, y si fusionar *Pausado* con *En curso*.

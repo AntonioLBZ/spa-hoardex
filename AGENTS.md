@@ -7,7 +7,7 @@ Web dashboard for a Steam library (hours, backlog, achievements, wishlist) with 
 Phase 1 in progress. **Read `ARCHITECTURE.md` (Spanish) before any work: it is the source of truth** for decisions, Steam API behavior, cache keys/TTLs and the roadmap. This file only distills the rules that are easy to break. If a decision changes, update `ARCHITECTURE.md` first, then this file.
 
 - Phase 0 spike passed its gate (`ARCHITECTURE.md` §14): Vite + Hono as one Vercel project works, so Plan B (thin Next.js 16) is not needed.
-- Built so far: `core/domain`, `core/backlog`, `core/stats`, `core/adapters/steam`, `core/cache` (store, budget, cached adapter), the API (`GET /api/profile/:input`, `GET /api/library/:id`), fixtures and the privacy-leak test. The front: entry screen, `/p/$profile` with a library dashboard (KPIs, backlog-state donut, top games, hours by year), `en`/`es`, Valve footer. Achievements, wishlist, filters and animation orchestration (Motion/GSAP) are not built yet.
+- Built so far: `core/domain`, `core/backlog`, `core/stats`, `core/adapters/steam` (incl. the demo), `core/cache` (store, budget, cached adapter), the API (`GET /api/profile/:input`, `GET /api/library/:id`), fixtures and the privacy-leak test. The front: entry screen, `/p/$profile` with a library dashboard (KPIs, backlog-state donut, top games, hours by year), `en`/`es`, Valve footer, a server-side demo (`/demo`). Achievements, wishlist, filters and animation orchestration (Motion/GSAP) are not built yet.
 - Items marked *(secundaria)* or *(sin verificar)* in `ARCHITECTURE.md` are unverified. Private-library and private-wishlist behavior cannot be tested with the key owner's own account.
 - Open decisions (license, domain, whether to merge *Pausado* into *En curso*): ask the owner, don't pick silently.
 
@@ -16,7 +16,8 @@ Phase 1 in progress. **Read `ARCHITECTURE.md` (Spanish) before any work: it is t
 pnpm only. Pin dependencies exactly (no `^`): pnpm 11 ignores `save-exact` in `.npmrc`, so use `pnpm add -E` or strip the caret afterwards. `ARCHITECTURE.md` §3 lists the intended versions as of 2026-10-07.
 
 ```bash
-pnpm dev                       # Vite (use `vercel dev` to also serve /api)
+pnpm dlx vercel@62.7.0 dev    # the way to run and test the app: serves the SPA and /api (needs .env.local)
+pnpm dev                       # Vite alone, no /api: the app is useless this way, only for quick UI work with a patched fetch
 pnpm build                     # tsc --noEmit && vite build
 pnpm typecheck                 # tsc --noEmit over src, api, core, scripts, fixtures, tests
 pnpm test                      # vitest run: `node` project (core, server, scripts, tests) + `front` project (jsdom, src/)
@@ -82,7 +83,7 @@ The library arrives in one call and the dashboard renders. Then the **client** r
 - Router: TanStack Router, file-based via its Vite plugin; list filters live in typed search params. `src/routeTree.gen.ts` is generated but committed (`tsc` runs before `vite build`); Prettier ignores it.
 - Layout follows `spa-anicalendar`: a folder per component/feature (`name.tsx`, `name.scss`, `index.ts`), BEM class names, no cross-imports from `components/` into `features/`.
 - The entry screen canonicalizes input with `parseProfileInput` (import that file only, never the adapter index: it pulls Zod into the bundle). `src/lib/profile-slug.ts` is the one place the front touches the Steam adapter.
-- Front tests render the real route tree with `renderApp` and a fake `fetch` (`stubApi`) from `src/lib/test/render-app.tsx` (no MSW until demo mode); the setup file stubs `window.scrollTo`.
+- Front tests render the real route tree with `renderApp` and a fake `fetch` (`stubApi`) from `src/lib/test/render-app.tsx` (no MSW); the setup file stubs `window.scrollTo`.
 - TanStack Query 5: `useQuery` for profile/library, `useQueries` + `combine` for achievement batches. `streamedQuery` is experimental, don't use it.
 - **Motion** (`LazyMotion` + `domMax`): layout, exit, counters. **GSAP** (`useGSAP`, grid stagger, `ScrollTrigger.batch`): grid entrances. **Never both on the same element or property.** Never run GSAP on nodes that `AnimatePresence` unmounts, or inside Recharts SVG. Motion `layout` does not work in SVG.
 - Recharts 3 for standard charts; heatmap and rarity are hand-built SVG (d3-scale + Motion). `Cell` is deprecated: put `fill` in the data. Recharts animates with `requestAnimationFrame`, so in a hidden tab (also the Chrome automation window) it freezes mid-animation; to look at the final state force `prefers-reduced-motion` (`isAnimationActive={!reducedMotion}`, via `src/lib/use-reduced-motion.ts`). Charts sit in `aria-hidden` and the same data is given as a legend or a visually-hidden table.
@@ -95,9 +96,10 @@ The library arrives in one call and the dashboard renders. Then the **client** r
 
 ## Fixtures and testing
 
-- Vitest, MSW 3 (ESM-only, Node ≥ 22.12; same handlers for `setupServer` in tests and `setupWorker` in dev/demo), Testing Library, jsdom.
+- Vitest, Testing Library, jsdom, an injected `fetch` (no MSW: the demo lives on the server, see below).
+- **Demo mode is server-side:** `GET /api/demo/profile` and `/api/demo/library` answer from `createDemoData` (`core/adapters/steam/demo.ts`): a deterministic fictional library (96 games, appids from 4.2 billion, dates relative to the clock) read through the real Steam adapter with a fake `fetch`. It never calls `getData()`, so it needs no key, Redis or network. The client page `/demo` reuses `ProfilePage` with `source: { kind: 'demo' }` and shows a fictional-data notice. Demo appids do not exist on Steam: never request Steam CDN images for them (the cover grid needs placeholders there).
 - Fixtures come from the owner's Postman collection, which contains their real SteamID, `realname` and avatar. **Never commit the collection, `.env*`, `.vercel/` or `fixtures/full/`.**
-- Fake SteamID64s live in the window `76561198000000000` + 10 000 (`scripts/lib/anonymize.ts`). **Those ids can belong to real people** (a live lookup of one returned a stranger's profile): never send a fixture id to the live API, not even in a manual check, and never render or link a fixture profile URL as if it were fake. The Steam adapter takes `fetch` by injection, so its tests need no MSW; MSW arrives with demo mode.
+- Fake SteamID64s live in the window `76561198000000000` + 10 000 (`scripts/lib/anonymize.ts`). **Those ids can belong to real people** (a live lookup of one returned a stranger's profile): never send a fixture id to the live API, not even in a manual check, and never render or link a fixture profile URL as if it were fake. The Steam adapter takes `fetch` by injection, so its tests need no MSW.
 - Anonymize with a **fake-ID map**, not hashes (SteamIDs are enumerable). Touch `steamid`, `personaname`, `realname`, avatars, `profileurl`, `primaryclanid`. Public fixtures are cut-down or synthetic.
 - `tests/privacy-leak.test.ts` fails if any tracked or untracked-not-ignored file carries a SteamID64 outside the fake window, a term from `fixtures/full/private-terms.json`, or the `STEAM_API_KEY` from `.env.local`. Docs are scanned too: don't name the owner's profile in them. Every fixture must parse with its Zod schema and normalize to the expected domain output.
 

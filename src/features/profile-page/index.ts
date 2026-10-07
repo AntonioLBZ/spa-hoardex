@@ -1,1 +1,1 @@
-export { ProfilePage } from './profile-page';
+export { ProfilePage, type ProfileSource } from './profile-page';

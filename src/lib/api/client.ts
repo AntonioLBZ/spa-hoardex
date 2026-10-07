@@ -36,6 +36,14 @@ export function fetchProfile(input: string, signal?: AbortSignal) {
     return getAccess<Profile>(`/api/profile/${encodeURIComponent(input)}`, signal);
 }
 
+export function fetchDemoProfile(signal?: AbortSignal) {
+    return getAccess<Profile>('/api/demo/profile', signal);
+}
+
+export function fetchDemoLibrary(signal?: AbortSignal) {
+    return getAccess<Library>('/api/demo/library', signal);
+}
+
 export function fetchLibrary(steamId: string, signal?: AbortSignal) {
     return getAccess<Library>(`/api/library/${encodeURIComponent(steamId)}`, signal);
 }

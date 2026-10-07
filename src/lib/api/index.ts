@@ -1,2 +1,2 @@
-export { ApiError, fetchLibrary, fetchProfile } from './client';
-export { libraryQuery, profileQuery } from './queries';
+export { ApiError, fetchDemoLibrary, fetchDemoProfile, fetchLibrary, fetchProfile } from './client';
+export { demoLibraryQuery, demoProfileQuery, libraryQuery, profileQuery } from './queries';

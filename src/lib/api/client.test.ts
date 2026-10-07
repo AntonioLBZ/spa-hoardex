@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ApiError, fetchLibrary, fetchProfile } from './client';
+import { ApiError, fetchDemoLibrary, fetchDemoProfile, fetchLibrary, fetchProfile } from './client';
 
 function stubFetch(response: Response) {
     const fetchMock = vi.fn((_input: string) => Promise.resolve(response));
@@ -26,6 +26,15 @@ describe('API client', () => {
         const fetchMock = stubFetch(Response.json({ kind: 'notFound' }));
         await fetchLibrary('76561198000000001');
         expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/library/76561198000000001');
+    });
+
+    it('reads the demo from its own endpoints', async () => {
+        const fetchMock = vi.fn((_input: string) => Promise.resolve(Response.json({ kind: 'notFound' })));
+        vi.stubGlobal('fetch', fetchMock);
+        await fetchDemoProfile();
+        await fetchDemoLibrary();
+
+        expect(fetchMock.mock.calls.map((call) => call[0])).toEqual(['/api/demo/profile', '/api/demo/library']);
     });
 
     it('turns a non-200 answer into an ApiError carrying the code', async () => {

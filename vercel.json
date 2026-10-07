@@ -3,6 +3,7 @@
     "framework": "vite",
     "rewrites": [
         { "source": "/api/:path*", "destination": "/api" },
-        { "source": "/p/:profile", "destination": "/index.html" }
+        { "source": "/p/:profile", "destination": "/index.html" },
+        { "source": "/demo", "destination": "/index.html" }
     ]
 }

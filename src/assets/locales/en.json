@@ -5,18 +5,20 @@
         "language": "Language"
     },
     "entry": {
-        "label": "Steam profile",
+        "label": "Your Steam profile",
         "placeholder": "Profile URL, custom name or SteamID64",
         "submit": "View library",
         "invalid": "That does not look like a Steam profile. Try a profile URL, a custom name or a SteamID64.",
-        "hint": "The profile and its game details must be public."
+        "hint": "Enter your own profile. It and its game details must be public.",
+        "demo": "Or explore a demo library with fictional data."
     },
     "profile": {
         "loadingProfile": "Loading profile…",
         "loadingLibrary": "Loading library…",
         "back": "Look up another profile",
         "retry": "Try again",
-        "emptyLibrary": "This library has no games."
+        "emptyLibrary": "This library has no games.",
+        "demoNotice": "This is a demo with a fictional library. No real Steam account is involved."
     },
     "problem": {
         "notFound": {
@@ -49,7 +51,8 @@
         "body": "That page does not exist."
     },
     "footer": {
-        "disclaimer": "Hoardex is an independent project. It is not affiliated with or endorsed by Valve Corporation. Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the U.S. and/or other countries."
+        "disclaimer": "Hoardex is an independent project. It is not affiliated with or endorsed by Valve Corporation.",
+        "trademark": "©{year} Valve Corporation. Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the U.S. and/or other countries."
     },
     "dashboard": {
         "kpi": {
