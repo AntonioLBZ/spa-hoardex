@@ -1,13 +1,11 @@
 import { z } from 'zod';
 
-// Raw Steam Web API responses (phase 1: profile + library). These types never leave this folder.
-// Loose on purpose: unknown fields are ignored and almost everything is optional, so Steam changing a field degrades
-// that field instead of breaking the request. Only fields the adapter reads are declared.
+// Raw Steam responses: loose on purpose, never leave this folder
 
 // ISteamUser/ResolveVanityURL/v1
 export const resolveVanityResponseSchema = z.looseObject({
     response: z.looseObject({
-        // 1 found, 42 no match. Anything else (or a non-number) reads as "not found"
+        // 1 found, 42 no match; anything else reads as not found
         success: z.number().optional().catch(undefined),
         steamid: z.string().optional(),
         message: z.string().optional(),
@@ -22,7 +20,7 @@ export const rawPlayerSchema = z.looseObject({
     avatar: z.string().optional(),
     avatarmedium: z.string().optional(),
     avatarfull: z.string().optional(),
-    // 3 public, 2 friends only, 1 private. Unverified for 2 (see ARCHITECTURE.md 5.1); unknown values are mapped later
+    // 3 public, 2 friends, 1 private
     communityvisibilitystate: z.number().optional().catch(undefined),
     // Unix seconds; hidden by some profiles
     timecreated: z.number().optional(),
@@ -34,7 +32,7 @@ export const playerSummariesResponseSchema = z.looseObject({
     }),
 });
 
-// IPlayerService/GetOwnedGames/v1 with include_appinfo=1 and include_played_free_games=1, one entry of `games`
+// GetOwnedGames/v1 (include_appinfo, include_played_free_games): one entry of `games`
 export const rawGameSchema = z.looseObject({
     appid: z.number().int().nonnegative(),
     name: z.string().optional(),
@@ -55,7 +53,7 @@ export const rawGameSchema = z.looseObject({
 export const ownedGamesResponseSchema = z.looseObject({
     response: z.looseObject({
         game_count: z.number().optional(),
-        // Entries are validated one by one (see normalizeOwnedGames): a bad game must not drop the whole library
+        // Entries are validated one by one (see normalizeOwnedGames)
         games: z.array(z.unknown()).optional(),
     }),
 });

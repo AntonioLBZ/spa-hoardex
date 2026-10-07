@@ -7,7 +7,7 @@ Web dashboard for a Steam library (hours, backlog, achievements, wishlist) with 
 Phase 1 in progress. **Read `ARCHITECTURE.md` (Spanish) before any work: it is the source of truth** for decisions, Steam API behavior, cache keys/TTLs and the roadmap. This file only distills the rules that are easy to break. If a decision changes, update `ARCHITECTURE.md` first, then this file.
 
 - Phase 0 spike passed its gate (`ARCHITECTURE.md` §14): Vite + Hono as one Vercel project works, so Plan B (thin Next.js 16) is not needed.
-- Built so far: `core/domain`, `core/backlog`, `core/adapters/steam` (input parsing and the adapter), `core/cache/redis.ts`, fixtures and the privacy-leak test. The front is still the spike's placeholder.
+- Built so far: `core/domain`, `core/backlog`, `core/adapters/steam`, `core/cache` (store, budget, cached adapter), the API (`GET /api/profile/:input`, `GET /api/library/:id`), fixtures and the privacy-leak test. The front is still the spike's placeholder.
 - Items marked *(secundaria)* or *(sin verificar)* in `ARCHITECTURE.md` are unverified. Private-library and private-wishlist behavior cannot be tested with the key owner's own account.
 - Open decisions (license, domain, whether to merge *Pausado* into *En curso*): ask the owner, don't pick silently.
 
@@ -37,7 +37,8 @@ Vite 8 + React 19 + TypeScript SPA, Hono API in one Vercel Function (`api/index.
 
 ```
 core/       pure domain + logic: domain/, adapters/steam/, cache/, backlog/
-api/        Hono routes, input validation, rate limiting, cache headers
+api/        Vercel entry point only: every file under api/ becomes a function
+server/     Hono app: routes, input validation, CDN headers, env wiring (`deps.ts`)
 src/        SPA: views, components, TanStack Query hooks, i18n, SCSS
 fixtures/   anonymized or synthetic only (full ones are gitignored)
 scripts/    extract + anonymize fixtures from the Postman collection
@@ -55,7 +56,8 @@ scripts/    extract + anonymize fixtures from the Postman collection
 
 - **Redis (Upstash free, 500k commands/month) is the source of truth; the CDN (`s-maxage` + SWR) is only an optimization** (regional, best-effort). Never rely on it for correctness.
 - Budget commands: per-user achievements are **one hash** (`ach:{steamid}`, field = appid); the library is stored **normalized**, not raw (~190 KB → tens of KB); use `MGET`/pipelines.
-- Prefix every key with the environment (`VERCEL_ENV`: `production:`, `preview:`, `development:`); the free plan gives one database and all environments share it (`core/cache/redis.ts` `nsKey`).
+- Prefix every key with the environment (`VERCEL_ENV`: `production:`, `preview:`, `development:`); the free plan gives one database and all environments share it. The one exception is the Steam budget counter (`shared:budget:steam:YYYYMMDD`): the limit belongs to the key, not to the environment.
+- `createCachedAdapter` wraps a `StoreAdapter`: keys `alias:|profile:|lib:` + `{source}:{id}`, every read validated with Zod (a mismatch is a miss), `rateLimited` never cached, a failing store never fails a request. TTLs live in `CACHE_TTL`. `withBudget(fetch, budget)` counts every Steam request and, past the cap, answers like a throttle so the adapter yields `rateLimited`.
 - Always normalize the SteamID before using it in a key, so a vanity and its resolved ID share cache.
 - Achievement invalidation by fingerprint `hash(playtime_forever, rtime_last_played)`. Per-user progress is language-neutral; texts are shared per `(appid, lang)`.
 
@@ -96,4 +98,4 @@ The library arrives in one call and the dashboard renders. Then the **client** r
 ## Constraints and conventions
 
 - Free tiers only: if something needs payment, drop it. Vercel Hobby is non-commercial (no ads, no charging); exceeding quotas means a 30-day block, not a charge. Public repo, visibility only, no contributions.
-- Match the owner's other repos: Prettier with 4 spaces, single quotes, `printWidth` 120, `trailingComma: es5`, LF. Code comments in English, minimal; say what something is, never narrate the code.
+- Match the owner's other repos: Prettier with 4 spaces, single quotes, `printWidth` 120, `trailingComma: es5`, LF. Code comments: English, minimal, short. At most a one-line definition of what something is (or a non-obvious constraint). Never explain the code, narrate it or write paragraphs; if it needs that much, rename or split instead.

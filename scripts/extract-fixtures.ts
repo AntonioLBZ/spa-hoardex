@@ -1,7 +1,6 @@
-// Extracts every saved response of the Postman collection into fixtures/full/postman (gitignored: real data).
-// With --anonymize it also writes fixtures/full/anon, run through the fake-id map.
+// Extracts saved Postman responses to fixtures/full/postman (gitignored); --anonymize also writes fixtures/full/anon
 // Run: node scripts/extract-fixtures.ts [--anonymize] [path/to/collection.json]
-// Only response bodies are read, never the request (it can carry the API key). The console gets counts only.
+// Reads response bodies only: requests can carry the API key
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -11,7 +11,7 @@ import {
     type Json,
 } from './anonymize.js';
 
-// Built at runtime so no id-shaped literal outside the reserved window lives in the repo
+// Built at runtime: no id-shaped literal outside the fake window
 const ACCOUNT_BASE = 76561197960265728n;
 const REAL_A = String(ACCOUNT_BASE + 111_111n);
 const REAL_B = String(ACCOUNT_BASE + 222_222n);

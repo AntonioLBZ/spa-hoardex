@@ -1,5 +1,4 @@
-// Writes fixtures/full/private-terms.json (gitignored): the owner's real identifiers, read from the spike output.
-// tests/privacy-leak.test.ts fails if any of them shows up in a repo file. Never prints the values.
+// Writes fixtures/full/private-terms.json (gitignored) from the spike output; never prints the values
 // Run once after the spike: node scripts/init-private-terms.ts
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -11,7 +10,7 @@ const TERMS = resolve(ROOT, 'fixtures/full/private-terms.json');
 
 // SteamID64 = this base + the 32-bit account id
 const ACCOUNT_BASE = 76561197960265728n;
-// Values every account without a custom setting shares, so they identify nobody: no primary group, default avatar
+// Default values that identify nobody
 const COMMON_VALUES = new Set(['103582791429521408', 'fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb']);
 
 const meta = JSON.parse(await readFile(resolve(SPIKE, 'meta.json'), 'utf8')) as { steamid?: unknown };
@@ -24,7 +23,7 @@ if (typeof steamid !== 'string' || !/^765611\d{11}$/.test(steamid)) throw new Er
 const player = summaries.body?.response?.players?.[0];
 if (!player) throw new Error('spike GetPlayerSummaries.json has no player');
 
-// The same account written as SteamID2 and SteamID3, and the vanity name from the profile url
+// The same account as SteamID2, SteamID3 and vanity
 const account = BigInt(steamid) - ACCOUNT_BASE;
 const vanity = typeof player.profileurl === 'string' ? /\/id\/([^/?#]+)/.exec(player.profileurl)?.[1] : undefined;
 const strings = [

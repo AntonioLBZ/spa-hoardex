@@ -454,7 +454,7 @@ describe('parseProfileInput: other junk', () => {
 });
 
 describe('parseProfileInput: account id 0 and protocol-relative URLs', () => {
-    // 76561197960265728 is account id 0: it fits the SteamID64 pattern but is not a real account
+    // Account id 0 fits the pattern but is not a real account
     it.each([
         '76561197960265728',
         'STEAM_0:0:0',

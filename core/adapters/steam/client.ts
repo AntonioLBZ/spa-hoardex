@@ -11,11 +11,10 @@ import {
     type RawResolveVanityResponse,
 } from './schemas.js';
 
-// Closed allowlist: the only host we talk to, and the only endpoints (fixed paths, fixed parameter names).
-// Nothing from a visitor is ever used as a host, path or parameter name.
+// Closed allowlist: one host, fixed paths and parameter names
 const API_HOST = 'api.steampowered.com';
 const DEFAULT_TIMEOUT_MS = 10_000;
-// Steam's status code for "too many requests", sent in the `x-eresult` header
+// Steam's "too many requests" code, sent in x-eresult
 const ERESULT_RATE_LIMITED = '84';
 
 const ENDPOINTS = {
@@ -31,23 +30,23 @@ interface Endpoint<T> {
 
 export interface SteamClientOptions {
     apiKey: string;
-    // Injected in tests; defaults to the global `fetch`
+    // Defaults to the global fetch
     fetch?: typeof fetch;
     // Defaults to `console.warn`
     onDrift?: SteamDriftHandler;
-    // Per request, body included. Defaults to 10 s
+    // Per request; defaults to 10 s
     timeoutMs?: number;
 }
 
 export interface SteamReply<T> {
     status: number;
-    // The `x-eresult` header, null when Steam does not send it
+    // x-eresult header, null if absent
     eresult: string | null;
-    // HTTP 429 or `x-eresult: 84`. The client never retries; backoff belongs to the caller
+    // HTTP 429 or x-eresult 84; never retried here
     rateLimited: boolean;
-    // Parsed JSON, or the text when the body is not JSON (error pages on 4xx)
+    // Parsed JSON, or the text if not JSON
     body: unknown;
-    // `body` checked against the endpoint schema. Null unless the reply is a 200 that conforms (drift is reported)
+    // body validated against the schema; null unless a conforming 200
     data: T | null;
 }
 
@@ -59,7 +58,7 @@ export interface SteamClient {
 
 function transportFailure(error: unknown): UpstreamError {
     const timedOut = error instanceof Error && error.name === 'TimeoutError';
-    // The original error is dropped on purpose: transport errors can quote the URL, which carries the key
+    // Original error dropped: it can quote the URL, which carries the key
     return new UpstreamError(timedOut ? 'Steam request timed out' : 'Steam request failed');
 }
 
@@ -71,7 +70,7 @@ function parseJson(text: string): { ok: true; value: unknown } | { ok: false } {
     }
 }
 
-// Messages never carry the URL, the key or any part of a response body
+// Error messages never carry the URL, key or body
 export function createSteamClient(options: SteamClientOptions): SteamClient {
     const { apiKey, onDrift = warnDrift, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
     if (apiKey === '') throw new TypeError('The Steam API key is required');
@@ -86,7 +85,7 @@ export function createSteamClient(options: SteamClientOptions): SteamClient {
         let eresult: string | null;
         let text: string;
         try {
-            // `redirect: 'error'` keeps a redirect from taking the request (and the key) off the allowlisted host
+            // Keeps a redirect from taking the key off the allowlisted host
             const response = await doFetch(url.href, {
                 headers: { accept: 'application/json' },
                 redirect: 'error',

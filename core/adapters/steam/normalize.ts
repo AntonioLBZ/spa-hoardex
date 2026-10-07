@@ -5,8 +5,7 @@ import { rawGameSchema, type RawGame, type RawPlayer } from './schemas.js';
 const GAME_ICON_BASE = 'https://media.steampowered.com/steamcommunity/public/images/apps';
 const ICON_HASH = /^[0-9A-Za-z]+$/;
 
-// Steam's `communityvisibilitystate`: 3 public, 2 friends only, 1 private. Any other or missing value maps to
-// 'private': when unsure, the conservative reading is "do not show".
+// communityvisibilitystate: 3 public, 2 friends, 1 private; anything else is private
 export function toVisibility(state: number | undefined): ProfileVisibility {
     switch (state) {
         case 3:
@@ -18,19 +17,19 @@ export function toVisibility(state: number | undefined): ProfileVisibility {
     }
 }
 
-// Undefined for missing or blank strings, so the fallbacks below also cover `""`
+// Undefined for missing or blank strings
 function present(value: string | undefined): string | undefined {
     return value !== undefined && value.trim() !== '' ? value : undefined;
 }
 
-// Null for missing, zero (Steam's "never") or out-of-range values
+// Null for missing, zero ("never") or out-of-range values
 export function unixToIso(seconds: number | undefined): string | null {
     if (seconds === undefined || !Number.isFinite(seconds) || seconds <= 0) return null;
     const date = new Date(seconds * 1000);
     return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-// Drops realname, country, avatar hashes and clan id on purpose (Profile only keeps what the UI shows)
+// Drops realname, country, avatar hashes and clan id on purpose
 export function normalizePlayer(raw: RawPlayer): Profile {
     return {
         id: { source: 'steam', externalId: raw.steamid },
@@ -61,7 +60,7 @@ function platformPlaytime(raw: RawGame): PlatformPlaytime | null {
     };
 }
 
-// `playtime_forever` is the source of truth even when the platform split does not add up to it
+// playtime_forever is the source of truth over the platform split
 export function normalizeGame(raw: RawGame): Game {
     const appid = String(raw.appid);
     const iconHash = raw.img_icon_url;
@@ -82,11 +81,11 @@ export function normalizeGame(raw: RawGame): Game {
 
 export interface NormalizedGames {
     games: Game[];
-    // Zod paths and codes of the entries that were skipped; never values
+    // Zod paths and codes of the skipped entries; never values
     issues: string[];
 }
 
-// Validates entry by entry: a malformed game is skipped and described in `issues`, the rest still load
+// Skips malformed games and reports them in issues
 export function normalizeOwnedGames(entries: readonly unknown[]): NormalizedGames {
     const games: Game[] = [];
     const issues: string[] = [];

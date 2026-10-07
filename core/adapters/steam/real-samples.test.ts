@@ -1,5 +1,4 @@
-// Runs the adapter against the raw responses saved by spike 0B. They are the key owner's own data, gitignored and
-// absent on a fresh clone: every test skips then. Nothing here may hardcode a value from them.
+// Adapter against the gitignored spike samples; skipped when absent
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -27,7 +26,7 @@ function sampleReply({ meta, body }: Sample) {
     return () => reply(body, meta);
 }
 
-// Read on first use: the describe callback also runs when the suite is skipped
+// Lazy: describe also runs when the suite is skipped
 function load() {
     const owned = readSample(OWNED_FILE);
     const summaries = readSample(SUMMARIES_FILE);
@@ -96,8 +95,7 @@ describe.skipIf(!available)('real raw samples (spike 0B, public profile)', () =>
 
         const raw = (summaries.body as { response: { players: Record<string, unknown>[] } }).response.players[0]!;
         const text = JSON.stringify(result.data);
-        // The avatar hash is left out: avatar URLs embed it. Country codes are too short for a substring check, but
-        // the exact key list above already rules them out.
+        // Avatar hash excluded: avatar URLs embed it
         for (const key of ['realname', 'primaryclanid']) {
             const value = raw[key];
             if (typeof value === 'string' && value !== '') expect(text.includes(value)).toBe(false);

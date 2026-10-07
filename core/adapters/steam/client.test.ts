@@ -21,7 +21,7 @@ function setup(handler: FakeHandler, options: { timeoutMs?: number } = {}) {
     return { client, fake, drift };
 }
 
-// Everything an error could show to a log line: it must carry neither the key, the host nor a response body
+// What an error can expose: never the key, host or body
 function expectNoLeak(error: unknown) {
     expect(error).toBeInstanceOf(UpstreamError);
     const err = error as UpstreamError;

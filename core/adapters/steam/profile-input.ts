@@ -4,18 +4,18 @@ export type ParsedProfileInput =
 export const STEAMID64_PATTERN = /^765611\d{11}$/;
 export const VANITY_PATTERN = /^[A-Za-z0-9_-]{2,32}$/;
 
-// Frozen: the same object is returned for every rejection
+// Shared frozen result for every rejection
 const INVALID: ParsedProfileInput = Object.freeze({ kind: 'invalid' });
 const MAX_INPUT_LENGTH = 200;
 // Account id 0 of the public universe; a SteamID64 is this plus the 32-bit account id
 const STEAMID64_BASE = 76561197960265728n;
 
 const CONTROL_CHARACTERS = /\p{Cc}/u;
-// STEAM_X:Y:Z with X the universe (0..5), Y the parity bit and Z the account id halved
+// STEAM_X:Y:Z (universe, parity bit, halved account id)
 const STEAMID2_PATTERN = /^STEAM_[0-5]:([01]):(\d{1,10})$/i;
-// [U:1:N] or U:1:N; mismatched brackets do not match
+// [U:1:N] or U:1:N
 const STEAMID3_PATTERN = /^(?:\[U:1:(\d{1,10})\]|U:1:(\d{1,10}))$/i;
-// Literal host right after an optional http(s) scheme: no userinfo, port, backslash or non-ASCII lookalike can slip in
+// Literal host after an optional scheme: no userinfo, port or lookalikes
 const COMMUNITY_URL_PATTERN = /^(?:https?:\/\/)?(?:www\.)?steamcommunity\.com(?:[/?#]|$)/i;
 const COMMUNITY_HOSTS: ReadonlySet<string> = new Set(['steamcommunity.com', 'www.steamcommunity.com']);
 
@@ -23,7 +23,7 @@ export function isSteamId64(value: string): boolean {
     return STEAMID64_PATTERN.test(value);
 }
 
-// Account id 0 matches the pattern but can never be a real account, so parsing rejects it in every form
+// Account id 0 matches the pattern but is never a real account
 function isAccountSteamId64(value: string): boolean {
     return isSteamId64(value) && BigInt(value) > STEAMID64_BASE;
 }
@@ -33,7 +33,7 @@ function fromAccountId(accountId: bigint): ParsedProfileInput {
     return isAccountSteamId64(steamid) ? { kind: 'steamid64', steamid } : INVALID;
 }
 
-// A vanity made only of an id64 is that id64, not a custom URL
+// A vanity made only of an id64 is that id64
 function fromVanityOrId(value: string): ParsedProfileInput {
     if (isSteamId64(value)) return isAccountSteamId64(value) ? { kind: 'steamid64', steamid: value } : INVALID;
     if (VANITY_PATTERN.test(value)) return { kind: 'vanity', vanity: value };
@@ -51,7 +51,7 @@ function parseCommunityUrl(input: string): ParsedProfileInput {
     }
     if (!COMMUNITY_HOSTS.has(url.hostname) || url.username !== '' || url.password !== '') return INVALID;
 
-    // Leading '' comes from the root slash; only the first two segments matter (/games, /wishlist... are ignored)
+    // First two path segments only (the leading '' is the root slash)
     const [, kind, value] = url.pathname.split('/');
     if (value === undefined) return INVALID;
 
@@ -65,8 +65,7 @@ function parseCommunityUrl(input: string): ParsedProfileInput {
     }
 }
 
-// Whatever the visitor typed: SteamID64, vanity, SteamID2, SteamID3 or a steamcommunity.com profile URL.
-// Pure syntax check; whether the profile exists is up to the API.
+// Whatever the visitor typed: id64, vanity, SteamID2/3 or profile URL. Syntax only
 export function parseProfileInput(raw: string): ParsedProfileInput {
     const input = raw.trim();
     if (input === '' || input.length > MAX_INPUT_LENGTH || CONTROL_CHARACTERS.test(input)) return INVALID;

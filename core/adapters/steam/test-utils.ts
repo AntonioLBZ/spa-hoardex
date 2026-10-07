@@ -1,4 +1,4 @@
-// Test helpers only: an injected `fetch` that serves fixtures, so no test touches the network
+// Test helpers: an injected fetch that serves fixtures, so no test touches the network
 import { loadFixture } from '../../../fixtures/load.js';
 import type { SteamDriftReport } from './drift.js';
 
@@ -48,7 +48,7 @@ const PATHS = {
 
 type Route = keyof typeof PATHS;
 
-// Serves each endpoint from a fixture name or a custom reply; any endpoint left out fails the test when called
+// Serves each endpoint from a fixture or a custom reply; unlisted endpoints fail the test
 export function routes(table: Partial<Record<Route, string | (() => Response)>>): FakeHandler {
     return ({ url }) => {
         const route = (Object.keys(PATHS) as Route[]).find((name) => PATHS[name] === url.pathname);
@@ -63,7 +63,7 @@ export function collectDrift(): { reports: SteamDriftReport[]; onDrift: (report:
     return { reports, onDrift: (report) => reports.push(report) };
 }
 
-// Fake SteamID64 inside the reserved fake window (see scripts/lib/anonymize.ts), built at runtime
+// Fake SteamID64 inside the fake window, built at runtime
 export function fakeSteamId(offset: number): string {
     return String(76561198000000000n + BigInt(offset));
 }

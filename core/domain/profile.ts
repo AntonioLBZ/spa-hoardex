@@ -2,7 +2,7 @@ import type { EntityId } from './id.js';
 
 export type ProfileVisibility = 'public' | 'friends' | 'private';
 
-// Deliberately small: no real name, country or avatar hashes (personal data we have no use for)
+// Deliberately small: no real name, country or avatar hashes
 export interface Profile {
     id: EntityId;
     displayName: string;

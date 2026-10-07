@@ -1,5 +1,4 @@
-// Access states are data, not exceptions: the UI renders each one. Transport failures and upstream 5xx are
-// exceptions (`UpstreamError`) so TanStack Query can retry them.
+// Access states are data; transport failures and upstream 5xx are UpstreamError
 export type ProfileAccess<T> =
     | { kind: 'ok'; data: T }
     | { kind: 'profilePrivate' }

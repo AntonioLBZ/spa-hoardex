@@ -1,10 +1,8 @@
-// Anonymizer for raw Steam payloads. SteamIDs are enumerable, so hashing them would not hide anything:
-// every real id is replaced through a map of fake ids instead. Pure functions, no I/O.
+// Anonymizer for raw Steam payloads: real ids go through a fake-id map. Pure.
 
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 
-// Reserved window for fake SteamID64s. Narrow on purpose: most real accounts are above `FAKE_STEAMID_BASE` too, so
-// an open-ended range would let real ids pass as fake ones.
+// Fake SteamID64 window; narrow so real ids cannot pass as fake
 export const FAKE_STEAMID_BASE = 76561198000000000n;
 export const FAKE_STEAMID_COUNT = 10_000n;
 
@@ -16,7 +14,7 @@ export const FAKE_AVATAR_URL = 'https://example.invalid/avatar.jpg';
 export const FAKE_AVATAR_HASH = '0'.repeat(40);
 
 export interface IdMap {
-    // Same input, same fake id. An id already inside the window maps to itself, so re-running is a no-op.
+    // Same input, same fake id; ids already in the window map to themselves
     map(real: string): string;
     isFake(id: string): boolean;
 }
@@ -58,7 +56,7 @@ export interface Anonymizer {
     steamIds: IdMap;
 }
 
-// Keys that are dropped outright: personal data with no use in a fixture
+// Keys dropped outright: personal data
 const REMOVED_KEYS = new Set(['realname', 'loccountrycode', 'locstatecode', 'loccityid']);
 const AVATAR_KEYS = new Set(['avatar', 'avatarmedium', 'avatarfull']);
 const STEAMID_IN_TEXT = /(?<!\d)765611\d{11}(?!\d)/g;
@@ -79,7 +77,7 @@ export function createAnonymizer(): Anonymizer {
         return fake;
     }
 
-    // Catches ids that show up inside other strings (URLs, free text, object keys)
+    // Ids inside other strings (URLs, text, keys)
     function sweep(text: string): string {
         return text.replace(STEAMID_IN_TEXT, (id) => steamIds.map(id));
     }

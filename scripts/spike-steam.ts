@@ -1,6 +1,5 @@
-// Spike 0B: Steam responses with the real key.
+// Spike 0B: Steam responses with the real key. Raw output goes to fixtures/full/spike (gitignored)
 // Run: node --env-file=.env.local scripts/spike-steam.ts <resolve <vanity> | probe <label> | items [sizes...] | burst [max] [concurrency]>
-// Raw responses go to fixtures/full/spike (gitignored). The console only gets status, x-eresult and body shape.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 const key = process.env.STEAM_API_KEY;
@@ -51,7 +50,7 @@ async function writeMeta(meta: Meta) {
     await writeFile(META, JSON.stringify(meta, null, 2));
 }
 
-// Body shape only: keys and array lengths, never values (profiles carry realname, avatar, etc.)
+// Body shape only: keys and array lengths, never values
 function shape(value: unknown, depth = 0): string {
     if (Array.isArray(value)) return `[${value.length}]`;
     if (value && typeof value === 'object') {
@@ -63,7 +62,7 @@ function shape(value: unknown, depth = 0): string {
 }
 
 function line(label: string, reply: Reply) {
-    // Non-JSON bodies are Steam's short error strings ("Profile is not public"): safe to show
+    // Non-JSON bodies are Steam's short error strings
     const body = reply.json === undefined ? JSON.stringify(reply.text.slice(0, 100)) : shape(reply.json);
     console.log(
         `${label.padEnd(34)} HTTP ${reply.status}  x-eresult=${reply.eresult ?? '-'}  ${reply.bytes} B  ${body}`
@@ -128,7 +127,7 @@ async function probe(label: string) {
     console.log(`  games present: ${games ? games.length : 'no'}`);
 
     if (games) {
-        // Existing picks win so the private run asks about the same appids
+        // Existing picks win
         meta.picks = { ...pickGames(games), ...meta.picks };
         await writeMeta(meta);
     }
@@ -206,7 +205,7 @@ async function items(sizes: number[]) {
     for (const appid of common) console.log(`  appid ${appid}: US ${usPrices.get(appid)}  ES ${esPrices.get(appid)}`);
 }
 
-// Gentle burst on GetPlayerAchievements (the endpoint we will hit most); stops at the first non-200
+// Gentle burst on GetPlayerAchievements; stops at the first non-200
 async function burst(max: number, concurrency: number) {
     const meta = await readMeta();
     const steamid = process.env.SPIKE_STEAMID ?? meta.steamid;

@@ -1,6 +1,5 @@
-// Fails when a repo file (tracked, or untracked and not ignored) carries a real SteamID or any term listed in
-// fixtures/full/private-terms.json. Docs are scanned like everything else: nothing is exempt.
-// Failures name the file and the kind of leak, never the value.
+// Fails when a repo file carries a real SteamID or a term from fixtures/full/private-terms.json
+// Failures name the file and the kind of leak, never the value
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -11,9 +10,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const TERMS_FILE = `${ROOT}fixtures/full/private-terms.json`;
 const MAX_BYTES = 2 * 1024 * 1024;
 
-// Public ids the docs and code may carry: a well-known public figure's id (the docs example), account 0 (the base
-// added to a 32-bit account id when converting SteamID2/3), the first two account ids and the two pattern limits used as
-// parser boundary cases. Nothing else is exempt.
+// Public ids allowed in docs and code: the docs example, account 0, the first account ids and the pattern limits
 const PUBLIC_STEAMIDS = new Set([
     '76561197960287930',
     '76561197960265728',
@@ -43,7 +40,7 @@ function listRepoFiles(): string[] {
     return [...new Set(output.split('\0').filter(Boolean))].sort();
 }
 
-// Null for files that are gone, too large or binary
+// Null for missing, large or binary files
 function readText(path: string): string | null {
     try {
         const file = `${ROOT}${path}`;
@@ -64,12 +61,12 @@ function readTerms(): PrivateTerms {
     return { steamids: clean(raw.steamids), strings: clean(raw.strings) };
 }
 
-// SteamID64s that are neither in the fake window nor on the allowlist
+// SteamID64s outside the fake window and the allowlist
 function findStraySteamIds(text: string): string[] {
     return (text.match(STEAMID) ?? []).filter((id) => !isFakeSteamId(id) && !PUBLIC_STEAMIDS.has(id));
 }
 
-// Labels of the private terms found in `text`: ids match exactly, other strings ignore case
+// Labels of the private terms found: ids exact, strings case-insensitive
 function findPrivateTerms(text: string, terms: PrivateTerms): string[] {
     const lower = text.toLowerCase();
     return [
@@ -78,7 +75,7 @@ function findPrivateTerms(text: string, terms: PrivateTerms): string[] {
     ];
 }
 
-// The key lives only in .env.local (gitignored). Null when the file or the variable is missing
+// Null when .env.local or the variable is missing
 function readApiKey(): string | null {
     try {
         const line = readFileSync(`${ROOT}.env.local`, 'utf8')
@@ -145,7 +142,7 @@ describe('secrets in repo files', () => {
 });
 
 describe('leak detectors', () => {
-    // Ids are built at runtime so this file holds no id-shaped literal of its own
+    // Built at runtime so this file holds no id-shaped literal
     const accountBase = 76561197960265728n;
     const real = String(accountBase + 123_456n);
     const fake = String(76561198000000000n + 5n);

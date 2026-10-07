@@ -172,24 +172,26 @@ Respuestas `GET` públicas de `/api` con `Cache-Control: s-maxage=…, stale-whi
 
 | Dato | Clave (propuesta) | TTL |
 |---|---|---|
-| Vanity → ID | `vanity:{vanity-en-minúsculas}` | 24 h – 7 d |
-| Perfil y privacidad | `profile:{steamid}` | 1 h |
-| Biblioteca normalizada | `lib:{steamid}` | 30–60 min (+ SWR en CDN) |
+| Alias (vanity) → ID | `alias:{source}:{alias-en-minúsculas}` | 24 h (inexistente: 5 min) |
+| Perfil | `profile:{source}:{steamid}` | 1 h (no encontrado: 5 min) |
+| Biblioteca normalizada y su acceso | `lib:{source}:{steamid}` | 30 min (privado: 60 s; no encontrado: 5 min) (+ SWR en CDN) |
 | Logros por usuario | hash `ach:{steamid}`, campo = appid | invalidación por huella, máximo 7 d |
 | Esquema (iconos, `hidden`) | `schema:{appid}` | 30 d (compartido) |
 | Textos localizados | `txt:{appid}:{lang}` | 30 d (compartido) |
 | Rareza global | `rare:{appid}` | 7 d (compartido) |
 | Ítems de tienda (precio) | `item:{appid}:{lang}:{cc}` | 6–24 h |
-| Resultado negativo ("privado", "no encontrado") | dentro de `profile:` | 5–60 min |
-| Presupuesto diario de Steam | `budget:steam:{YYYYMMDD}` | contador con expiración diaria |
-| Cooldown de refresco | `refresh:{steamid}` | 10 min |
+| Resultado negativo ("privado", "no encontrado") | dentro de la propia entrada (`alias:`, `profile:`, `lib:`) | 60 s (privado) – 5 min (no encontrado). `rateLimited` no se cachea |
+| Presupuesto diario de Steam | `shared:budget:steam:{YYYYMMDD}` (**sin prefijo de entorno**: el límite es de la key) | contador, 2 días |
+| Cooldown de refresco | `refresh:{steamid}` | 10 min (**sin implementar**: llega con el botón de la UI) |
 
 - **Invalidación de logros por "huella":** cada campo del hash guarda `hash(playtime_forever, rtime_last_played)` del momento en que se pidió. Si la biblioteca nueva trae la misma huella, no se vuelve a pedir ese juego. Un refresco normal cuesta unas pocas llamadas.
 - **Idioma:** el progreso por usuario va **sin idioma** (`apiname`, `achieved`, `unlocktime`). Los textos se guardan por `(appid, lang)` y se rellenan de forma oportunista con la primera respuesta de `GetPlayerAchievements`. La rareza y el esquema no dependen del idioma.
 - **Juegos sin stats** (400 "no stats"): se guarda un marcador `none` en el hash para no preguntar de nuevo.
 - **Refresco manual:** botón con cooldown por perfil (`refresh:{steamid}`).
 - **Normalizar siempre** el SteamID antes de usarlo como clave (un vanity y su ID resuelto deben compartir caché de datos).
-- **Por verificar en el spike:** tamaño máximo de valor en Upstash free.
+- **Implementación (Fase 1, paso 3):** `core/cache` (`CacheStore`, `createCachedAdapter`, `createDailyBudget`) y `server/` (Hono). Las lecturas se validan con Zod: una entrada con otra forma cuenta como fallo de caché. Si Redis falla, la petición sigue contra Steam; si falla el contador, se deja pasar. Superado el presupuesto, `withBudget` responde como un 429 de Steam y el adapter devuelve `rateLimited`. Sin caché negativa para 429 de Steam hasta observarlo.
+- **Medido en local con Steam y Upstash reales (2026-10-07):** el contador sube solo con llamadas reales a Steam (caliente = 0); los TTL salen como en la tabla; la biblioteca normalizada de 334 juegos pesa **144 KB** (~430 B por juego), más que las "decenas de KB" estimadas, aún muy por debajo de 5 MB. Si molesta se puede recortar (`iconUrl` se deriva del hash, `platforms`). Tiempos locales (España → Steam/Upstash): ~1,9 s en frío, ~0,8 s en caliente; no son referencia para producción.
+- **Sin verificar:** el comportamiento desplegado (cabeceras de CDN, `x-vercel-cache`, imports ESM de `server/`) y la contabilidad de comandos de Upstash.
 
 ## 9. Carga progresiva de logros
 

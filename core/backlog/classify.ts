@@ -1,6 +1,6 @@
 import type { Game } from '../domain/index.js';
 
-// In evaluation order: the first state whose rule matches wins (ARCHITECTURE.md section 7)
+// In evaluation order: first match wins
 export const BACKLOG_STATES = ['completed', 'untouched', 'tried', 'inProgress', 'paused', 'finished'] as const;
 
 export type BacklogState = (typeof BACKLOG_STATES)[number];
@@ -27,7 +27,7 @@ export interface AchievementProgress {
 
 const MS_PER_DAY = 86_400_000;
 
-// Days since `isoDate`; a future date (clock skew) counts as 0. null when unknown or unparsable.
+// Days since isoDate; future dates count as 0; null if missing or unparsable
 function daysSince(isoDate: string | null, now: Date): number | null {
     if (isoDate === null) return null;
     const playedAt = Date.parse(isoDate);
@@ -35,8 +35,7 @@ function daysSince(isoDate: string | null, now: Date): number | null {
     return Math.max(0, (now.getTime() - playedAt) / MS_PER_DAY);
 }
 
-// `progress` is only known once achievements load; without it a game keeps its library-only state.
-// Boundaries are inclusive on the "within" side: exactly 90 days ago is still in progress.
+// Without progress (achievements not loaded) a game keeps its library-only state; boundaries are inclusive on the "within" side
 export function classifyGame(
     game: Game,
     now: Date,
@@ -49,7 +48,7 @@ export function classifyGame(
     if (totalMinutes <= 0) return 'untouched';
     if (totalMinutes < thresholds.triedBelowMinutes) return 'tried';
 
-    // Played enough but with no known last-played date it cannot count as recent, so it is treated as long idle
+    // No last-played date: treated as long idle
     const days = daysSince(lastPlayedAt, now);
     if (days === null) return 'finished';
     if (days <= thresholds.inProgressWithinDays) return 'inProgress';

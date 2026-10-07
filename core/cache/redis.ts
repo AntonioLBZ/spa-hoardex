@@ -3,7 +3,7 @@ import { Redis } from '@upstash/redis';
 export interface RedisConfig {
     url: string;
     token: string;
-    // Keys are prefixed with it so local/preview tests never touch production data (one free DB shared by all)
+    // Key prefix, so environments sharing the database do not collide
     namespace: string;
 }
 

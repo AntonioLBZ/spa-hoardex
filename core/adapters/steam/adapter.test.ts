@@ -54,6 +54,32 @@ describe('adapter shape', () => {
     });
 });
 
+describe('parseInput', () => {
+    it('turns ids, SteamID3 and profile URLs into an id without calling Steam', () => {
+        const { adapter, fake } = setup({});
+        const id = { source: 'steam', externalId: SUMMARY_FIXTURE_ID };
+        expect(adapter.parseInput(` ${SUMMARY_FIXTURE_ID} `)).toEqual({ kind: 'id', id });
+        expect(adapter.parseInput(`https://steamcommunity.com/profiles/${SUMMARY_FIXTURE_ID}/games`)).toEqual({
+            kind: 'id',
+            id,
+        });
+        expect(fake.calls).toEqual([]);
+    });
+
+    it('lower-cases vanity names so one account has one alias', () => {
+        const { adapter } = setup({});
+        expect(adapter.parseInput('Some_Name')).toEqual({ kind: 'alias', alias: 'some_name' });
+        expect(adapter.parseInput('https://steamcommunity.com/id/Some_Name/')).toEqual({
+            kind: 'alias',
+            alias: 'some_name',
+        });
+    });
+
+    it.each(['', 'a', 'bad name', 'https://evil.example/id/someone'])('flags %j as invalid', (input) => {
+        expect(setup({}).adapter.parseInput(input)).toEqual({ kind: 'invalid' });
+    });
+});
+
 describe('resolveProfile', () => {
     it.each(['', '   ', 'a', 'bad name', '!!!', 'https://evil.example/id/someone', 'STEAM_9:0:1'])(
         'answers notFound for the input %j without calling Steam',
@@ -396,7 +422,7 @@ describe('integration with the backlog classifier', () => {
     const SECONDS_PER_DAY = 86_400;
     const nowSeconds = FIXTURE_NOW.getTime() / 1000;
 
-    // Expected counts from the fixture's own raw data, with the default thresholds (60 min, 90 days, 12 months)
+    // Expected counts from the fixture's raw data
     function expectedCounts(games: Record<string, unknown>[]) {
         const counts = { completed: 0, untouched: 0, tried: 0, inProgress: 0, paused: 0, finished: 0 };
         for (const game of games) {
@@ -420,7 +446,7 @@ describe('integration with the backlog classifier', () => {
         const counts = countByState(result.data.games, FIXTURE_NOW);
         expect(counts).toEqual(expectedCounts(LIBRARY_FIXTURE.games));
         expect(Object.values(counts).reduce((total, count) => total + count, 0)).toBe(LIBRARY_FIXTURE.game_count);
-        // Every state a library alone can produce is exercised; "completed" needs achievements (phase 2)
+        // "completed" needs achievements (phase 2)
         expect(counts.completed).toBe(0);
         for (const state of ['untouched', 'tried', 'inProgress', 'paused', 'finished'] as const) {
             expect(counts[state]).toBeGreaterThan(0);

@@ -17,5 +17,5 @@
         "skipLibCheck": true,
         "noEmit": true
     },
-    "include": ["src", "api", "core", "scripts", "fixtures", "tests", "vite.config.ts", "vitest.config.ts"]
+    "include": ["src", "api", "server", "core", "scripts", "fixtures", "tests", "vite.config.ts", "vitest.config.ts"]
 }
