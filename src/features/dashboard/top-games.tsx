@@ -1,9 +1,9 @@
 import type { CSSProperties } from 'react';
 import { useTranslations } from 'use-intl';
 
-import type { LibrarySummary } from '../../../core/stats';
-import { Panel } from '../../components/panel';
-import { useHours } from './use-hours';
+import type { LibrarySummary } from '@core/stats';
+import { Panel } from '@/components/panel';
+import { useHours } from '@/lib/use-hours';
 
 import './top-games.scss';
 

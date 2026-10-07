@@ -1,0 +1,27 @@
+.cover {
+    aspect-ratio: 2 / 3;
+    background: linear-gradient(160deg, hsl(var(--hue) 40% 32%), hsl(var(--hue) 45% 16%));
+    border-radius: var(--size-border-radius);
+    display: grid;
+    overflow: hidden;
+    place-items: center;
+}
+
+.cover__image {
+    block-size: 100%;
+    display: block;
+    inline-size: 100%;
+    object-fit: cover;
+}
+
+.cover--landscape .cover__image {
+    block-size: auto;
+    object-fit: contain;
+}
+
+.cover__initials {
+    color: hsl(var(--hue) 40% 92%);
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}

@@ -84,5 +84,21 @@
             "year": "Year",
             "hours": "Hours"
         }
+    },
+    "library": {
+        "title": "Library",
+        "search": "Search games",
+        "sortLabel": "Sort by",
+        "sort": {
+            "hours": "Most played",
+            "recent": "Recently played",
+            "name": "Name"
+        },
+        "stateLegend": "Filter by state",
+        "all": "All",
+        "backlog": "Backlog",
+        "count": "Showing {shown, number} of {total, plural, one {# game} other {# games}}",
+        "empty": "No games match these filters.",
+        "clear": "Clear filters"
     }
 }

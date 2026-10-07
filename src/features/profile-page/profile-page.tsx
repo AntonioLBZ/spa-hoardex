@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
 
-import { demoProfileQuery, profileQuery } from '../../lib/api';
+import { demoProfileQuery, profileQuery } from '@/lib/api';
 import { LibrarySection } from './library-section';
 import { Problem, problemFromError } from './problem';
 

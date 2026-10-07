@@ -1,10 +1,10 @@
 import { Link } from '@tanstack/react-router';
 import { useTranslations } from 'use-intl';
 
-import { Button } from '../../components/button';
-import { StateMessage } from '../../components/state-message';
-import { ApiError } from '../../lib/api';
-import type { ProfileAccessKind } from '../../../core/domain';
+import type { ProfileAccessKind } from '@core/domain';
+import { Button } from '@/components/button';
+import { StateMessage } from '@/components/state-message';
+import { ApiError } from '@/lib/api';
 
 export type ProblemKind = Exclude<ProfileAccessKind, 'ok'> | 'upstream';
 

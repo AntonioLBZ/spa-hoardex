@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
-import type { Library } from '../../../core/domain';
-import { summarizeLibrary } from '../../../core/stats';
+import type { Library } from '@core/domain';
+import { summarizeLibrary } from '@core/stats';
 import { HoursByYear } from './hours-by-year';
 import { KpiGrid } from './kpi-grid';
 import { StateBreakdown } from './state-breakdown';

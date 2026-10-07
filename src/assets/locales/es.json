@@ -84,5 +84,21 @@
             "year": "Año",
             "hours": "Horas"
         }
+    },
+    "library": {
+        "title": "Biblioteca",
+        "search": "Buscar juegos",
+        "sortLabel": "Ordenar por",
+        "sort": {
+            "hours": "Más jugados",
+            "recent": "Jugados recientemente",
+            "name": "Nombre"
+        },
+        "stateLegend": "Filtrar por estado",
+        "all": "Todos",
+        "backlog": "Backlog",
+        "count": "Mostrando {shown, number} de {total, plural, one {# juego} other {# juegos}}",
+        "empty": "Ningún juego coincide con estos filtros.",
+        "clear": "Quitar filtros"
     }
 }

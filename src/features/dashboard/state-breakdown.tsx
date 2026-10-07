@@ -1,11 +1,11 @@
 import { Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { useFormatter, useTranslations } from 'use-intl';
 
-import { BACKLOG_STATES } from '../../../core/backlog';
-import type { LibrarySummary } from '../../../core/stats';
-import { Panel } from '../../components/panel';
-import { useReducedMotion } from '../../lib/use-reduced-motion';
-import { STATE_COLOR } from './state-colors';
+import { BACKLOG_STATES } from '@core/backlog';
+import type { LibrarySummary } from '@core/stats';
+import { Panel } from '@/components/panel';
+import { STATE_COLOR } from '@/lib/state-colors';
+import { useReducedMotion } from '@/lib/use-reduced-motion';
 
 import './state-breakdown.scss';
 

@@ -1,4 +1,4 @@
-import type { Library, Profile, ProfileAccess } from '../../../core/domain';
+import type { Library, Profile, ProfileAccess } from '@core/domain';
 
 // A non-200 answer from our API; access states are data, not errors
 export class ApiError extends Error {

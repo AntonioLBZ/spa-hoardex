@@ -2,8 +2,8 @@ import { useNavigate } from '@tanstack/react-router';
 import { useId, useState, type ChangeEvent, type SubmitEvent } from 'react';
 import { useTranslations } from 'use-intl';
 
-import { Button } from '../../components/button';
-import { toProfileSlug } from '../../lib/profile-slug';
+import { Button } from '@/components/button';
+import { toProfileSlug } from '@/lib/profile-slug';
 
 import './entry-form.scss';
 

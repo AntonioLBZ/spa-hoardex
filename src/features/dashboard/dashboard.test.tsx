@@ -1,8 +1,8 @@
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Game, Library } from '../../../core/domain';
-import { LocaleProvider } from '../../lib/i18n';
+import type { Game, Library } from '@core/domain';
+import { LocaleProvider } from '@/lib/i18n';
 import { Dashboard } from './dashboard';
 
 const NOW = new Date('2026-10-07T12:00:00.000Z');

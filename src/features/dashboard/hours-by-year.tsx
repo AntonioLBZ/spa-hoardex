@@ -1,9 +1,9 @@
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useFormatter, useTranslations } from 'use-intl';
 
-import type { LibrarySummary } from '../../../core/stats';
-import { Panel } from '../../components/panel';
-import { useReducedMotion } from '../../lib/use-reduced-motion';
+import type { LibrarySummary } from '@core/stats';
+import { Panel } from '@/components/panel';
+import { useReducedMotion } from '@/lib/use-reduced-motion';
 
 import './hours-by-year.scss';
 

@@ -4,9 +4,9 @@ import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 
-import { LocaleProvider } from '../i18n';
-import { createQueryClient } from '../query-client';
-import { createAppRouter } from '../../router';
+import { LocaleProvider } from '@/lib/i18n';
+import { createQueryClient } from '@/lib/query-client';
+import { createAppRouter } from '@/router';
 
 export function renderApp(path: string) {
     const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }));

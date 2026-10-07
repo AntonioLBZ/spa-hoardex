@@ -1,7 +1,7 @@
 import { Outlet, createRootRoute } from '@tanstack/react-router';
 
-import { Footer } from '../features/footer';
-import { Header } from '../features/header';
+import { Footer } from '@/features/footer';
+import { Header } from '@/features/header';
 
 import './root.scss';
 

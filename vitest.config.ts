@@ -17,6 +17,7 @@ export default defineConfig({
                 },
             },
             {
+                resolve: { tsconfigPaths: true },
                 test: {
                     name: 'front',
                     environment: 'jsdom',

@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import type { ChangeEvent } from 'react';
 import { useTranslations } from 'use-intl';
 
-import { LOCALES, isLocale, useLocale } from '../../lib/i18n';
+import { LOCALES, isLocale, useLocale } from '@/lib/i18n';
 
 import './header.scss';
 

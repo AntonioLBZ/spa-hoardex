@@ -1,4 +1,4 @@
-import { parseProfileInput } from '../../core/adapters/steam/profile-input';
+import { parseProfileInput } from '@core/adapters/steam/profile-input';
 
 // Canonical route param for whatever the visitor typed; null when it is not a profile
 export function toProfileSlug(raw: string): string | null {

@@ -1,5 +1,5 @@
-import en from '../../assets/locales/en.json';
-import es from '../../assets/locales/es.json';
+import en from '@/assets/locales/en.json';
+import es from '@/assets/locales/es.json';
 import type { AppLocale } from './locale';
 
 export type AppMessages = typeof en;

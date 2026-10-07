@@ -15,7 +15,11 @@
         "isolatedModules": true,
         "allowImportingTsExtensions": true,
         "skipLibCheck": true,
-        "noEmit": true
+        "noEmit": true,
+        "paths": {
+            "@/*": ["./src/*"],
+            "@core/*": ["./core/*"]
+        }
     },
     "include": ["src", "api", "server", "core", "scripts", "fixtures", "tests", "vite.config.ts", "vitest.config.ts"]
 }

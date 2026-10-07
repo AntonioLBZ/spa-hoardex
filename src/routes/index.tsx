@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useTranslations } from 'use-intl';
 
-import { EntryForm } from '../features/entry-form';
+import { EntryForm } from '@/features/entry-form';
 
 import './entry.scss';
 

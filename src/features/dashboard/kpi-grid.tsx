@@ -1,7 +1,7 @@
 import { useFormatter, useTranslations } from 'use-intl';
 
-import type { LibrarySummary } from '../../../core/stats';
-import { useHours } from './use-hours';
+import type { LibrarySummary } from '@core/stats';
+import { useHours } from '@/lib/use-hours';
 
 import './kpi-grid.scss';
 

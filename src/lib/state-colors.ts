@@ -1,4 +1,4 @@
-import type { BacklogState } from '../../../core/backlog';
+import type { BacklogState } from '@core/backlog';
 
 export const STATE_COLOR: Record<BacklogState, string> = {
     completed: 'var(--color-state-completed)',

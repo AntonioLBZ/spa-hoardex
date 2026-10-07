@@ -1,8 +1,8 @@
 import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Library, Profile } from '../../core/domain';
-import { renderApp, stubApi } from '../lib/test/render-app';
+import type { Library, Profile } from '@core/domain';
+import { renderApp, stubApi } from '@/lib/test/render-app';
 
 const STEAM_ID = '76561198000000001';
 
