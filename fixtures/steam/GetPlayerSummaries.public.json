@@ -1,0 +1,28 @@
+{
+    "status": 200,
+    "eresult": null,
+    "body": {
+        "response": {
+            "players": [
+                {
+                    "steamid": "76561198000000001",
+                    "communityvisibilitystate": 3,
+                    "profilestate": 1,
+                    "personaname": "Player 0001",
+                    "profileurl": "https://steamcommunity.com/profiles/76561198000000001/",
+                    "avatar": "https://example.invalid/avatar.jpg",
+                    "avatarmedium": "https://example.invalid/avatar.jpg",
+                    "avatarfull": "https://example.invalid/avatar.jpg",
+                    "avatarhash": "0000000000000000000000000000000000000000",
+                    "lastlogoff": 1791352800,
+                    "personastate": 0,
+                    "realname": "Pat Example",
+                    "primaryclanid": "103582791519521408",
+                    "timecreated": 1400000000,
+                    "personastateflags": 0,
+                    "loccountrycode": "ZZ"
+                }
+            ]
+        }
+    }
+}

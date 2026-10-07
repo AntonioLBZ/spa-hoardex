@@ -1,0 +1,23 @@
+{
+    "status": 200,
+    "eresult": null,
+    "body": {
+        "response": {
+            "players": [
+                {
+                    "steamid": "76561198000000001",
+                    "communityvisibilitystate": 2,
+                    "profilestate": 1,
+                    "personaname": "Player 0001",
+                    "profileurl": "https://steamcommunity.com/profiles/76561198000000001/",
+                    "avatar": "https://example.invalid/avatar.jpg",
+                    "avatarmedium": "https://example.invalid/avatar.jpg",
+                    "avatarfull": "https://example.invalid/avatar.jpg",
+                    "avatarhash": "0000000000000000000000000000000000000000",
+                    "lastlogoff": 1791352800,
+                    "personastate": 0
+                }
+            ]
+        }
+    }
+}

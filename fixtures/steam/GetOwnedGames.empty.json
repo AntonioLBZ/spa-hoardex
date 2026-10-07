@@ -1,0 +1,9 @@
+{
+    "status": 200,
+    "eresult": "1",
+    "body": {
+        "response": {
+            "game_count": 0
+        }
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "status": 200,
+    "eresult": null,
+    "body": {
+        "response": {
+            "success": 42,
+            "message": "No match"
+        }
+    }
+}

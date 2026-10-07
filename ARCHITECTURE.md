@@ -29,14 +29,15 @@ Dashboard web de la biblioteca de Steam de un usuario: horas jugadas, backlog, l
 | Estilos | **SCSS** + variables CSS, sin Tailwind | Reutilizar convenciones de tus repos (stylelint + BEM) |
 | Animación | **Motion** + **GSAP** (§10) | Cada uno donde es mejor; nunca sobre el mismo elemento |
 | Gráficas | **Recharts 3** + SVG a mano | ECharts 6 queda como alternativa "espectacular" |
-| i18n | `en` (por defecto) y `es` | Librería por decidir (§17) |
+| Router | **TanStack Router** (rutas por ficheros con el plugin de Vite) | Parámetros de búsqueda tipados para los filtros en la URL; misma familia que Query. Sus peers aceptan React 19 y el plugin acepta Vite 8 (metadatos de npm); **sin verificar en la práctica** hasta instalarlo en la fase 1 |
+| i18n | `en` (por defecto) y `es` con **`use-intl`** | Núcleo de `next-intl`, que ya usas en `spa-anicalendar`: mismo JSON anidado, ICU y `useTranslations`/`useFormatter`, sin paso de compilación. Lingui exige Babel dentro de Vite 8; `react-i18next`, otra API |
 | Logros | **Lotes de ~12 juegos** pedidos por el cliente | `GetAchievementsProgress` no funciona con key de desarrollador (§16) |
 | Historial | **Solo con login y opt-in** (fase 4) | No guardar datos de terceros sin consentimiento |
 | Tests | Vitest + MSW 3 + fixtures anonimizados | §13 |
 
 ## 3. Stack (versiones a 2026-10-07)
 
-React 19.3 · Vite 8.3 · TypeScript · Hono 4.13 · Zod 4.6 · TanStack Query 5.104 · Motion 14 · GSAP 3.15 + `@gsap/react` · Recharts 3.10 · Vitest 5 · MSW 3 (ESM-only, Node ≥ 22.12) · `sass` · pnpm (como en tus otros repos).
+React 19.3 · Vite 8.3 · TypeScript · Hono 4.13 · Zod 4.6 · TanStack Query 5.104 · Motion 14 · GSAP 3.15 + `@gsap/react` · Recharts 3.10 · use-intl 4.14 · TanStack Router 1.170 · Vitest 5 · MSW 3 (ESM-only, Node ≥ 22.12) · `sass` · pnpm (como en tus otros repos).
 
 ## 4. Estructura propuesta del repo
 
@@ -87,12 +88,13 @@ scripts/         extracción y anonimizado de fixtures desde Postman
 ### 5.3 Rarezas de los datos (de las respuestas reales)
 
 - **Casing inconsistente:** `GetPlayerBans` usa PascalCase (`SteamId`, `VACBanned`); el resto, snake_case o minúsculas.
-- **Horas:** en 26 de 334 juegos `playtime_forever` ≠ suma de plataformas + `playtime_disconnected`. `playtime_forever` es la verdad; el desglose por plataforma es aproximado.
+- **Horas:** en 26 de 334 juegos `playtime_forever` ≠ suma de plataformas + `playtime_disconnected` (16 con desglose 0, 3 por debajo, 7 por encima). `playtime_forever` es la verdad; el desglose por plataforma es aproximado. En la muestra `playtime_mac_forever` y `playtime_deck_forever` valen siempre 0, y `playtime_2weeks` aparece en un solo juego.
 - **Juegos sin jugar:** `rtime_last_played` vale 0 en los 217 juegos a 0 min.
-- **`has_community_visible_stats`:** ausente (no `false`) en 30 de 334 juegos. Tratar "ausente" como "sin stats".
+- **`has_community_visible_stats`:** ausente (no `false`) en 30 de 334 juegos (11 de ellos con horas jugadas); nunca vale `false`. Tratar "ausente" como "sin stats".
 - **Logros ocultos:** vienen con `description` vacía.
 - **Sin caché gratis:** la Web API responde `Cache-Control: no-cache`.
 - **429:** HTTP 429 con cabecera `x-eresult: 84`, cuerpo `{"response":{}}` y **sin `Retry-After`**. El bucket parece compartido. Se recupera en menos de 1 min (verificado con curl por el agente, endpoint sin key).
+- **Imágenes de juego (verificado con un appid, HEAD 200):** icono `https://media.steampowered.com/steamcommunity/public/images/apps/<appid>/<img_icon_url>.jpg` (lo construye el adapter), cabecera `https://cdn.cloudflare.steamstatic.com/steam/apps/<appid>/header.jpg` y portada vertical `…/library_600x900.jpg`. Que **todos** los juegos tengan portada vertical no está verificado: la UI necesita un respaldo a `header.jpg`.
 - **Datos personales en respuestas:** `GetPlayerSummaries` trae `realname`, avatar y URL del perfil.
 
 ### 5.4 Perfil privado: la regla es decidir por el cuerpo, nunca solo por el status HTTP
@@ -102,7 +104,8 @@ scripts/         extracción y anonimizado de fixtures desde Postman
 | Wishlist privada | 200, `{"response":{}}`, `x-eresult: 15` | (verificado) |
 | Wishlist pública y vacía | 200, `{"response":{}}`, `x-eresult: 1` | (verificado) |
 | `GetOwnedGames`, perfil público con biblioteca visible | 200, `x-eresult: 1`, `game_count` + `games` (334 juegos, ~109 KB con `include_appinfo`) | (verificado) |
-| `GetOwnedGames`, perfil o "game details" privado | 200, `{"response":{}}` (sin `game_count`) | (secundaria) → spike 0B privado |
+| `GetOwnedGames`, cuenta ajena de solo amigos | 200, **`x-eresult: 15`**, `{"response":{}}` (15 B, sin `game_count`); el adapter devuelve `profilePrivate` | (verificado) |
+| `GetOwnedGames`, perfil público con "game details" privado (`libraryPrivate`) | se espera el mismo cuerpo vacío | (sin verificar): hace falta una cuenta pública ajena con los detalles de juego privados |
 | `GetOwnedGames`, público sin juegos | 200, `{"response":{"game_count":0}}` | (secundaria) |
 | `GetPlayerAchievements`, "game details" privado con perfil público (`communityvisibilitystate: 3`) | 403, `{"playerstats":{"error":"Profile is not public","success":false}}` | (verificado) |
 | `GetPlayerAchievements`, perfil de solo amigos o privado | 403 esperado | (sin verificar) → spike 0B.6 |
@@ -112,6 +115,9 @@ scripts/         extracción y anonimizado de fixtures desde Postman
 | `GetPlayerAchievements`, perfil público con logros | 200, `playerstats.achievements[]` | (verificado) |
 | `GetWishlist`, pública con ítems | 200, `x-eresult: 1`, `response.items[]` | (verificado) |
 | `GetPlayerSummaries` | 200, sin `x-eresult`; `communityvisibilitystate: 3` si es público | (verificado) |
+| `GetPlayerSummaries`, id inexistente | 200, `{"response":{"players":[]}}`, sin `x-eresult` | (verificado) |
+| `GetPlayerSummaries`, cuenta ajena de solo amigos | 200 con el perfil visible (nombre y avatar) y `communityvisibilitystate: 2`; el adapter lo mapea a `friends` | (verificado con el adapter, sin inspeccionar el cuerpo crudo) |
+| `ResolveVanityURL`, vanity inexistente | 200, `{"response":{"success":42,"message":"No match"}}`, sin `x-eresult` | (verificado) |
 
 Que `communityvisibilitystate` sea 3 **no** implica logros visibles: "game details" es un ajuste aparte y su valor no aparece en `GetPlayerSummaries` (verificado: con 3 y detalles privados, los logros dan 403). "Detalles de los juegos" controla juntos la lista de juegos, la wishlist, los logros y el tiempo de juego; la wishlist **no tiene ajuste propio** (verificado en los ajustes de Steam). Para validar los casos de biblioteca y wishlist privadas hace falta una cuenta **distinta** de la del dueño de la key (§14).
 
@@ -147,7 +153,8 @@ Steam no tiene backlog; se calcula en cliente con una función pura. Los umbrale
 - **Backlog = Sin tocar + Probado.** Filtro opcional para incluir *Pausado*. La wishlist va aparte.
 - **Dependencia de datos:** todos los estados salvo *Completado* salen solo de la biblioteca (fase 1). *Completado* necesita logros (fase 2); hasta que lleguen, el juego conserva su estado provisional sin marcarlo como incompleto.
 - Los juegos sin logros visibles nunca pasan a *Completado* automáticamente.
-- Datos de tu biblioteca de ejemplo: 217 de 334 sin tocar, 16 probados.
+- **Distribución real de la biblioteca de ejemplo** (adapter + `classifyGame` contra Steam, 2026-10-07, sin logros todavía): 217 sin tocar, 16 probados, 6 en curso, 23 pausados, 72 acabados, 0 completados (suman 334). 304 de 334 tienen `has_community_visible_stats`. Cero reports de deriva de Zod.
+- Datos de tu biblioteca de ejemplo: 217 de 334 sin tocar, 16 probados. En esa muestra **ningún** juego tiene ≥ 60 min con `rtime_last_played` = 0 (ni minutos > 0 con fecha 0), así que la regla de fecha desconocida (→ *Acabado*) es teórica por ahora; se mantiene por robustez.
 
 **Métricas derivadas:** horas totales, horas por año de última partida, reparto por plataforma (aproximado), % de backlog, **valor sin jugar** (suma del precio actual de Sin tocar + Probado vía `GetItems`, fase 3), logros desbloqueados, % medio, logros raros (< 5 %) y actividad por fecha de desbloqueo.
 
@@ -205,7 +212,7 @@ Respuestas `GET` públicas de `/api` con `Cache-Control: s-maxage=…, stale-whi
 - `useQuery` para el perfil y la biblioteca. `useQueries` con `combine` para los lotes de logros, con concurrencia limitada.
 - `streamedQuery` sigue **experimental** en TanStack Query: no se usa.
 - Perfil privado y demás `ProfileAccess` se tratan como **datos** (`retry: false`), no como excepciones.
-- Router de cliente: propuesta TanStack Router (parámetros de búsqueda tipados para filtros en la URL, misma familia que Query). **No investigado** → decidir en el spike.
+- Router de cliente: **TanStack Router** con rutas por ficheros (`@tanstack/router-plugin/vite`, que genera `routeTree.gen.ts`). Rutas previstas: `/` (introducir perfil) y `/p/$profile` (dashboard) con los filtros (estado, orden, vista) como parámetros de búsqueda tipados. Alternativa descartada: React Router 8 (sin búsqueda tipada).
 
 ### Animación y gráficas
 
@@ -228,7 +235,9 @@ Respuestas `GET` públicas de `/api` con `Cache-Control: s-maxage=…, stale-whi
 SCSS + variables CSS (tema claro/oscuro), BEM y stylelint con la configuración que ya usas en `dev-portfolio` y `spa-anicalendar`. Sin Tailwind.
 
 ### i18n
-UI en `en` (por defecto) y `es`. El idioma de la UI se traduce al parámetro `l=` de Steam (`english`, `spanish`). El país para precios (`cc`) se deriva del idioma con selector manual; entra en la clave de caché de ítems.
+UI en `en` (por defecto) y `es` con `use-intl` (`IntlProvider` + mensajes en `src/assets/locales/{en,es}.json`, como en `spa-anicalendar`). El idioma sale de la preferencia guardada, luego de `navigator.language` y por defecto `en`; **no va en la URL**: el routing por prefijo es de `next-intl`, no de `use-intl`. Las claves se tipan declarando `Messages` y `useFormatter` da números, fechas, tiempos relativos y precios. Que `use-intl` funcione sin Next en un SPA de Vite es lo documentado, pero está **sin verificar** hasta usarlo en la fase 1.
+
+El idioma de la UI se traduce al parámetro `l=` de Steam (`english`, `spanish`). El país para precios (`cc`) se deriva del idioma con selector manual; entra en la clave de caché de ítems.
 
 ## 11. Seguridad
 
@@ -261,14 +270,15 @@ UI en `en` (por defecto) y `es`. El idioma de la UI se traduce al parámetro `l=
 
 ## 13. Testing y fixtures
 
-- **Fuente:** la colección de Postman `v2Steam Web API.postman_collection.json` (no entra al repo). Cada ejemplo está en `item[].response[].body`.
+- **Fuente:** la colección de Postman `v2Steam Web API.postman_collection.json` (no entra al repo). Cada ejemplo está en `item[].response[].body`. **Cuidado:** cada respuesta incluye `originalRequest`, que puede llevar la API key; el extractor solo lee `code` y `body`.
 - **Script de extracción** (Node sin dependencias): recorre `item[]`, parsea cada `body` (tolerando vacíos o no JSON) y escribe `fixtures/<carpeta>-<nombre>.<código>.json` con claves ordenadas para diffs limpios.
 - **Anonimizado:** sustituir con un **mapa de IDs ficticios consistentes**, no con hashes (los SteamID son enumerables y un hash sin sal se revierte). Tocar `steamid`, `personaname`, `realname`, avatares, `profileurl`, `primaryclanid`.
 - **Datos de biblioteca:** la lista de juegos y horas sigue siendo tuya. Los fixtures **completos van fuera del repo (gitignored)**; en el repo, solo **recortes o conjuntos sintéticos**. Las fixtures de 1 MB (wishlist) se cargan de forma perezosa.
-- **Test de CI** que falla si aparece tu SteamID real o tu `realname` en cualquier fichero versionado.
+- **Test anti-fuga** (`tests/privacy-leak.test.ts`): recorre `git ls-files --cached --others --exclude-standard` (docs incluidos; nada está exento) y falla si hay un SteamID64 fuera de la ventana ficticia (`76561198000000000` + 10 000) o de una lista pública corta, si aparece algún término de `fixtures/full/private-terms.json` (steamid, realname, personaname, vanity, hash de avatar; se crea con `node scripts/init-private-terms.ts` y se omite si falta, p. ej. en CI), o si aparece la `STEAM_API_KEY` de `.env.local`. Los fallos nombran el fichero y el tipo de fuga, nunca el valor.
+- **Fixtures públicas** (`fixtures/steam/<Endpoint>.<caso>.json`, forma `{ status, eresult, body }`): sintéticas, con la forma real de Steam y todos los casos de §7 (0 min, 59/60 min, 10/120/400 días, `has_community_visible_stats` ausente, desgloses que no suman). `GetPlayerSummaries.friends/.private` son **inferidas**, no observadas. `GetOwnedGames.private` reproduce lo observado en una cuenta ajena de solo amigos (200, `x-eresult: 15`, `{"response":{}}`). `ResolveVanityURL.notFound` y `GetPlayerSummaries.empty` coinciden con la respuesta real (verificado).
 - **Contrato:** cada fixture debe parsear con su schema Zod, y el normalizador debe producir el dominio esperado.
 - **Unitarios:** clasificación de backlog (todas las ramas de §7), validación de entrada, huellas de caché.
-- **MSW 3:** `setupServer` en Vitest y `setupWorker` en dev/modo demo, con los mismos handlers. Soporte de streaming sin confirmar (no lo necesitamos: usamos lotes).
+- **Adapter de Steam:** recibe `fetch` por inyección, así que sus tests usan un `fetch` falso sin MSW. **MSW 3** llega con el modo demo y los tests del front: `setupServer` en Vitest y `setupWorker` en dev/modo demo, con los mismos handlers. Soporte de streaming sin confirmar (no lo necesitamos: usamos lotes).
 - **Herramientas:** Vitest, Testing Library y jsdom, como en `spa-anicalendar`.
 
 ## 14. Roadmap y spike
@@ -304,10 +314,10 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 8. `GetItems`: tamaño máximo de lote que funciona, campos necesarios y precio por `cc`.
 9. Comportamiento del 429 con key.
 
-**Resultados de 0B (2026-10-07, perfil `lanzor_`, `scripts/spike-steam.ts`)**
+**Resultados de 0B (2026-10-07, cuenta del dueño de la key, `scripts/spike-steam.ts`)**
 - **Línea base con perfil público** (tabla de §5.4): todos los endpoints responden 200 con la forma esperada, salvo `GetPlayerAchievements` de juegos sin stats (400). Falta repetirlo con el perfil en privado (punto 6).
 - **Punto 7:** un juego con stats y 0 minutos devuelve 200 con los logros; uno sin stats devuelve 400 tenga horas o no. El 500 de las fuentes secundarias no existe en estos casos. Consecuencia: el candidato a logros puede ser `has_community_visible_stats` presente aunque `playtime_forever` sea 0, pero seguimos excluyendo los de 0 min por coste.
-- **Punto 6, parcial (perfil público + "game details" privado):** `communityvisibilitystate` sigue en 3 y los logros dan **403 `Profile is not public`**. `GetOwnedGames`, `GetWishlist` y `GetWishlistItemCount` devuelven todo igual que en público: la key no permite probar la privacidad de su propia cuenta. **Esto limita el spike:** `libraryPrivate` y `wishlistPrivate` no se pueden validar con `lanzor_`; hace falta otra cuenta privada (propia o de alguien que preste su SteamID64). Mientras tanto, esos dos casos se implementan según la tabla secundaria de §5.4 y quedan marcados sin verificar.
+- **Punto 6, parcial (perfil público + "game details" privado):** `communityvisibilitystate` sigue en 3 y los logros dan **403 `Profile is not public`**. `GetOwnedGames`, `GetWishlist` y `GetWishlistItemCount` devuelven todo igual que en público: la key no permite probar la privacidad de su propia cuenta. **Esto limita el spike:** `libraryPrivate` y `wishlistPrivate` no se pueden validar con la cuenta del dueño de la key; hace falta otra cuenta privada (propia o de alguien que preste su SteamID64). Mientras tanto, esos dos casos se implementan según la tabla secundaria de §5.4 y quedan marcados sin verificar.
 - **Punto 6, con "Mi perfil" en privado (cuenta del dueño de la key):** la página de la comunidad ya lo veía privado (`privacyState: private`, `visibilityState: 1` en `steamcommunity.com/id/<vanity>/?xml=1`, y "This profile is private" en el HTML), pero la Web API con la key siguió devolviendo `communityvisibilitystate: 3`, la biblioteca (334 juegos) y la wishlist (94) completas, sin cabeceras de caché; un parámetro para saltarse la caché y `GetPlayerSummaries` v1 dieron lo mismo. Los logros siguieron en 403 `Profile is not public`, y los juegos sin stats en 400 (esa comprobación va antes que la de privacidad). Sin resolver si es un estado atrasado en el servidor o que la key ve su propia cuenta; se recomprueba pasados unos minutos.
 - **Punto 8, `GetItems`:** 50–250 ids funcionan; 275 da **414** y 300 da 400, porque el límite es la longitud de la URL (~8 KB). Tamaño de respuesta: 80 KB por 100 ítems sin `data_request`, 120 KB con `include_basic_info`, 177 KB añadiendo `include_assets`. El precio cambia por país (`US $1.99` / `ES 1,95€` para el mismo appid), así que `cc` va en la clave de caché.
 - **Punto 9, 429 con key:** **no se reprodujo.** 100 peticiones en serie (~15/s) y 200 con 8 en vuelo (~137/s) a `GetPlayerAchievements`, todas 200. El 429 de §5.3 (con `x-eresult: 84`) viene de endpoints sin key; si aparece con key, se vigila en producción.
@@ -360,7 +370,7 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 - Mínimo real del vanity (2 o 3 caracteres).
 - Cuota gratuita y tamaño total de Runtime Cache en Hobby.
 - Si Valve tolera de hecho las consultas a terceros.
-- **Decisiones abiertas:** librería de i18n (`react-i18next` o Lingui), router de cliente (TanStack Router propuesto), licencia del repo (sin licencia = visible pero no reutilizable), restricciones de PR en GitHub (revisar los ajustes del repo), dominio propio frente a `*.vercel.app`, y si fusionar *Pausado* con *En curso*.
+- **Decisiones abiertas:** licencia del repo (sin licencia = visible pero no reutilizable), restricciones de PR en GitHub (revisar los ajustes del repo), dominio propio frente a `*.vercel.app`, y si fusionar *Pausado* con *En curso*.
 
 ## 18. Para retomar
 

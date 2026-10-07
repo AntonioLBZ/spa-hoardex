@@ -33,7 +33,10 @@ try {
     }
 
     // Same total size split across hash fields, in one command
-    for (const [fields, kbEach] of [[10, 100], [10, 500]] as const) {
+    for (const [fields, kbEach] of [
+        [10, 100],
+        [10, 500],
+    ] as const) {
         const key = `${prefix}:hash:${fields}x${kbEach}`;
         made.push(key);
         const data = Object.fromEntries(Array.from({ length: fields }, (_, i) => [`f${i}`, 'y'.repeat(kbEach * KB)]));

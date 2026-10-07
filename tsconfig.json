@@ -13,8 +13,9 @@
         "noFallthroughCasesInSwitch": true,
         "verbatimModuleSyntax": true,
         "isolatedModules": true,
+        "allowImportingTsExtensions": true,
         "skipLibCheck": true,
         "noEmit": true
     },
-    "include": ["src", "api", "core", "scripts", "vite.config.ts"]
+    "include": ["src", "api", "core", "scripts", "fixtures", "tests", "vite.config.ts", "vitest.config.ts"]
 }

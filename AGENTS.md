@@ -4,18 +4,32 @@ Web dashboard for a Steam library (hours, backlog, achievements, wishlist) with 
 
 ## Status
 
-Pre-code: the repo holds only docs. **Read `ARCHITECTURE.md` (Spanish) before any work: it is the source of truth** for decisions, Steam API behavior, cache keys/TTLs and the roadmap. This file only distills the rules that are easy to break. If a decision changes, update `ARCHITECTURE.md` first, then this file.
+Phase 1 in progress. **Read `ARCHITECTURE.md` (Spanish) before any work: it is the source of truth** for decisions, Steam API behavior, cache keys/TTLs and the roadmap. This file only distills the rules that are easy to break. If a decision changes, update `ARCHITECTURE.md` first, then this file.
 
-- The first task is the **Phase 0 spike** (`ARCHITECTURE.md` §14). Do not scaffold product code until it passes its decision gate: if deploying Vite + Hono as one Vercel project fights back for more than ~2 h, switch to Plan B (thin Next.js 16) without touching `core/`.
-- Items marked *(secundaria)* or *(sin verificar)* in `ARCHITECTURE.md` are unverified. Confirm them in spike 0B with the real key before building on them.
-- Open decisions (i18n library, client router, license, domain, whether to merge *Pausado* into *En curso*): ask the owner, don't pick silently.
+- Phase 0 spike passed its gate (`ARCHITECTURE.md` §14): Vite + Hono as one Vercel project works, so Plan B (thin Next.js 16) is not needed.
+- Built so far: `core/domain`, `core/backlog`, `core/adapters/steam` (input parsing and the adapter), `core/cache/redis.ts`, fixtures and the privacy-leak test. The front is still the spike's placeholder.
+- Items marked *(secundaria)* or *(sin verificar)* in `ARCHITECTURE.md` are unverified. Private-library and private-wishlist behavior cannot be tested with the key owner's own account.
+- Open decisions (license, domain, whether to merge *Pausado* into *En curso*): ask the owner, don't pick silently.
 
 ## Commands
 
-None yet. Add the real ones (dev, build, lint, test, single test) here when the spike creates `package.json`.
+pnpm only. Pin dependencies exactly (no `^`): pnpm 11 ignores `save-exact` in `.npmrc`, so use `pnpm add -E` or strip the caret afterwards. `ARCHITECTURE.md` §3 lists the intended versions as of 2026-10-07.
 
-- pnpm only. Pin exact versions (no `^`); `.npmrc` `save-exact=true` is ignored by pnpm 11, so use `pnpm add -E` or strip the caret afterwards.
-- `ARCHITECTURE.md` §3 lists the intended versions as of 2026-10-07; re-check and pin them when creating the project.
+```bash
+pnpm dev                       # Vite (use `vercel dev` to also serve /api)
+pnpm build                     # tsc --noEmit && vite build
+pnpm typecheck                 # tsc --noEmit over src, api, core, scripts, fixtures, tests
+pnpm test                      # vitest run (includes the privacy-leak test)
+pnpm exec vitest run <path>    # a single test file
+pnpm format / format:check     # Prettier
+node scripts/extract-fixtures.ts [--anonymize]   # Postman -> fixtures/full/postman (and /anon); gitignored
+node scripts/init-private-terms.ts               # writes fixtures/full/private-terms.json for the leak test
+node --env-file=.env.local scripts/spike-steam.ts <resolve|probe|items|burst>   # spike 0B, needs the real key
+pnpm dlx vercel@62.7.0 deploy --yes              # preview deploy; test with `vercel curl <path> --deployment <url>`
+```
+
+- Previews sit behind Vercel Authentication, so plain `curl` gets 401; use `vercel curl`.
+- Tests in `scripts/` import `.ts` extensions (`allowImportingTsExtensions`, safe because `noEmit`); everything else imports `.js`.
 
 ## Architecture
 
@@ -33,7 +47,7 @@ scripts/    extract + anonymize fixtures from the Postman collection
 - **Raw Steam types never leave `core/adapters/steam`.** The front only knows the domain model (`Profile`, `Game`, `Playtime`, `Achievement`, `WishlistItem`), keyed by `{ source, externalId }`.
 - Each adapter declares **capabilities** (achievements per game / per batch / none; wishlist yes/no). The UI reads them and hides panels that don't apply, so adding a store doesn't touch views.
 - **`ProfileAccess` is data, not an exception:** `ok | profilePrivate | libraryPrivate | wishlistPrivate | notFound | rateLimited`. Queries use `retry: false` for it.
-- **Decide privacy by response body and `x-eresult`, never by HTTP status alone.** Steam returns 200 `{}` for both a private and an empty wishlist (`x-eresult` 15 vs 1). A public profile (`communityvisibilitystate` 3) does not imply visible achievements: "game details" (library, wishlist, achievements, playtime) is a separate setting that `GetPlayerSummaries` does not expose. Privacy can't be tested on the key owner's own account: `GetOwnedGames`/`GetWishlist` ignored the setting there, only achievements returned 403.
+- **Decide privacy by response body and `x-eresult`, never by HTTP status alone.** Steam returns 200 `{}` for both a private and an empty wishlist (`x-eresult` 15 vs 1). `GetOwnedGames` on a friends-only third-party profile: 200, `x-eresult` 15, `{"response":{}}` (verified; the `libraryPrivate` case, a public profile with private game details, is still unverified). A public profile (`communityvisibilitystate` 3) does not imply visible achievements: "game details" (library, wishlist, achievements, playtime) is a separate setting that `GetPlayerSummaries` does not expose. Privacy can't be tested on the key owner's own account: `GetOwnedGames`/`GetWishlist` ignored the setting there, only achievements returned 403.
 - **Zod at the border:** `safeParse`, `z.looseObject`, optional fields, `.catch()` on dubious enums. On shape drift, log it; don't throw.
 - **Backlog state is a pure function in `core/backlog`** with configurable thresholds. First match wins: Completado (100 % achievements, total > 0) → Sin tocar (0 min) → Probado (< 60 min) → En curso (≥ 60 min, played ≤ 90 d ago) → Pausado (90 d–12 mo) → Acabado (> 12 mo; inactivity heuristic, not a real "finished"). Backlog = Sin tocar + Probado. Only Completado needs achievements.
 
@@ -62,20 +76,22 @@ The library arrives in one call and the dashboard renders. Then the **client** r
 
 ## Frontend rules
 
+- Router: TanStack Router, file-based via its Vite plugin; list filters live in typed search params.
 - TanStack Query 5: `useQuery` for profile/library, `useQueries` + `combine` for achievement batches. `streamedQuery` is experimental, don't use it.
 - **Motion** (`LazyMotion` + `domMax`): layout, exit, counters. **GSAP** (`useGSAP`, grid stagger, `ScrollTrigger.batch`): grid entrances. **Never both on the same element or property.** Never run GSAP on nodes that `AnimatePresence` unmounts, or inside Recharts SVG. Motion `layout` does not work in SVG.
 - Recharts 3 for standard charts; heatmap and rarity are hand-built SVG (d3-scale + Motion).
 - Animate only `transform` and `opacity`. Respect `prefers-reduced-motion` (`MotionConfig reducedMotion="user"`, `gsap.matchMedia`). Custom charts need a table or text alternative.
 - 300 covers: `content-visibility: auto` + lazy images, no virtualization. Lenis stays out of the app shell.
 - Styles: SCSS + CSS variables (light/dark), BEM kebab-case, stylelint configured as in `dev-portfolio` / `spa-anicalendar`. No Tailwind.
-- i18n: `en` (default) and `es`. The UI language maps to Steam's `l=` (`english`/`spanish`); `cc` for prices comes from the language with a manual selector and is part of the item cache key.
+- i18n: `en` (default) and `es` with `use-intl` (same API as `next-intl` in `spa-anicalendar`): messages in `src/assets/locales/{en,es}.json`, locale from stored preference → `navigator.language` → `en`, not in the URL. The UI language maps to Steam's `l=` (`english`/`spanish`); `cc` for prices comes from the language with a manual selector and is part of the item cache key.
 
 ## Fixtures and testing
 
 - Vitest, MSW 3 (ESM-only, Node ≥ 22.12; same handlers for `setupServer` in tests and `setupWorker` in dev/demo), Testing Library, jsdom.
 - Fixtures come from the owner's Postman collection, which contains their real SteamID, `realname` and avatar. **Never commit the collection, `.env*`, `.vercel/` or `fixtures/full/`.**
+- Fake SteamID64s live in the window `76561198000000000` + 10 000 (`scripts/lib/anonymize.ts`). The Steam adapter takes `fetch` by injection, so its tests need no MSW; MSW arrives with demo mode.
 - Anonymize with a **fake-ID map**, not hashes (SteamIDs are enumerable). Touch `steamid`, `personaname`, `realname`, avatars, `profileurl`, `primaryclanid`. Public fixtures are cut-down or synthetic.
-- A CI test must fail if the real SteamID or `realname` appears in any tracked file. Every fixture must parse with its Zod schema and normalize to the expected domain output.
+- `tests/privacy-leak.test.ts` fails if any tracked or untracked-not-ignored file carries a SteamID64 outside the fake window, a term from `fixtures/full/private-terms.json`, or the `STEAM_API_KEY` from `.env.local`. Docs are scanned too: don't name the owner's profile in them. Every fixture must parse with its Zod schema and normalize to the expected domain output.
 
 ## Constraints and conventions
 

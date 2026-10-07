@@ -65,7 +65,9 @@ function shape(value: unknown, depth = 0): string {
 function line(label: string, reply: Reply) {
     // Non-JSON bodies are Steam's short error strings ("Profile is not public"): safe to show
     const body = reply.json === undefined ? JSON.stringify(reply.text.slice(0, 100)) : shape(reply.json);
-    console.log(`${label.padEnd(34)} HTTP ${reply.status}  x-eresult=${reply.eresult ?? '-'}  ${reply.bytes} B  ${body}`);
+    console.log(
+        `${label.padEnd(34)} HTTP ${reply.status}  x-eresult=${reply.eresult ?? '-'}  ${reply.bytes} B  ${body}`
+    );
 }
 
 async function save(label: string, name: string, reply: Reply) {
@@ -79,7 +81,9 @@ async function resolve(vanity: string) {
     const response = (reply.json as { response?: { steamid?: string; success?: number } } | undefined)?.response;
     if (!response?.steamid) throw new Error(`could not resolve vanity (success=${response?.success})`);
     await writeMeta({ ...(await readMeta()), steamid: response.steamid });
-    console.log(`resolved; steamid stored in ${META} (${response.steamid.length} digits, starts with ${response.steamid.slice(0, 6)})`);
+    console.log(
+        `resolved; steamid stored in ${META} (${response.steamid.length} digits, starts with ${response.steamid.slice(0, 6)})`
+    );
 }
 
 interface Game {
@@ -91,7 +95,9 @@ interface Game {
 function pickGames(games: Game[]): NonNullable<Meta['picks']> {
     const withStats = games.filter((g) => g.has_community_visible_stats);
     return {
-        played: withStats.filter((g) => g.playtime_forever > 0).sort((a, b) => b.playtime_forever - a.playtime_forever)[0]?.appid,
+        played: withStats
+            .filter((g) => g.playtime_forever > 0)
+            .sort((a, b) => b.playtime_forever - a.playtime_forever)[0]?.appid,
         neverLaunched: withStats.find((g) => g.playtime_forever === 0)?.appid,
         noStats: games.find((g) => !g.has_community_visible_stats && g.playtime_forever > 0)?.appid,
         neverLaunchedNoStats: games.find((g) => !g.has_community_visible_stats && g.playtime_forever === 0)?.appid,
@@ -107,7 +113,8 @@ async function probe(label: string) {
     const summaries = await call('/ISteamUser/GetPlayerSummaries/v2/', { steamids: steamid });
     line('GetPlayerSummaries', summaries);
     await save(label, 'GetPlayerSummaries', summaries);
-    const player = (summaries.json as { response?: { players?: Record<string, unknown>[] } } | undefined)?.response?.players?.[0];
+    const player = (summaries.json as { response?: { players?: Record<string, unknown>[] } } | undefined)?.response
+        ?.players?.[0];
     console.log(`  communityvisibilitystate=${String(player?.communityvisibilitystate)}`);
 
     const owned = await call('/IPlayerService/GetOwnedGames/v1/', {
@@ -130,7 +137,11 @@ async function probe(label: string) {
 
     for (const [kind, appid] of Object.entries(picks)) {
         if (!appid) continue;
-        const reply = await call('/ISteamUserStats/GetPlayerAchievements/v1/', { steamid, appid: String(appid), l: 'english' });
+        const reply = await call('/ISteamUserStats/GetPlayerAchievements/v1/', {
+            steamid,
+            appid: String(appid),
+            l: 'english',
+        });
         line(`GetPlayerAchievements ${kind}`, reply);
         await save(label, `GetPlayerAchievements-${kind}`, reply);
     }
@@ -171,8 +182,11 @@ async function items(sizes: number[]) {
             continue;
         }
         const reply = await request(appids.slice(0, size), 'US');
-        const returned = (reply.json as { response?: { store_items?: unknown[] } } | undefined)?.response?.store_items?.length;
-        console.log(`size ${String(size).padStart(3)}: HTTP ${reply.status}  x-eresult=${reply.eresult ?? '-'}  ${reply.bytes} B  store_items=${returned ?? '-'}`);
+        const returned = (reply.json as { response?: { store_items?: unknown[] } } | undefined)?.response?.store_items
+            ?.length;
+        console.log(
+            `size ${String(size).padStart(3)}: HTTP ${reply.status}  x-eresult=${reply.eresult ?? '-'}  ${reply.bytes} B  store_items=${returned ?? '-'}`
+        );
     }
 
     // Price per country: first appid that has a price in both
@@ -207,7 +221,11 @@ async function burst(max: number, concurrency: number) {
         while (!failure && sent < max) {
             sent += 1;
             const n = sent;
-            const reply = await call('/ISteamUserStats/GetPlayerAchievements/v1/', { steamid, appid: String(appid), l: 'english' });
+            const reply = await call('/ISteamUserStats/GetPlayerAchievements/v1/', {
+                steamid,
+                appid: String(appid),
+                l: 'english',
+            });
             if (reply.status !== 200 && !failure) {
                 failure = `request ${n} after ${Math.round(performance.now() - start)} ms: HTTP ${reply.status} x-eresult=${reply.eresult ?? '-'} body=${JSON.stringify(reply.text.slice(0, 80))}`;
             }
