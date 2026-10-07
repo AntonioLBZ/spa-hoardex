@@ -19,6 +19,7 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 ### Unverified with real data
 
+- "Show more" on a modest phone: at CPU x4 to x6 in headless Chromium every batch keeps the main thread busy for a second or two while its covers arrive, and the cost grows with the cards already on screen (none at x1). Check on a real phone; if it shows, trace the paint cost and consider unmounting the first cards or smaller later batches (§10).
 - How the Upstash dashboard counts commands (does `HSET` with N fields count as 1?).
 - `libraryPrivate` and `wishlistPrivate` (needs another account).
 - Minimum length of a vanity (2 or 3).

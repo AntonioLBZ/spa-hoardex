@@ -16,6 +16,8 @@ export interface StoreAdapter {
     parseInput(input: string): ProfileInput;
     // Accepts URL, vanity or id; unparsable input is notFound
     resolveProfile(input: string): Promise<ProfileAccess<Profile>>;
+    // Alias to account id only, without the profile lookup
+    resolveAlias(alias: string): Promise<ProfileAccess<EntityId>>;
     getLibrary(profile: EntityId): Promise<ProfileAccess<Library>>;
 }
 

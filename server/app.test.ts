@@ -80,7 +80,7 @@ describe('GET /api/profile/:input', () => {
     });
 });
 
-describe('GET /api/library/:id', () => {
+describe('GET /api/library/:input', () => {
     it('returns the library and serves the repeat from Redis', async () => {
         const { get, steamCalls } = setup({ ownedGames: 'GetOwnedGames.library' });
         const first = await get(`/api/library/${ID}`);
@@ -110,13 +110,37 @@ describe('GET /api/library/:id', () => {
         expect(body).toEqual({ kind: 'rateLimited' });
     });
 
-    it.each(['some_vanity', 'a', 'bad%20name'])('needs an account id: rejects %j with a 400', async (input) => {
-        const { get, steamCalls } = setup({});
-        const { response, body } = await get(`/api/library/${input}`);
-        expect(response.status).toBe(400);
-        expect(body).toEqual({ error: 'invalidInput' });
-        expect(steamCalls()).toBe(0);
+    it('takes a vanity too, resolving it without asking for the profile', async () => {
+        const { get, steamCalls } = setup({ vanity: 'ResolveVanityURL.found', ownedGames: 'GetOwnedGames.library' });
+        const first = await get('/api/library/Some_Name');
+        expect(first.body).toMatchObject({ kind: 'ok', data: { owner: { externalId: ID } } });
+        // ResolveVanityURL and GetOwnedGames; no GetPlayerSummaries
+        expect(steamCalls()).toBe(2);
+
+        await get('/api/library/SOME_NAME');
+        await get(`/api/library/${ID}`);
+        expect(steamCalls()).toBe(2);
     });
+
+    it('answers notFound for a vanity that does not exist', async () => {
+        const { get, steamCalls } = setup({ vanity: 'ResolveVanityURL.notFound' });
+        const { response, body } = await get('/api/library/nobody_here');
+        expect(response.status).toBe(200);
+        expect(response.headers.get('cache-control')).toBe('public, s-maxage=30');
+        expect(body).toEqual({ kind: 'notFound' });
+        expect(steamCalls()).toBe(1);
+    });
+
+    it.each(['a', 'bad%20name', 'x'.repeat(40), encodeURIComponent('https://evil.example/id/someone')])(
+        'rejects the input %j with a 400 and never calls Steam',
+        async (input) => {
+            const { get, steamCalls } = setup({});
+            const { response, body } = await get(`/api/library/${input}`);
+            expect(response.status).toBe(400);
+            expect(body).toEqual({ error: 'invalidInput' });
+            expect(steamCalls()).toBe(0);
+        }
+    );
 });
 
 describe('failures', () => {

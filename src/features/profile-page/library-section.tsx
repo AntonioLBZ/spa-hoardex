@@ -1,19 +1,24 @@
-import { useQuery } from '@tanstack/react-query';
+import type { UseQueryResult } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useMemo } from 'react';
 import { useTranslations } from 'use-intl';
 
+import type { Library, ProfileAccess } from '@core/domain';
 import { StateMessage } from '@/components/state-message';
 import { Dashboard } from '@/features/dashboard';
 import { LibraryView, parseLibrarySearch, type LibrarySearch } from '@/features/library-view';
-import { demoLibraryQuery, libraryQuery } from '@/lib/api';
+import { Pending } from './pending';
 import { Problem, problemFromError } from './problem';
 import { settingsUrlFor } from './settings-url';
 import type { ProfileSource } from './profile-page';
 
-export function LibrarySection({ source, steamId }: { source: ProfileSource; steamId: string }) {
+interface LibrarySectionProps {
+    source: ProfileSource;
+    library: UseQueryResult<ProfileAccess<Library>>;
+}
+
+export function LibrarySection({ source, library }: LibrarySectionProps) {
     const t = useTranslations('profile');
-    const library = useQuery(source.kind === 'demo' ? demoLibraryQuery() : libraryQuery(steamId));
     const rawSearch = useSearch({ strict: false });
     const search = useMemo(() => parseLibrarySearch(rawSearch), [rawSearch]);
     const navigate = useNavigate();
@@ -23,7 +28,7 @@ export function LibrarySection({ source, steamId }: { source: ProfileSource; ste
         [navigate]
     );
 
-    if (library.isPending) return <p role="status">{t('loadingLibrary')}</p>;
+    if (library.isPending) return <Pending label={t('loadingLibrary')} />;
     if (library.isError)
         return (
             <Problem kind={problemFromError(library.error)} onRetry={() => void library.refetch()} source={source} />

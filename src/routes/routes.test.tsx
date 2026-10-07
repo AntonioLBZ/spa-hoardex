@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Library, Profile } from '@core/domain';
@@ -28,7 +28,7 @@ const LIBRARY: Library = {
 };
 
 const PROFILE_PATH = '/api/profile/someone';
-const LIBRARY_PATH = `/api/library/${STEAM_ID}`;
+const LIBRARY_PATH = '/api/library/someone';
 const DEMO_PROFILE_PATH = '/api/demo/profile';
 const DEMO_LIBRARY_PATH = '/api/demo/library';
 
@@ -133,6 +133,45 @@ describe('profile page', () => {
         await user.click(screen.getByRole('button', { name: 'Try again' }));
 
         expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Test Person');
+    });
+});
+
+describe('loading', () => {
+    it('asks for the profile and the library at the same time', async () => {
+        const fetchMock = vi.fn((_input: string) => new Promise<Response>(() => {}));
+        vi.stubGlobal('fetch', fetchMock);
+        renderApp('/p/someone');
+
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+        expect(fetchMock.mock.calls.map(([input]) => String(input)).sort()).toEqual([LIBRARY_PATH, PROFILE_PATH]);
+    });
+
+    it('shows a skeleton of the page with the loading text for assistive technology', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => new Promise<Response>(() => {}))
+        );
+        renderApp('/p/someone');
+
+        const status = await screen.findByRole('status');
+        expect(status.textContent).toContain('Loading profile…');
+        expect(status.querySelector('.page-skeleton')?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('keeps the profile on screen and skeletons only the library while it loads', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn((input: string) =>
+                input === PROFILE_PATH
+                    ? Promise.resolve(Response.json({ kind: 'ok', data: PROFILE }))
+                    : new Promise<Response>(() => {})
+            )
+        );
+        renderApp('/p/someone');
+
+        expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Test Person');
+        expect(screen.getByRole('status').textContent).toContain('Loading library…');
+        expect(document.querySelector('.page-skeleton__header')).toBeNull();
     });
 });
 

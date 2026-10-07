@@ -33,6 +33,7 @@ const LIBRARY: Library = {
 };
 
 interface Script {
+    alias?: () => ProfileAccess<EntityId>;
     profile?: () => ProfileAccess<Profile>;
     library?: () => ProfileAccess<Library>;
 }
@@ -44,6 +45,10 @@ function fakeAdapter(script: Script = {}) {
         source: 'steam',
         capabilities: { achievements: 'none', wishlist: false },
         parseInput: (input): ProfileInput => ({ kind: 'alias', alias: input }),
+        async resolveAlias(alias) {
+            calls.push(`alias:${alias}`);
+            return (script.alias ?? (() => ({ kind: 'ok', data: ID })))();
+        },
         async resolveProfile(input) {
             calls.push(`profile:${input}`);
             return (script.profile ?? (() => ({ kind: 'ok', data: PROFILE })))();
@@ -202,6 +207,52 @@ describe('library', () => {
         await cached.getLibrary(ID);
         await cached.getLibrary(ID);
         expect(calls).toHaveLength(2);
+    });
+});
+
+describe('library by alias', () => {
+    it('resolves the alias without the profile, then serves alias and library from the cache', async () => {
+        const { cached, calls } = setup();
+        expect(await cached.resolveLibrary(byAlias('someone'))).toEqual({ kind: 'ok', data: LIBRARY });
+        expect(await cached.resolveLibrary(byAlias('someone'))).toEqual({ kind: 'ok', data: LIBRARY });
+        expect(calls).toEqual(['alias:someone', `library:${ID.externalId}`]);
+    });
+
+    it('goes straight to the library for an id', async () => {
+        const { cached, calls } = setup();
+        await cached.resolveLibrary(byId);
+        expect(calls).toEqual([`library:${ID.externalId}`]);
+    });
+
+    it('reuses an alias that a profile lookup already stored', async () => {
+        const { cached, calls } = setup();
+        await cached.resolveProfile(byAlias('someone'));
+        await cached.resolveLibrary(byAlias('someone'));
+        expect(calls).toEqual(['profile:someone', `library:${ID.externalId}`]);
+    });
+
+    it('lets a later profile lookup reuse the alias stored here', async () => {
+        const { cached, calls } = setup();
+        await cached.resolveLibrary(byAlias('someone'));
+        await cached.resolveProfile(byAlias('someone'));
+        expect(calls).toEqual(['alias:someone', `library:${ID.externalId}`, `profile:${ID.externalId}`]);
+    });
+
+    it('answers an unknown alias as notFound without asking for a library, and remembers it briefly', async () => {
+        const { cached, calls, advance } = setup({ alias: () => ({ kind: 'notFound' }) });
+        expect(await cached.resolveLibrary(byAlias('nobody'))).toEqual({ kind: 'notFound' });
+        await cached.resolveLibrary(byAlias('nobody'));
+        expect(calls).toEqual(['alias:nobody']);
+        advance(CACHE_TTL.notFound);
+        await cached.resolveLibrary(byAlias('nobody'));
+        expect(calls).toEqual(['alias:nobody', 'alias:nobody']);
+    });
+
+    it('never caches a rate limit and does not ask for a library after it', async () => {
+        const { cached, calls } = setup({ alias: () => ({ kind: 'rateLimited' }) });
+        expect(await cached.resolveLibrary(byAlias('someone'))).toEqual({ kind: 'rateLimited' });
+        await cached.resolveLibrary(byAlias('someone'));
+        expect(calls).toEqual(['alias:someone', 'alias:someone']);
     });
 });
 

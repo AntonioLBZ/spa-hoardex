@@ -8,6 +8,7 @@ import { useLocale } from '@/lib/i18n';
 import { GameCard } from './game-card';
 import { DEFAULT_SORT, type LibrarySearch } from './library-search';
 import { LibraryToolbar } from './library-toolbar';
+import { NEXT_BATCH, useRevealedCount } from './use-revealed-count';
 
 import './library-view.scss';
 
@@ -38,6 +39,9 @@ export function LibraryView({ library, withImages, search, onSearchChange }: Lib
         [entries, settled, locale]
     );
 
+    const resetKey = `${settled.state ?? ''}|${settled.sort ?? ''}|${settled.q ?? ''}`;
+    const { count, hasMore, showMore, sentinelRef } = useRevealedCount(visible.length, resetKey);
+
     return (
         <section aria-labelledby={titleId} className="library-view">
             <h2 className="library-view__title" id={titleId}>
@@ -54,11 +58,20 @@ export function LibraryView({ library, withImages, search, onSearchChange }: Lib
                 </div>
             ) : (
                 <ul className="library-view__grid">
-                    {visible.map((entry) => (
+                    {visible.slice(0, count).map((entry) => (
                         <GameCard entry={entry} key={entry.game.id.externalId} withImages={withImages} />
                     ))}
                 </ul>
             )}
+            {hasMore ? (
+                <div className="library-view__more">
+                    <div aria-hidden="true" ref={sentinelRef} />
+                    <p className="library-view__shown">{t('shownOf', { shown: count, matching: visible.length })}</p>
+                    <Button onClick={showMore}>
+                        {t('showMore', { next: Math.min(NEXT_BATCH, visible.length - count) })}
+                    </Button>
+                </div>
+            ) : null}
         </section>
     );
 }

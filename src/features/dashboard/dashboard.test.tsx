@@ -5,6 +5,19 @@ import type { Game, Library } from '@core/domain';
 import { LocaleProvider } from '@/lib/i18n';
 import { Dashboard } from './dashboard';
 
+const stateBreakdownRenders = vi.hoisted(() => vi.fn());
+
+// Counts renders of the donut panel without replacing it
+vi.mock('./state-breakdown', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('./state-breakdown')>();
+    return {
+        StateBreakdown: (props: Parameters<typeof actual.StateBreakdown>[0]) => {
+            stateBreakdownRenders();
+            return actual.StateBreakdown(props);
+        },
+    };
+});
+
 const NOW = new Date('2026-10-07T12:00:00.000Z');
 
 function makeGame(appid: string, totalMinutes: number, lastPlayedAt: string | null, recentMinutes = 0): Game {
@@ -130,6 +143,24 @@ describe('Dashboard', () => {
             expect(screen.queryByText(/did not share when/)).toBeNull();
             expect(screen.getByRole('table')).toBeTruthy();
         });
+    });
+
+    it('does not render again when only its parent does, so the charts do not replay their animation', () => {
+        const page = (
+            <LocaleProvider>
+                <Dashboard library={LIBRARY} settingsUrl={null} />
+            </LocaleProvider>
+        );
+        const { rerender } = render(page);
+        stateBreakdownRenders.mockClear();
+
+        rerender(
+            <LocaleProvider>
+                <Dashboard library={LIBRARY} settingsUrl={null} />
+            </LocaleProvider>
+        );
+
+        expect(stateBreakdownRenders).not.toHaveBeenCalled();
     });
 
     it('speaks Spanish when that is the stored language', () => {

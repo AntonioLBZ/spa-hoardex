@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 
 import type { Library } from '@core/domain';
 import { summarizeLibrary } from '@core/stats';
@@ -15,7 +15,8 @@ interface DashboardProps {
     settingsUrl?: string | null;
 }
 
-export function Dashboard({ library, settingsUrl = null }: DashboardProps) {
+// Memoized: the filters below live in the URL and re-render the page on every keystroke, which would replay the chart animations
+export const Dashboard = memo(function Dashboard({ library, settingsUrl = null }: DashboardProps) {
     const summary = useMemo(() => summarizeLibrary(library.games, new Date()), [library]);
 
     return (
@@ -28,4 +29,4 @@ export function Dashboard({ library, settingsUrl = null }: DashboardProps) {
             <HoursByYear settingsUrl={settingsUrl} summary={summary} />
         </div>
     );
-}
+});

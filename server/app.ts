@@ -45,12 +45,12 @@ export function createApp(getData: () => CachedAdapter, demo: DemoData = createD
         return access(c, await data.resolveProfile(input));
     });
 
-    // Needs an account id; a vanity goes through /profile first
-    app.get('/library/:id', async (c) => {
+    // Same input as /profile, so the client can ask for both at once
+    app.get('/library/:input', async (c) => {
         const data = getData();
-        const input = data.parseInput(c.req.param('id'));
-        if (input.kind !== 'id') return failure(c, 'invalidInput', 400);
-        return access(c, await data.getLibrary(input.id));
+        const input = data.parseInput(c.req.param('input'));
+        if (input.kind === 'invalid') return failure(c, 'invalidInput', 400);
+        return access(c, await data.resolveLibrary(input));
     });
 
     // Fictional library through the real adapter: needs no key, Redis or Steam

@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Game, Library, Profile } from '@core/domain';
@@ -175,10 +175,127 @@ describe('library view', () => {
     });
 });
 
+describe('batches', () => {
+    function bigLibrary(size: number): Library {
+        return {
+            ...LIBRARY,
+            games: Array.from({ length: size }, (_, index) =>
+                makeGame(
+                    String(1000 + index),
+                    `Game ${index}`,
+                    index % 3 === 0 ? 0 : 600,
+                    index % 3 === 0 ? null : index
+                )
+            ),
+        };
+    }
+
+    async function openBig(size: number, path = '/demo') {
+        stubApi({
+            '/api/demo/profile': { body: { kind: 'ok', data: PROFILE } },
+            '/api/demo/library': { body: { kind: 'ok', data: bigLibrary(size) } },
+        });
+        const app = renderApp(path);
+        const region = await screen.findByRole('region', { name: 'Library' });
+        return { ...app, region };
+    }
+
+    const cards = (region: HTMLElement) => within(region).queryAllByRole('listitem').length;
+
+    it('renders a first batch and says how much is still hidden', async () => {
+        const { region } = await openBig(200);
+
+        expect(cards(region)).toBe(48);
+        expect(within(region).getByText('48 of 200 shown')).toBeTruthy();
+        expect(within(region).getByRole('button', { name: 'Show 96 more' })).toBeTruthy();
+        expect(within(region).getByRole('status').textContent).toBe('Showing 200 of 200 games');
+    });
+
+    it('shows more on request until everything is there', async () => {
+        const { region, user } = await openBig(200);
+
+        await user.click(within(region).getByRole('button', { name: 'Show 96 more' }));
+        expect(cards(region)).toBe(144);
+
+        await user.click(within(region).getByRole('button', { name: 'Show 56 more' }));
+        expect(cards(region)).toBe(200);
+        expect(within(region).queryByRole('button', { name: /^Show \d+ more/ })).toBeNull();
+        expect(within(region).queryByText(/shown$/)).toBeNull();
+    });
+
+    it('starts again from the first batch when the order or the filter changes', async () => {
+        const { region, user } = await openBig(200);
+        await user.click(within(region).getByRole('button', { name: 'Show 96 more' }));
+        expect(cards(region)).toBe(144);
+
+        await user.selectOptions(within(region).getByRole('combobox', { name: 'Sort by' }), 'name');
+        await waitFor(() => expect(cards(region)).toBe(48));
+    });
+
+    it('has no button when the matches fit in the first batch', async () => {
+        const { region } = await openBig(200, '/demo?q=game+199');
+
+        expect(cards(region)).toBe(1);
+        expect(within(region).queryByRole('button', { name: /^Show \d+ more/ })).toBeNull();
+    });
+
+    describe('with an IntersectionObserver', () => {
+        class FakeObserver {
+            static instances: FakeObserver[] = [];
+            disconnected = false;
+            constructor(private readonly callback: IntersectionObserverCallback) {
+                FakeObserver.instances.push(this);
+            }
+            observe() {}
+            unobserve() {}
+            takeRecords() {
+                return [];
+            }
+            disconnect() {
+                this.disconnected = true;
+            }
+            reachEnd() {
+                this.callback(
+                    [{ isIntersecting: true } as IntersectionObserverEntry],
+                    this as unknown as IntersectionObserver
+                );
+            }
+        }
+        const active = () => FakeObserver.instances.filter((observer) => !observer.disconnected).at(-1);
+
+        beforeEach(() => {
+            FakeObserver.instances = [];
+            vi.stubGlobal('IntersectionObserver', FakeObserver);
+        });
+
+        it('loads the next batch each time the end of the list comes near, up to the limit', async () => {
+            const { region } = await openBig(639);
+            expect(cards(region)).toBe(48);
+
+            for (const expected of [144, 240, 336]) {
+                act(() => active()?.reachEnd());
+                await waitFor(() => expect(cards(region)).toBe(expected));
+            }
+
+            expect(active()).toBeUndefined();
+            expect(within(region).getByRole('button', { name: 'Show 96 more' })).toBeTruthy();
+        });
+
+        it('stops watching once everything is shown', async () => {
+            const { region } = await openBig(100);
+
+            act(() => active()?.reachEnd());
+            await waitFor(() => expect(cards(region)).toBe(100));
+
+            expect(active()).toBeUndefined();
+        });
+    });
+});
+
 describe('covers', () => {
     const STEAM_ANSWERS = {
         '/api/profile/someone': { body: { kind: 'ok', data: PROFILE } },
-        [`/api/library/${STEAM_ID}`]: { body: { kind: 'ok', data: LIBRARY } },
+        '/api/library/someone': { body: { kind: 'ok', data: LIBRARY } },
     };
     const PORTRAIT = 'https://cdn.cloudflare.steamstatic.com/steam/apps/40/library_600x900.jpg';
     const HEADER = 'https://cdn.cloudflare.steamstatic.com/steam/apps/40/header.jpg';

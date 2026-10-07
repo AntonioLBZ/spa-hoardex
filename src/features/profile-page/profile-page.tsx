@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
 
-import { demoProfileQuery, profileQuery } from '@/lib/api';
 import { LibrarySection } from './library-section';
+import { Pending } from './pending';
 import { Problem, problemFromError } from './problem';
+import { libraryQueryFor, profileQueryFor } from './source-queries';
 
 import './profile-page.scss';
 
@@ -12,9 +13,11 @@ export type ProfileSource = { kind: 'steam'; input: string } | { kind: 'demo' };
 
 export function ProfilePage({ source }: { source: ProfileSource }) {
     const t = useTranslations('profile');
-    const profile = useQuery(source.kind === 'demo' ? demoProfileQuery() : profileQuery(source.input));
+    const profile = useQuery(profileQueryFor(source));
+    // Started together with the profile: the library takes the same input, so it does not wait to learn the id
+    const library = useQuery(libraryQueryFor(source));
 
-    if (profile.isPending) return <p role="status">{t('loadingProfile')}</p>;
+    if (profile.isPending) return <Pending header label={t('loadingProfile')} />;
     if (profile.isError)
         return (
             <Problem kind={problemFromError(profile.error)} onRetry={() => void profile.refetch()} source={source} />
@@ -22,7 +25,7 @@ export function ProfilePage({ source }: { source: ProfileSource }) {
     if (profile.data.kind !== 'ok')
         return <Problem kind={profile.data.kind} onRetry={() => void profile.refetch()} source={source} />;
 
-    const { displayName, avatarUrl, id } = profile.data.data;
+    const { displayName, avatarUrl } = profile.data.data;
 
     return (
         <article className="profile-page">
@@ -35,7 +38,7 @@ export function ProfilePage({ source }: { source: ProfileSource }) {
                 <img alt="" className="profile-page__avatar" height={64} src={avatarUrl} width={64} />
                 <h1 className="profile-page__name">{displayName}</h1>
             </header>
-            <LibrarySection source={source} steamId={id.externalId} />
+            <LibrarySection library={library} source={source} />
         </article>
     );
 }

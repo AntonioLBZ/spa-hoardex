@@ -21,6 +21,17 @@
     padding: 0;
 }
 
+.library-view__more {
+    display: grid;
+    gap: var(--size-75);
+    justify-items: center;
+}
+
+.library-view__shown {
+    color: var(--color-content-muted);
+    font-size: 0.875rem;
+}
+
 .library-view__empty {
     display: grid;
     gap: var(--size-100);

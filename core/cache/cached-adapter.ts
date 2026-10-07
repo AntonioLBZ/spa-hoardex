@@ -26,6 +26,8 @@ export interface CachedAdapter {
     readonly parseInput: StoreAdapter['parseInput'];
     resolveProfile(input: ResolvableInput): Promise<ProfileAccess<Profile>>;
     getLibrary(id: EntityId): Promise<ProfileAccess<Library>>;
+    // Library for an id or an alias, so the client does not wait for the profile to learn the id
+    resolveLibrary(input: ResolvableInput): Promise<ProfileAccess<Library>>;
 }
 
 // Caches a StoreAdapter. Keys: alias:, profile:, lib: + {source}:{id}
@@ -84,30 +86,50 @@ export function createCachedAdapter({ adapter, store, onStoreError }: CachedAdap
         return fresh;
     }
 
+    // Shares the alias cache with profileByAlias
+    async function idByAlias(alias: string): Promise<ProfileAccess<EntityId>> {
+        const aliasKey = `alias:${adapter.source}:${alias}`;
+        const known = await read(aliasKey, cachedAliasSchema);
+        if (known !== null) return known.id === null ? { kind: 'notFound' } : { kind: 'ok', data: known.id };
+
+        const fresh = await adapter.resolveAlias(alias);
+        if (fresh.kind === 'ok') await write(aliasKey, { id: fresh.data }, CACHE_TTL.alias);
+        else if (fresh.kind === 'notFound') await write(aliasKey, { id: null }, CACHE_TTL.notFound);
+        return fresh;
+    }
+
+    async function libraryById(id: EntityId): Promise<ProfileAccess<Library>> {
+        const key = `lib:${entityKey(id)}`;
+        const cached = await read(key, cachedLibrarySchema);
+        if (cached !== null) return cached;
+
+        const fresh = await adapter.getLibrary(id);
+        switch (fresh.kind) {
+            case 'ok':
+                await write(key, fresh, CACHE_TTL.library);
+                break;
+            case 'profilePrivate':
+            case 'libraryPrivate':
+                await write(key, fresh, CACHE_TTL.private);
+                break;
+            case 'notFound':
+                await write(key, fresh, CACHE_TTL.notFound);
+                break;
+        }
+        return fresh;
+    }
+
     return {
         parseInput: (input) => adapter.parseInput(input),
 
         resolveProfile: (input) => (input.kind === 'id' ? profileById(input.id) : profileByAlias(input.alias)),
 
-        async getLibrary(id) {
-            const key = `lib:${entityKey(id)}`;
-            const cached = await read(key, cachedLibrarySchema);
-            if (cached !== null) return cached;
+        getLibrary: libraryById,
 
-            const fresh = await adapter.getLibrary(id);
-            switch (fresh.kind) {
-                case 'ok':
-                    await write(key, fresh, CACHE_TTL.library);
-                    break;
-                case 'profilePrivate':
-                case 'libraryPrivate':
-                    await write(key, fresh, CACHE_TTL.private);
-                    break;
-                case 'notFound':
-                    await write(key, fresh, CACHE_TTL.notFound);
-                    break;
-            }
-            return fresh;
+        async resolveLibrary(input) {
+            if (input.kind === 'id') return libraryById(input.id);
+            const resolved = await idByAlias(input.alias);
+            return resolved.kind === 'ok' ? libraryById(resolved.data) : resolved;
         },
     };
 }

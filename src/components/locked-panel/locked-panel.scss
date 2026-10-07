@@ -4,61 +4,7 @@
 }
 
 .locked-panel__ghost {
-    display: grid;
-    gap: var(--size-100);
     mask-image: linear-gradient(to bottom, #000 35%, transparent);
     pointer-events: none;
     user-select: none;
-}
-
-.locked-panel__kpis {
-    display: grid;
-    gap: var(--size-100);
-    grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
-}
-
-.locked-panel__panels {
-    display: grid;
-    gap: var(--size-100);
-    grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
-}
-
-.locked-panel__covers {
-    display: grid;
-    gap: var(--size-150) var(--size-100);
-    grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr));
-}
-
-.locked-panel__block {
-    background-color: color-mix(in srgb, var(--color-content) 6%, var(--color-bg-raised));
-    border: 1px solid var(--color-border);
-    border-radius: var(--size-border-radius);
-}
-
-.locked-panel__block--kpi {
-    block-size: 5rem;
-}
-
-.locked-panel__block--panel {
-    block-size: 12rem;
-}
-
-.locked-panel__block--cover {
-    aspect-ratio: 2 / 3;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-    .locked-panel__block {
-        animation: locked-panel-pulse 1.6s ease-in-out infinite alternate;
-    }
-}
-
-@keyframes locked-panel-pulse {
-    from {
-        opacity: 0.55;
-    }
-
-    to {
-        opacity: 1;
-    }
 }

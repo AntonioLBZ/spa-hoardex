@@ -104,6 +104,8 @@
         "backlog": "Backlog",
         "count": "Mostrando {shown, number} de {total, plural, one {# juego} other {# juegos}}",
         "empty": "Ningún juego coincide con estos filtros.",
-        "clear": "Quitar filtros"
+        "clear": "Quitar filtros",
+        "shownOf": "{shown, number} de {matching, number} mostrados",
+        "showMore": "Mostrar {next, number} más"
     }
 }

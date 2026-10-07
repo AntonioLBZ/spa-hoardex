@@ -1,0 +1,105 @@
+.page-skeleton {
+    display: grid;
+    gap: var(--size-100);
+}
+
+.page-skeleton__header {
+    align-items: center;
+    display: flex;
+    gap: var(--size-100);
+}
+
+.page-skeleton__kpis {
+    display: grid;
+    gap: var(--size-100);
+    grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
+}
+
+.page-skeleton__panels {
+    display: grid;
+    gap: var(--size-100);
+    grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
+}
+
+.page-skeleton__covers {
+    display: grid;
+    gap: var(--size-150) var(--size-100);
+    grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr));
+}
+
+.skeleton-block {
+    background-color: color-mix(in srgb, var(--color-content) 6%, var(--color-bg-raised));
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-border-radius);
+}
+
+.skeleton-block--avatar {
+    block-size: 4rem;
+    inline-size: 4rem;
+}
+
+.skeleton-block--name {
+    block-size: 1.5rem;
+    inline-size: 10rem;
+}
+
+.skeleton-block--kpi {
+    block-size: 5rem;
+}
+
+.skeleton-block--panel {
+    block-size: 12rem;
+}
+
+.skeleton-block--cover {
+    aspect-ratio: 2 / 3;
+}
+
+.chart-skeleton {
+    block-size: 100%;
+}
+
+.chart-skeleton--bars {
+    align-items: end;
+    display: grid;
+    gap: var(--size-75);
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+}
+
+.chart-skeleton--donut {
+    display: grid;
+    place-items: center;
+}
+
+.chart-skeleton__bar {
+    background-color: color-mix(in srgb, var(--color-content) 6%, var(--color-bg-raised));
+    block-size: calc(var(--bar) * 1%);
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem 0.25rem 0 0;
+}
+
+.chart-skeleton__ring {
+    aspect-ratio: 1;
+    block-size: 100%;
+    border: 2.375rem solid color-mix(in srgb, var(--color-content) 6%, var(--color-bg-raised));
+    border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .skeleton-block,
+    .chart-skeleton__bar,
+    .chart-skeleton__ring {
+        animation: skeleton-pulse 1.6s ease-in-out infinite alternate;
+    }
+}
+
+@keyframes skeleton-pulse {
+    from {
+        opacity: 0.55;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

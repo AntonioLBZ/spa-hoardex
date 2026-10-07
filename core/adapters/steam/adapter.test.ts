@@ -204,6 +204,30 @@ describe('resolveProfile', () => {
     });
 });
 
+describe('resolveAlias', () => {
+    it('turns a vanity into an account id with one call and no profile lookup', async () => {
+        const { adapter, fake, paths } = setup({ vanity: 'ResolveVanityURL.found' });
+        expect(await adapter.resolveAlias('some-vanity')).toEqual({ kind: 'ok', data: steam(VANITY_FIXTURE_ID) });
+        expect(paths()).toEqual(['/ISteamUser/ResolveVanityURL/v1/']);
+        expect(fake.calls[0]!.url.searchParams.get('vanityurl')).toBe('some-vanity');
+    });
+
+    it('answers notFound for a vanity that does not exist', async () => {
+        const { adapter } = setup({ vanity: 'ResolveVanityURL.notFound' });
+        expect(await adapter.resolveAlias('nobody-here')).toEqual({ kind: 'notFound' });
+    });
+
+    it('answers rateLimited when the lookup is limited', async () => {
+        const { adapter } = setup({ vanity: 'GetOwnedGames.rateLimited' });
+        expect(await adapter.resolveAlias('some-vanity')).toEqual({ kind: 'rateLimited' });
+    });
+
+    it('treats a "found" vanity with an unusable id as an upstream failure', async () => {
+        const { adapter } = setup({ vanity: () => reply({ response: { success: 1, steamid: 'not-an-id' } }) });
+        await rejection(adapter.resolveAlias('some-vanity'));
+    });
+});
+
 describe('getLibrary', () => {
     const owner = steam(SUMMARY_FIXTURE_ID);
 

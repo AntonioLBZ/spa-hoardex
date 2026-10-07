@@ -104,6 +104,8 @@
         "backlog": "Backlog",
         "count": "Showing {shown, number} of {total, plural, one {# game} other {# games}}",
         "empty": "No games match these filters.",
-        "clear": "Clear filters"
+        "clear": "Clear filters",
+        "shownOf": "{shown, number} of {matching, number} shown",
+        "showMore": "Show {next, number} more"
     }
 }

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useFormatter, useTranslations } from 'use-intl';
 
@@ -5,9 +6,13 @@ import type { LibrarySummary } from '@core/stats';
 import { LockedChart } from '@/components/locked-panel';
 import { Panel } from '@/components/panel';
 import { PrivacySettingsLink } from '@/components/privacy-settings-link';
+import { ChartSkeleton } from '@/components/skeleton';
+import { useAfterPaint } from '@/lib/use-after-paint';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 
 import './hours-by-year.scss';
+
+const CHART_ANIMATION_MS = 800;
 
 const TOOLTIP_STYLE = {
     backgroundColor: 'var(--color-bg-raised)',
@@ -26,6 +31,13 @@ export function HoursByYear({ summary, settingsUrl }: HoursByYearProps) {
     const t = useTranslations('dashboard.years');
     const format = useFormatter();
     const reducedMotion = useReducedMotion();
+    const ready = useAfterPaint();
+    // Recharts restarts its animation when the data array is a new reference
+    const data = useMemo(
+        () =>
+            summary.minutesByYear.map(({ year, minutes }) => ({ year: String(year), hours: Math.round(minutes / 60) })),
+        [summary.minutesByYear]
+    );
 
     if (summary.minutesByYear.length === 0) {
         // Played games but no last-played date at all: Steam did not send them
@@ -37,36 +49,36 @@ export function HoursByYear({ summary, settingsUrl }: HoursByYearProps) {
         );
     }
 
-    const data = summary.minutesByYear.map(({ year, minutes }) => ({
-        year: String(year),
-        hours: Math.round(minutes / 60),
-    }));
-
     return (
         <Panel title={t('title')}>
             <div aria-hidden="true" className="hours-by-year__chart">
-                <ResponsiveContainer height={220} width="100%">
-                    <BarChart data={data}>
-                        <XAxis axisLine={false} dataKey="year" tickLine={false} />
-                        <YAxis
-                            axisLine={false}
-                            tickFormatter={(value: number) => format.number(value)}
-                            tickLine={false}
-                            width={48}
-                        />
-                        <Tooltip
-                            contentStyle={TOOLTIP_STYLE}
-                            cursor={{ fill: 'var(--color-border)', opacity: 0.4 }}
-                            formatter={(value) => [format.number(Number(value)), t('hours')]}
-                        />
-                        <Bar
-                            dataKey="hours"
-                            fill="var(--color-accent)"
-                            isAnimationActive={!reducedMotion}
-                            radius={[4, 4, 0, 0]}
-                        />
-                    </BarChart>
-                </ResponsiveContainer>
+                {ready ? (
+                    <ResponsiveContainer height={220} width="100%">
+                        <BarChart data={data}>
+                            <XAxis axisLine={false} dataKey="year" tickLine={false} />
+                            <YAxis
+                                axisLine={false}
+                                tickFormatter={(value: number) => format.number(value)}
+                                tickLine={false}
+                                width={48}
+                            />
+                            <Tooltip
+                                contentStyle={TOOLTIP_STYLE}
+                                cursor={{ fill: 'var(--color-border)', opacity: 0.4 }}
+                                formatter={(value) => [format.number(Number(value)), t('hours')]}
+                            />
+                            <Bar
+                                dataKey="hours"
+                                fill="var(--color-accent)"
+                                animationDuration={CHART_ANIMATION_MS}
+                                isAnimationActive={!reducedMotion}
+                                radius={[4, 4, 0, 0]}
+                            />
+                        </BarChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <ChartSkeleton shape="bars" />
+                )}
             </div>
             <table className="visually-hidden">
                 <thead>

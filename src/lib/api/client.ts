@@ -44,6 +44,7 @@ export function fetchDemoLibrary(signal?: AbortSignal) {
     return getAccess<Library>('/api/demo/library', signal);
 }
 
-export function fetchLibrary(steamId: string, signal?: AbortSignal) {
-    return getAccess<Library>(`/api/library/${encodeURIComponent(steamId)}`, signal);
+// Same input as the profile (vanity, id or URL), so both requests can go out together
+export function fetchLibrary(input: string, signal?: AbortSignal) {
+    return getAccess<Library>(`/api/library/${encodeURIComponent(input)}`, signal);
 }

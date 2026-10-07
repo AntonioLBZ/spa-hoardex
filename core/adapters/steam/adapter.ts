@@ -66,6 +66,13 @@ export function createSteamAdapter(options: SteamAdapterOptions): StoreAdapter {
             }
         },
 
+        async resolveAlias(alias) {
+            const resolved = await resolveVanity(alias);
+            return resolved.kind === 'ok'
+                ? { kind: 'ok', data: { source: 'steam', externalId: resolved.data } }
+                : resolved;
+        },
+
         async resolveProfile(input) {
             const parsed = parseProfileInput(input);
             if (parsed.kind === 'invalid') return { kind: 'notFound' };

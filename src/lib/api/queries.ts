@@ -9,10 +9,10 @@ export function profileQuery(input: string) {
     });
 }
 
-export function libraryQuery(steamId: string) {
+export function libraryQuery(input: string) {
     return queryOptions({
-        queryKey: ['library', steamId],
-        queryFn: ({ signal }) => fetchLibrary(steamId, signal),
+        queryKey: ['library', input],
+        queryFn: ({ signal }) => fetchLibrary(input, signal),
     });
 }
 
