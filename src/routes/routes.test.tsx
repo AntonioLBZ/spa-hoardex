@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Library, Profile } from '@core/domain';
@@ -133,6 +133,98 @@ describe('profile page', () => {
         await user.click(screen.getByRole('button', { name: 'Try again' }));
 
         expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Test Person');
+    });
+});
+
+describe('locked panels', () => {
+    const SETTINGS_LINK = /^Open Steam privacy settings/;
+
+    it('points a private profile to its Steam privacy settings and ghosts the page', async () => {
+        stubApi({ [PROFILE_PATH]: { body: { kind: 'profilePrivate' } } });
+        renderApp('/p/someone');
+
+        const link = await screen.findByRole('link', { name: SETTINGS_LINK });
+        expect(link.getAttribute('href')).toBe('https://steamcommunity.com/id/someone/edit/settings');
+        expect(link.getAttribute('target')).toBe('_blank');
+        expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+        expect(document.querySelector('.locked-panel__ghost')?.getAttribute('aria-hidden')).toBe('true');
+        expect(screen.getByText(/set “My profile” to Public/)).toBeTruthy();
+    });
+
+    it('builds the /profiles/ link when the profile is a SteamID64', async () => {
+        stubApi({ [`/api/profile/${STEAM_ID}`]: { body: { kind: 'profilePrivate' } } });
+        renderApp(`/p/${STEAM_ID}`);
+
+        expect((await screen.findByRole('link', { name: SETTINGS_LINK })).getAttribute('href')).toBe(
+            `https://steamcommunity.com/profiles/${STEAM_ID}/edit/settings`
+        );
+    });
+
+    it('keeps the profile and locks the library when only the game details are private', async () => {
+        stubApi({
+            [PROFILE_PATH]: { body: { kind: 'ok', data: PROFILE } },
+            [LIBRARY_PATH]: { body: { kind: 'libraryPrivate' } },
+        });
+        renderApp('/p/someone');
+
+        expect(await screen.findByRole('link', { name: SETTINGS_LINK })).toBeTruthy();
+        expect(screen.getByText(/set “Game details” to Public/)).toBeTruthy();
+        expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Test Person');
+    });
+
+    it('locks only the hours-by-year chart when the library comes without last-played dates', async () => {
+        const played = LIBRARY.games.map((game) => ({
+            ...game,
+            playtime: { ...game.playtime, totalMinutes: 600 },
+        }));
+        stubApi({
+            [PROFILE_PATH]: { body: { kind: 'ok', data: PROFILE } },
+            [LIBRARY_PATH]: { body: { kind: 'ok', data: { ...LIBRARY, games: played } } },
+        });
+        renderApp('/p/someone');
+
+        const panel = await screen.findByRole('region', { name: 'Hours by year of last play' });
+        expect(
+            within(panel)
+                .getByRole('link', { name: /^Open Steam privacy settings/ })
+                .getAttribute('href')
+        ).toBe('https://steamcommunity.com/id/someone/edit/settings');
+        expect(await screen.findByText('Hours played')).toBeTruthy();
+    });
+
+    it('lets the owner try again after changing the setting', async () => {
+        const fetchMock = stubApi({ [PROFILE_PATH]: { body: { kind: 'profilePrivate' } } });
+        const { user } = renderApp('/p/someone');
+        await screen.findByRole('link', { name: SETTINGS_LINK });
+
+        fetchMock.mockImplementation((input) =>
+            Promise.resolve(
+                String(input) === PROFILE_PATH
+                    ? Response.json({ kind: 'ok', data: PROFILE })
+                    : Response.json({ kind: 'libraryPrivate' })
+            )
+        );
+        await user.click(screen.getByRole('button', { name: 'Try again' }));
+
+        expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Test Person');
+    });
+
+    it('offers neither the settings link nor a retry for a profile that does not exist', async () => {
+        stubApi({ [PROFILE_PATH]: { body: { kind: 'notFound' } } });
+        renderApp('/p/someone');
+
+        await screen.findByText('Profile not found');
+        expect(screen.queryByRole('link', { name: SETTINGS_LINK })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+        expect(document.querySelector('.locked-panel')).toBeNull();
+    });
+
+    it('is translated', async () => {
+        localStorage.setItem('hoardex:locale', 'es');
+        stubApi({ [PROFILE_PATH]: { body: { kind: 'profilePrivate' } } });
+        renderApp('/p/someone');
+
+        expect(await screen.findByRole('link', { name: /^Abrir los ajustes de privacidad de Steam/ })).toBeTruthy();
     });
 });
 

@@ -29,10 +29,10 @@ const LIBRARY: Library = {
     ],
 };
 
-function renderDashboard() {
+function renderDashboard(library: Library = LIBRARY, settingsUrl?: string | null) {
     render(
         <LocaleProvider>
-            <Dashboard library={LIBRARY} />
+            <Dashboard library={library} settingsUrl={settingsUrl} />
         </LocaleProvider>
     );
 }
@@ -89,6 +89,47 @@ describe('Dashboard', () => {
         const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
 
         expect(rows.map((row) => row.textContent)).toEqual(['202421', '2026151']);
+    });
+
+    describe('when Steam sends no last-played dates', () => {
+        const UNDATED: Library = {
+            ...LIBRARY,
+            games: [makeGame('1', 0, null), makeGame('2', 600, null), makeGame('3', 3000, null)],
+        };
+        const SETTINGS = 'https://steamcommunity.com/id/someone/edit/settings';
+
+        it('keeps the hours-by-year panel and explains why it is empty', () => {
+            renderDashboard(UNDATED, SETTINGS);
+
+            const panel = screen.getByRole('region', { name: 'Hours by year of last play' });
+            expect(within(panel).getByText(/did not share when these games were last played/)).toBeTruthy();
+            expect(within(panel).queryByRole('table')).toBeNull();
+            expect(
+                within(panel)
+                    .getByRole('link', { name: /^Open Steam privacy settings/ })
+                    .getAttribute('href')
+            ).toBe(SETTINGS);
+        });
+
+        it('offers no link when there is no profile to point to', () => {
+            renderDashboard(UNDATED, null);
+
+            const panel = screen.getByRole('region', { name: 'Hours by year of last play' });
+            expect(within(panel).queryByRole('link')).toBeNull();
+        });
+
+        it('stays out of the way when nobody has played anything', () => {
+            renderDashboard({ ...LIBRARY, games: [makeGame('1', 0, null), makeGame('2', 0, null)] }, SETTINGS);
+
+            expect(screen.queryByRole('region', { name: 'Hours by year of last play' })).toBeNull();
+        });
+
+        it('does not lock the panel when some games do have a date', () => {
+            renderDashboard(LIBRARY, SETTINGS);
+
+            expect(screen.queryByText(/did not share when/)).toBeNull();
+            expect(screen.getByRole('table')).toBeTruthy();
+        });
     });
 
     it('speaks Spanish when that is the stored language', () => {

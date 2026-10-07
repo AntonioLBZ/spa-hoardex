@@ -6,7 +6,6 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 ### Phase 1, in order
 
-- Locked panels: when a piece cannot be drawn because of Steam privacy (private profile or game details now; achievements and wishlist later), show a skeleton in its place that says what is missing and links to the Steam privacy settings, `https://steamcommunity.com/id/{vanity}/edit/settings`. A profile without a vanity needs the `/profiles/{id64}/edit/settings` form (unverified). One reusable component, no link in demo mode, `en` and `es` copy. The current `profilePrivate` and `libraryPrivate` messages are plain text without the link.
 - Animation: install Motion and GSAP, counters and entrances; spike 0C (300 covers, fps on a modest phone).
 - Refresh button with a `refresh:{steamid}` cooldown (§8).
 - Analytics: `@vercel/analytics` with the automatic page views only (`<Analytics />` at the root; no `track()`, no custom events). Enable Web Analytics in the Vercel project. The profile name stays in the recorded URL. Free plan: 50k events per month, 30 days of history.
@@ -16,8 +15,6 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 ### After the next deploy
 
-- Direct load of `/p/...` and `/demo` (SPA rewrites).
-- `/api/demo/*` answers `x-vercel-cache: HIT` on the second request.
 - Page views reach the analytics dashboard.
 
 ### Unverified with real data
@@ -25,6 +22,8 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 - How the Upstash dashboard counts commands (does `HSET` with N fields count as 1?).
 - `libraryPrivate` and `wishlistPrivate` (needs another account).
 - Minimum length of a vanity (2 or 3).
+- Why a third-party profile with friends-only game details comes without `rtime_last_played` even though the key's account is friends with it (one account, §7).
+- The Steam privacy settings pages `/id/{vanity}/edit/settings` and `/profiles/{id64}/edit/settings` (owner-only, so not checkable without a login).
 - Where the analytics script is served from (for the CSP).
 
 ### Owner decisions
@@ -33,6 +32,8 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 - Own domain or `*.vercel.app`.
 - PR restrictions on GitHub.
 - Merge *Pausado* into *En curso*.
+- The key acts as its owner, so friends-only data of the owner's friends is shown to every visitor (§12): accept it or warn the visitor. Postponed.
+- What to show for a played game with no last-played date: today it counts as *Finished* (§7). Proposal: a separate *Played, date unknown* state.
 
 ### Later phases
 

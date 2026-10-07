@@ -2,7 +2,9 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 import { useFormatter, useTranslations } from 'use-intl';
 
 import type { LibrarySummary } from '@core/stats';
+import { LockedChart } from '@/components/locked-panel';
 import { Panel } from '@/components/panel';
+import { PrivacySettingsLink } from '@/components/privacy-settings-link';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 
 import './hours-by-year.scss';
@@ -14,12 +16,26 @@ const TOOLTIP_STYLE = {
     color: 'var(--color-content)',
 };
 
-export function HoursByYear({ summary }: { summary: LibrarySummary }) {
+interface HoursByYearProps {
+    summary: LibrarySummary;
+    // Where the owner can review privacy; null when there is none to point to
+    settingsUrl: string | null;
+}
+
+export function HoursByYear({ summary, settingsUrl }: HoursByYearProps) {
     const t = useTranslations('dashboard.years');
     const format = useFormatter();
     const reducedMotion = useReducedMotion();
 
-    if (summary.minutesByYear.length === 0) return null;
+    if (summary.minutesByYear.length === 0) {
+        // Played games but no last-played date at all: Steam did not send them
+        if (summary.playedCount === 0) return null;
+        return (
+            <LockedChart body={t('locked')} title={t('title')}>
+                {settingsUrl === null ? null : <PrivacySettingsLink href={settingsUrl} />}
+            </LockedChart>
+        );
+    }
 
     const data = summary.minutesByYear.map(({ year, minutes }) => ({
         year: String(year),

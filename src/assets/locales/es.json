@@ -27,15 +27,15 @@
         },
         "profilePrivate": {
             "title": "Este perfil es privado",
-            "body": "Su dueño tiene que hacer público el perfil para poder mostrarlo aquí."
+            "body": "Si es tu perfil, pon «Mi perfil» en Público en los ajustes de privacidad de Steam. Los cambios pueden tardar un minuto en verse aquí."
         },
         "libraryPrivate": {
             "title": "La biblioteca de juegos es privada",
-            "body": "El perfil es público, pero los detalles de sus juegos no. Su dueño puede cambiarlo en los ajustes de privacidad de Steam."
+            "body": "El perfil es público, pero los detalles de sus juegos no. Si es tu perfil, pon «Detalles del juego» en Público en los ajustes de privacidad de Steam. Los cambios pueden tardar un minuto en verse aquí."
         },
         "wishlistPrivate": {
             "title": "La lista de deseados es privada",
-            "body": "Su dueño tiene que hacer pública la lista de deseados para poder mostrarla aquí."
+            "body": "Si es tu perfil, pon «Detalles del juego» en Público en los ajustes de privacidad de Steam. Los cambios pueden tardar un minuto en verse aquí."
         },
         "rateLimited": {
             "title": "Steam está saturado",
@@ -45,6 +45,10 @@
             "title": "Algo ha salido mal",
             "body": "No hemos podido conectar con Steam o ha respondido algo inesperado. Inténtalo de nuevo en un momento."
         }
+    },
+    "privacy": {
+        "settings": "Abrir los ajustes de privacidad de Steam",
+        "newTab": "(se abre en una pestaña nueva)"
     },
     "notFound": {
         "title": "Página no encontrada",
@@ -82,7 +86,8 @@
         "years": {
             "title": "Horas por año de la última partida",
             "year": "Año",
-            "hours": "Horas"
+            "hours": "Horas",
+            "locked": "Steam no ha compartido cuándo se jugó por última vez cada juego, así que no hay nada que dibujar. Si es tu perfil, puedes revisar tus ajustes de privacidad."
         }
     },
     "library": {

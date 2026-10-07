@@ -9,7 +9,13 @@ import { TopGames } from './top-games';
 
 import './dashboard.scss';
 
-export function Dashboard({ library }: { library: Library }) {
+interface DashboardProps {
+    library: Library;
+    // Steam privacy settings of the profile; null for the demo
+    settingsUrl?: string | null;
+}
+
+export function Dashboard({ library, settingsUrl = null }: DashboardProps) {
     const summary = useMemo(() => summarizeLibrary(library.games, new Date()), [library]);
 
     return (
@@ -19,7 +25,7 @@ export function Dashboard({ library }: { library: Library }) {
                 <StateBreakdown summary={summary} />
                 <TopGames summary={summary} />
             </div>
-            <HoursByYear summary={summary} />
+            <HoursByYear settingsUrl={settingsUrl} summary={summary} />
         </div>
     );
 }

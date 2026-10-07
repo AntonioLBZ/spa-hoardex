@@ -27,15 +27,15 @@
         },
         "profilePrivate": {
             "title": "This profile is private",
-            "body": "The owner has to make the profile public before it can be shown here."
+            "body": "If this is your profile, set “My profile” to Public in your Steam privacy settings. Changes can take about a minute to show up here."
         },
         "libraryPrivate": {
             "title": "The game library is private",
-            "body": "The profile is public but its game details are not. The owner can change that in their Steam privacy settings."
+            "body": "The profile is public but its game details are not. If this is your profile, set “Game details” to Public in your Steam privacy settings. Changes can take about a minute to show up here."
         },
         "wishlistPrivate": {
             "title": "The wishlist is private",
-            "body": "The owner has to make the wishlist public before it can be shown here."
+            "body": "If this is your profile, set “Game details” to Public in your Steam privacy settings. Changes can take about a minute to show up here."
         },
         "rateLimited": {
             "title": "Steam is busy",
@@ -45,6 +45,10 @@
             "title": "Something went wrong",
             "body": "We could not reach Steam or got an unexpected answer. Try again in a moment."
         }
+    },
+    "privacy": {
+        "settings": "Open Steam privacy settings",
+        "newTab": "(opens in a new tab)"
     },
     "notFound": {
         "title": "Page not found",
@@ -82,7 +86,8 @@
         "years": {
             "title": "Hours by year of last play",
             "year": "Year",
-            "hours": "Hours"
+            "hours": "Hours",
+            "locked": "Steam did not share when these games were last played, so there is nothing to chart. If this is your profile, you can review your privacy settings."
         }
     },
     "library": {

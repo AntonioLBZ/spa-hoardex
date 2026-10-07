@@ -16,8 +16,11 @@ export function ProfilePage({ source }: { source: ProfileSource }) {
 
     if (profile.isPending) return <p role="status">{t('loadingProfile')}</p>;
     if (profile.isError)
-        return <Problem kind={problemFromError(profile.error)} onRetry={() => void profile.refetch()} />;
-    if (profile.data.kind !== 'ok') return <Problem kind={profile.data.kind} onRetry={() => void profile.refetch()} />;
+        return (
+            <Problem kind={problemFromError(profile.error)} onRetry={() => void profile.refetch()} source={source} />
+        );
+    if (profile.data.kind !== 'ok')
+        return <Problem kind={profile.data.kind} onRetry={() => void profile.refetch()} source={source} />;
 
     const { displayName, avatarUrl, id } = profile.data.data;
 

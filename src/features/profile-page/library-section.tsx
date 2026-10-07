@@ -8,6 +8,7 @@ import { Dashboard } from '@/features/dashboard';
 import { LibraryView, parseLibrarySearch, type LibrarySearch } from '@/features/library-view';
 import { demoLibraryQuery, libraryQuery } from '@/lib/api';
 import { Problem, problemFromError } from './problem';
+import { settingsUrlFor } from './settings-url';
 import type { ProfileSource } from './profile-page';
 
 export function LibrarySection({ source, steamId }: { source: ProfileSource; steamId: string }) {
@@ -24,13 +25,16 @@ export function LibrarySection({ source, steamId }: { source: ProfileSource; ste
 
     if (library.isPending) return <p role="status">{t('loadingLibrary')}</p>;
     if (library.isError)
-        return <Problem kind={problemFromError(library.error)} onRetry={() => void library.refetch()} />;
-    if (library.data.kind !== 'ok') return <Problem kind={library.data.kind} onRetry={() => void library.refetch()} />;
+        return (
+            <Problem kind={problemFromError(library.error)} onRetry={() => void library.refetch()} source={source} />
+        );
+    if (library.data.kind !== 'ok')
+        return <Problem kind={library.data.kind} onRetry={() => void library.refetch()} source={source} />;
     if (library.data.data.games.length === 0) return <StateMessage title={t('emptyLibrary')} />;
 
     return (
         <>
-            <Dashboard library={library.data.data} />
+            <Dashboard library={library.data.data} settingsUrl={settingsUrlFor(source)} />
             <LibraryView
                 library={library.data.data}
                 onSearchChange={onSearchChange}
