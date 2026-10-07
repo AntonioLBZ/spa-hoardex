@@ -1,0 +1,69 @@
+import { Pie, PieChart, ResponsiveContainer } from 'recharts';
+import { useFormatter, useTranslations } from 'use-intl';
+
+import { BACKLOG_STATES } from '../../../core/backlog';
+import type { LibrarySummary } from '../../../core/stats';
+import { Panel } from '../../components/panel';
+import { useReducedMotion } from '../../lib/use-reduced-motion';
+import { STATE_COLOR } from './state-colors';
+
+import './state-breakdown.scss';
+
+// "Completed" needs achievements, which are not loaded yet
+const SHOWN_STATES = BACKLOG_STATES.filter((state) => state !== 'completed');
+
+export function StateBreakdown({ summary }: { summary: LibrarySummary }) {
+    const t = useTranslations('dashboard.states');
+    const format = useFormatter();
+    const reducedMotion = useReducedMotion();
+
+    const rows = SHOWN_STATES.map((state) => ({
+        state,
+        name: t(state),
+        value: summary.stateCounts[state],
+        share: summary.gameCount === 0 ? 0 : summary.stateCounts[state] / summary.gameCount,
+        fill: STATE_COLOR[state],
+    }));
+
+    return (
+        <Panel title={t('title')}>
+            <div className="state-breakdown">
+                <div aria-hidden="true" className="state-breakdown__chart">
+                    <ResponsiveContainer height={200} width="100%">
+                        <PieChart>
+                            <Pie
+                                data={rows.filter((row) => row.value > 0)}
+                                dataKey="value"
+                                innerRadius="62%"
+                                isAnimationActive={!reducedMotion}
+                                nameKey="name"
+                                outerRadius="100%"
+                                stroke="none"
+                            />
+                        </PieChart>
+                    </ResponsiveContainer>
+                    <p className="state-breakdown__total">
+                        <strong className="state-breakdown__total-value">{format.number(summary.gameCount)}</strong>
+                        <span className="state-breakdown__total-label">{t('total')}</span>
+                    </p>
+                </div>
+                <ul className="state-breakdown__legend">
+                    {rows.map((row) => (
+                        <li className="state-breakdown__item" key={row.state}>
+                            <span
+                                aria-hidden="true"
+                                className="state-breakdown__swatch"
+                                style={{ backgroundColor: row.fill }}
+                            />
+                            <span className="state-breakdown__name">{row.name}</span>
+                            <span className="state-breakdown__count">{format.number(row.value)}</span>
+                            <span className="state-breakdown__share">
+                                {format.number(row.share, { style: 'percent', maximumFractionDigits: 0 })}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </Panel>
+    );
+}

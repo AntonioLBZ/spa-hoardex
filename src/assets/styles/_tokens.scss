@@ -10,6 +10,7 @@
     --size-400: 4rem;
     --size-border-radius: 0.5rem;
     --size-content-width: 40rem;
+    --size-page-width: 64rem;
 
     /* Typography */
     --font-family: system-ui, -apple-system, 'Segoe UI', roboto, sans-serif;
@@ -23,6 +24,12 @@
     --color-accent: #2563eb;
     --color-content-on-accent: #fff;
     --color-danger: #b42318;
+    --color-state-completed: #16a34a;
+    --color-state-untouched: #94a3b8;
+    --color-state-tried: #d97706;
+    --color-state-in-progress: #2563eb;
+    --color-state-paused: #7c3aed;
+    --color-state-finished: #0d9488;
 
     color-scheme: light dark;
 }
@@ -37,5 +44,11 @@
         --color-accent: #6ea0ff;
         --color-content-on-accent: #0e1116;
         --color-danger: #ff8a80;
+        --color-state-completed: #4ade80;
+        --color-state-untouched: #64748b;
+        --color-state-tried: #fbbf24;
+        --color-state-in-progress: #6ea0ff;
+        --color-state-paused: #a78bfa;
+        --color-state-finished: #2dd4bf;
     }
 }

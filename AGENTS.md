@@ -7,7 +7,7 @@ Web dashboard for a Steam library (hours, backlog, achievements, wishlist) with 
 Phase 1 in progress. **Read `ARCHITECTURE.md` (Spanish) before any work: it is the source of truth** for decisions, Steam API behavior, cache keys/TTLs and the roadmap. This file only distills the rules that are easy to break. If a decision changes, update `ARCHITECTURE.md` first, then this file.
 
 - Phase 0 spike passed its gate (`ARCHITECTURE.md` §14): Vite + Hono as one Vercel project works, so Plan B (thin Next.js 16) is not needed.
-- Built so far: `core/domain`, `core/backlog`, `core/adapters/steam`, `core/cache` (store, budget, cached adapter), the API (`GET /api/profile/:input`, `GET /api/library/:id`), fixtures and the privacy-leak test. The front is a skeleton: entry screen, `/p/$profile` showing the profile and the game count, `en`/`es`, Valve footer. No charts yet.
+- Built so far: `core/domain`, `core/backlog`, `core/stats`, `core/adapters/steam`, `core/cache` (store, budget, cached adapter), the API (`GET /api/profile/:input`, `GET /api/library/:id`), fixtures and the privacy-leak test. The front: entry screen, `/p/$profile` with a library dashboard (KPIs, backlog-state donut, top games, hours by year), `en`/`es`, Valve footer. Achievements, wishlist, filters and animation orchestration (Motion/GSAP) are not built yet.
 - Items marked *(secundaria)* or *(sin verificar)* in `ARCHITECTURE.md` are unverified. Private-library and private-wishlist behavior cannot be tested with the key owner's own account.
 - Open decisions (license, domain, whether to merge *Pausado* into *En curso*): ask the owner, don't pick silently.
 
@@ -34,10 +34,10 @@ pnpm dlx vercel@62.7.0 deploy --yes              # preview deploy; test with `ve
 
 ## Architecture
 
-Vite 8 + React 19 + TypeScript SPA, Hono API in one Vercel Function (`api/index.ts` via `hono/vercel`, with `vercel.json` rewriting `/api/:path*` to `/api`), same origin. `vercel.json` also pins `"framework": "vite"`: Vercel auto-detects the `hono` dependency as the backend preset and the deploy fails with "No entrypoint found". Catch-all file names (`[[...route]].ts`, `[...route].ts`) only match one path segment outside Next.js. Relative imports inside `api/` and `core/` need a `.js` extension (`'../core/cache/redis.js'`): the project is `"type": "module"` and Vercel emits ESM, so extensionless imports crash the function with `ERR_MODULE_NOT_FOUND`.
+Vite 8 + React 19 + TypeScript SPA, Hono API in one Vercel Function (`api/index.ts` via `hono/vercel`, with `vercel.json` rewriting `/api/:path*` to `/api`), same origin. `vercel.json` also pins `"framework": "vite"`: Vercel auto-detects the `hono` dependency as the backend preset and the deploy fails with "No entrypoint found". Catch-all file names (`[[...route]].ts`, `[...route].ts`) only match one path segment outside Next.js. The SPA fallback is one rewrite per client route (`/p/:profile` → `/index.html`); never a catch-all `/(.*)`: `vercel dev` would rewrite `/src/main.tsx` and `/@vite/client` to the HTML and Vite fails with "Failed to parse source for import analysis". A new client route needs its own rewrite. Relative imports inside `api/` and `core/` need a `.js` extension (`'../core/cache/redis.js'`): the project is `"type": "module"` and Vercel emits ESM, so extensionless imports crash the function with `ERR_MODULE_NOT_FOUND`.
 
 ```
-core/       pure domain + logic: domain/, adapters/steam/, cache/, backlog/
+core/       pure domain + logic: domain/, adapters/steam/, cache/, backlog/, stats/
 api/        Vercel entry point only: every file under api/ becomes a function
 server/     Hono app: routes, input validation, CDN headers, env wiring (`deps.ts`)
 src/        SPA: routes/ (file-based), features/, components/, lib/ (api, i18n, query client), assets/ (locales, styles)
@@ -85,7 +85,9 @@ The library arrives in one call and the dashboard renders. Then the **client** r
 - Front tests render the real route tree with `renderApp` and a fake `fetch` (`stubApi`) from `src/lib/test/render-app.tsx` (no MSW until demo mode); the setup file stubs `window.scrollTo`.
 - TanStack Query 5: `useQuery` for profile/library, `useQueries` + `combine` for achievement batches. `streamedQuery` is experimental, don't use it.
 - **Motion** (`LazyMotion` + `domMax`): layout, exit, counters. **GSAP** (`useGSAP`, grid stagger, `ScrollTrigger.batch`): grid entrances. **Never both on the same element or property.** Never run GSAP on nodes that `AnimatePresence` unmounts, or inside Recharts SVG. Motion `layout` does not work in SVG.
-- Recharts 3 for standard charts; heatmap and rarity are hand-built SVG (d3-scale + Motion).
+- Recharts 3 for standard charts; heatmap and rarity are hand-built SVG (d3-scale + Motion). `Cell` is deprecated: put `fill` in the data. Recharts animates with `requestAnimationFrame`, so in a hidden tab (also the Chrome automation window) it freezes mid-animation; to look at the final state force `prefers-reduced-motion` (`isAnimationActive={!reducedMotion}`, via `src/lib/use-reduced-motion.ts`). Charts sit in `aria-hidden` and the same data is given as a legend or a visually-hidden table.
+- Summaries are computed in `core/stats` (`summarizeLibrary`, pure, tested), never inside components. "Completed" is hidden from the state chart until achievements exist (phase 2): a 0 there would read as "none completed" when it is unknown.
+- Grids use `minmax(min(Nrem, 100%), 1fr)` so nothing overflows below ~350 px.
 - Animate only `transform` and `opacity`. Respect `prefers-reduced-motion` (`MotionConfig reducedMotion="user"`, `gsap.matchMedia`). Custom charts need a table or text alternative.
 - 300 covers: `content-visibility: auto` + lazy images, no virtualization. Lenis stays out of the app shell.
 - Styles: SCSS + CSS variables (light/dark via `prefers-color-scheme`), BEM kebab-case, stylelint copied from `dev-portfolio` (`.stylelintrc.mjs`, no `!important`, alphabetical properties). No Tailwind.

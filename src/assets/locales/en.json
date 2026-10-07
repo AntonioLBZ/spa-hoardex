@@ -14,9 +14,9 @@
     "profile": {
         "loadingProfile": "Loading profile…",
         "loadingLibrary": "Loading library…",
-        "games": "{count, plural, one {# game} other {# games}}",
         "back": "Look up another profile",
-        "retry": "Try again"
+        "retry": "Try again",
+        "emptyLibrary": "This library has no games."
     },
     "problem": {
         "notFound": {
@@ -50,5 +50,36 @@
     },
     "footer": {
         "disclaimer": "Hoardex is an independent project. It is not affiliated with or endorsed by Valve Corporation. Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the U.S. and/or other countries."
+    },
+    "dashboard": {
+        "kpi": {
+            "games": "Games",
+            "gamesDetail": "{count} played",
+            "hours": "Hours played",
+            "backlog": "Backlog",
+            "backlogDetail": "{share} of the library",
+            "recent": "Last two weeks"
+        },
+        "unit": {
+            "hours": "{hours} h"
+        },
+        "states": {
+            "title": "Backlog states",
+            "total": "games",
+            "completed": "Completed",
+            "untouched": "Untouched",
+            "tried": "Tried",
+            "inProgress": "In progress",
+            "paused": "Paused",
+            "finished": "Finished"
+        },
+        "top": {
+            "title": "Most played"
+        },
+        "years": {
+            "title": "Hours by year of last play",
+            "year": "Year",
+            "hours": "Hours"
+        }
     }
 }

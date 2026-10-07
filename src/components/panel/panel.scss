@@ -1,0 +1,13 @@
+.panel {
+    align-content: start;
+    background-color: var(--color-bg-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-border-radius);
+    display: grid;
+    gap: var(--size-100);
+    padding: var(--size-150);
+}
+
+.panel__title {
+    font-size: 1rem;
+}

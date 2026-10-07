@@ -1,0 +1,6 @@
+.entry {
+    display: grid;
+    gap: var(--size-150);
+    margin-inline: auto;
+    max-width: var(--size-content-width);
+}

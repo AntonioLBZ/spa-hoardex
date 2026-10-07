@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
 
 import { profileQuery } from '../../lib/api';
-import { LibrarySummary } from './library-summary';
+import { LibrarySection } from './library-section';
 import { Problem, problemFromError } from './problem';
 
 import './profile-page.scss';
@@ -24,7 +24,7 @@ export function ProfilePage({ input }: { input: string }) {
                 <img alt="" className="profile-page__avatar" height={64} src={avatarUrl} width={64} />
                 <h1 className="profile-page__name">{displayName}</h1>
             </header>
-            <LibrarySummary steamId={id.externalId} />
+            <LibrarySection steamId={id.externalId} />
         </article>
     );
 }

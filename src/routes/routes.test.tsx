@@ -43,6 +43,15 @@ describe('entry screen', () => {
         expect(router.state.location.pathname).toBe('/');
     });
 
+    it('submits with Enter', async () => {
+        stubApi({ [PROFILE_PATH]: { body: { kind: 'notFound' } } });
+        const { router, user } = renderApp('/');
+        await user.type(await screen.findByLabelText('Steam profile'), 'someone{Enter}');
+
+        await screen.findByText('Profile not found');
+        expect(router.state.location.pathname).toBe('/p/someone');
+    });
+
     it('opens the canonical profile route for a profile URL', async () => {
         stubApi({ [PROFILE_PATH]: { body: { kind: 'notFound' } } });
         const { router, user } = renderApp('/');
@@ -55,7 +64,7 @@ describe('entry screen', () => {
 });
 
 describe('profile page', () => {
-    it('shows the profile and the number of games', async () => {
+    it('shows the profile and its dashboard', async () => {
         stubApi({
             [PROFILE_PATH]: { body: { kind: 'ok', data: PROFILE } },
             [LIBRARY_PATH]: { body: { kind: 'ok', data: LIBRARY } },
@@ -63,7 +72,17 @@ describe('profile page', () => {
         renderApp('/p/someone');
 
         expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Test Person');
-        expect(await screen.findByText('2 games')).toBeTruthy();
+        expect(await screen.findByText('Hours played')).toBeTruthy();
+    });
+
+    it('says so when the library is empty', async () => {
+        stubApi({
+            [PROFILE_PATH]: { body: { kind: 'ok', data: PROFILE } },
+            [LIBRARY_PATH]: { body: { kind: 'ok', data: { ...LIBRARY, games: [] } } },
+        });
+        renderApp('/p/someone');
+
+        expect(await screen.findByText('This library has no games.')).toBeTruthy();
     });
 
     it.each([

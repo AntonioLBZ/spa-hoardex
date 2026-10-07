@@ -1,0 +1,10 @@
+.dashboard {
+    display: grid;
+    gap: var(--size-100);
+}
+
+.dashboard__panels {
+    display: grid;
+    gap: var(--size-100);
+    grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
+}
