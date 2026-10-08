@@ -1,2 +1,4 @@
+allowBuilds:
+  '@parcel/watcher': false
 minimumReleaseAgeExclude:
   - '@hono/vercel@1.0.1'

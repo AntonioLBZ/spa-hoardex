@@ -21,8 +21,17 @@
 }
 
 .button[aria-disabled='true'] {
+    background-color: var(--color-border);
+    border-color: transparent;
+    color: var(--color-content-muted);
     cursor: not-allowed;
-    opacity: 0.6;
+}
+
+@media (forced-colors: active) {
+    .button[aria-disabled='true'] {
+        border-color: GrayText;
+        color: GrayText;
+    }
 }
 
 @media (prefers-reduced-motion: no-preference) {

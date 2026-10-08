@@ -7,6 +7,7 @@ import { renderApp, stubApi } from '@/lib/test/render-app';
 const PROFILE_PATH = '/api/profile/someone';
 const LIBRARY_PATH = '/api/library/someone';
 const REFRESH_PATH = '/api/refresh/someone';
+const COOLDOWNS_KEY = 'hoardex:refresh-cooldowns';
 
 // The cooldown lives in memory for the whole test file, so each test gets its own account
 let sequence = 0;
@@ -142,6 +143,48 @@ describe('refresh control', () => {
         await waitFor(() => expect(posts(fetchMock)).toHaveLength(2));
         expect(await screen.findByText(/Available again in 10 minutes/)).toBeTruthy();
         expect(screen.getByRole('button', { name: 'Refresh' }).getAttribute('aria-disabled')).toBe('true');
+    });
+
+    it('keeps the cooldown across a reload, so the button is disabled before any click', async () => {
+        const data = account(2);
+        const id = data.profile.id.externalId;
+        localStorage.setItem(COOLDOWNS_KEY, JSON.stringify({ [id]: Date.now() + 5 * 60_000 }));
+        const fetchMock = stubProfilePage(data, { body: refreshed(data.profile, data.library(3)) });
+        const { user } = renderApp('/p/someone');
+
+        const button = await refreshButton();
+        expect(button.getAttribute('aria-disabled')).toBe('true');
+        expect(screen.getByText(/Available again in 5 minutes/)).toBeTruthy();
+        await user.click(button);
+        expect(posts(fetchMock)).toHaveLength(0);
+    });
+
+    it('stores the cooldown it starts, dropping the ones that have ended', async () => {
+        const data = account(2);
+        const id = data.profile.id.externalId;
+        localStorage.setItem(COOLDOWNS_KEY, JSON.stringify({ old: Date.now() - 1000 }));
+        stubProfilePage(data, { body: refreshed(data.profile, data.library(3)) });
+        const { user } = renderApp('/p/someone');
+
+        await user.click(await refreshButton());
+        await screen.findByText('Library updated.');
+
+        const stored = JSON.parse(localStorage.getItem(COOLDOWNS_KEY) ?? '{}') as Record<string, number>;
+        expect(Object.keys(stored)).toEqual([id]);
+        expect(stored[id]).toBeGreaterThan(Date.now() + 9 * 60_000);
+    });
+
+    it.each([
+        ['expired', (id: string) => JSON.stringify({ [id]: Date.now() - 1000 })],
+        ['unreadable', () => 'not json'],
+        ['of the wrong shape', () => JSON.stringify([1, 2])],
+    ])('ignores a stored cooldown that is %s', async (_name, stored) => {
+        const data = account(2);
+        localStorage.setItem(COOLDOWNS_KEY, stored(data.profile.id.externalId));
+        stubProfilePage(data);
+        renderApp('/p/someone');
+
+        expect((await refreshButton()).getAttribute('aria-disabled')).toBe('false');
     });
 
     it('tells that someone refreshed it a moment ago when the server says to wait', async () => {
