@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 
 import { SORTS, type Sort, type StateFilter } from '@core/browse';
+import { STEP, riseStyle } from '@/lib/motion';
 import { DEFAULT_SORT, SHOWN_FILTERS, compactLibrarySearch, type LibrarySearch } from './library-search';
 
 import './library-toolbar.scss';
@@ -53,7 +54,7 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
     ];
 
     return (
-        <div className="library-toolbar">
+        <div className="library-toolbar rise-in" style={riseStyle(STEP.library)}>
             <div className="library-toolbar__field library-toolbar__field--search">
                 <label className="library-toolbar__label" htmlFor={searchId}>
                     {t('search')}

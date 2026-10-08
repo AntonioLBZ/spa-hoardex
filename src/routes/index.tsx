@@ -2,6 +2,7 @@ import { Link, createFileRoute } from '@tanstack/react-router';
 import { useTranslations } from 'use-intl';
 
 import { EntryForm } from '@/features/entry-form';
+import { riseStyle } from '@/lib/motion';
 
 import './entry.scss';
 
@@ -13,9 +14,11 @@ function EntryRoute() {
 
     return (
         <div className="entry">
-            <h1>{t('tagline')}</h1>
+            <h1 className="rise-in" style={riseStyle(0)}>
+                {t('tagline')}
+            </h1>
             <EntryForm />
-            <p className="entry__demo">
+            <p className="entry__demo rise-in" style={riseStyle(2)}>
                 <Link to="/demo">{tEntry('demo')}</Link>
             </p>
         </div>

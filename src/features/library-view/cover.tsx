@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 
 import type { EntityId } from '@core/domain';
 import { coverUrls } from '@/lib/covers';
+import { isBusy } from '@/lib/motion/busy';
 
 import './cover.scss';
 
@@ -50,6 +51,9 @@ export function Cover({ id, name, withImages }: CoverProps) {
                     height={900}
                     loading="lazy"
                     onError={() => setFailed((count) => count + 1)}
+                    onLoad={(event) => {
+                        event.currentTarget.dataset.loaded = isBusy() ? 'instant' : 'fade';
+                    }}
                     referrerPolicy="no-referrer"
                     src={url}
                     width={600}

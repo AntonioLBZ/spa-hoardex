@@ -12,7 +12,7 @@ interface StateMessageProps {
 
 export function StateMessage({ title, body, role = 'status', children }: StateMessageProps) {
     return (
-        <section className="state-message" role={role}>
+        <section className="state-message rise-in" role={role}>
             <h2 className="state-message__title">{title}</h2>
             {body === undefined ? null : <p className="state-message__body">{body}</p>}
             {children === undefined ? null : <div className="state-message__actions">{children}</div>}

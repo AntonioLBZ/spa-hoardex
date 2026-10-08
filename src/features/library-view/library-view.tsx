@@ -1,13 +1,15 @@
-import { useDeferredValue, useId, useMemo } from 'react';
+import { useDeferredValue, useId, useMemo, useRef } from 'react';
 import { useTranslations } from 'use-intl';
 
 import { browseLibrary, classifyLibrary, countByFilter } from '@core/browse';
 import type { Library } from '@core/domain';
 import { Button } from '@/components/button';
 import { useLocale } from '@/lib/i18n';
+import { STEP, riseStyle } from '@/lib/motion';
 import { GameCard } from './game-card';
 import { DEFAULT_SORT, type LibrarySearch } from './library-search';
 import { LibraryToolbar } from './library-toolbar';
+import { useGridReveal } from './use-grid-reveal';
 import { NEXT_BATCH, useRevealedCount } from './use-revealed-count';
 
 import './library-view.scss';
@@ -41,10 +43,13 @@ export function LibraryView({ library, withImages, search, onSearchChange }: Lib
 
     const resetKey = `${settled.state ?? ''}|${settled.sort ?? ''}|${settled.q ?? ''}`;
     const { count, hasMore, showMore, sentinelRef } = useRevealedCount(visible.length, resetKey);
+    // Typing in the search box does not fade the list on every keystroke
+    const grid = useRef<HTMLUListElement>(null);
+    useGridReveal(grid, `${settled.state ?? ''}|${settled.sort ?? ''}`);
 
     return (
         <section aria-labelledby={titleId} className="library-view">
-            <h2 className="library-view__title" id={titleId}>
+            <h2 className="library-view__title rise-in" id={titleId} style={riseStyle(STEP.library)}>
                 {t('title')}
             </h2>
             <LibraryToolbar counts={counts} onChange={onSearchChange} search={search} total={entries.length} />
@@ -57,7 +62,7 @@ export function LibraryView({ library, withImages, search, onSearchChange }: Lib
                     <Button onClick={() => onSearchChange({})}>{t('clear')}</Button>
                 </div>
             ) : (
-                <ul className="library-view__grid">
+                <ul className="library-view__grid" ref={grid}>
                     {visible.slice(0, count).map((entry) => (
                         <GameCard entry={entry} key={entry.game.id.externalId} withImages={withImages} />
                     ))}

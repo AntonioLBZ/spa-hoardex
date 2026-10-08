@@ -7,12 +7,10 @@ import { LockedChart } from '@/components/locked-panel';
 import { Panel } from '@/components/panel';
 import { PrivacySettingsLink } from '@/components/privacy-settings-link';
 import { ChartSkeleton } from '@/components/skeleton';
+import { STEP, useChartMotion } from '@/lib/motion';
 import { useAfterPaint } from '@/lib/use-after-paint';
-import { useReducedMotion } from '@/lib/use-reduced-motion';
 
 import './hours-by-year.scss';
-
-const CHART_ANIMATION_MS = 800;
 
 const TOOLTIP_STYLE = {
     backgroundColor: 'var(--color-bg-raised)',
@@ -30,7 +28,7 @@ interface HoursByYearProps {
 export function HoursByYear({ summary, settingsUrl }: HoursByYearProps) {
     const t = useTranslations('dashboard.years');
     const format = useFormatter();
-    const reducedMotion = useReducedMotion();
+    const chartMotion = useChartMotion(STEP.years);
     const ready = useAfterPaint();
     // Recharts restarts its animation when the data array is a new reference
     const data = useMemo(
@@ -43,14 +41,14 @@ export function HoursByYear({ summary, settingsUrl }: HoursByYearProps) {
         // Played games but no last-played date at all: Steam did not send them
         if (summary.playedCount === 0) return null;
         return (
-            <LockedChart body={t('locked')} title={t('title')}>
+            <LockedChart body={t('locked')} index={STEP.years} title={t('title')}>
                 {settingsUrl === null ? null : <PrivacySettingsLink href={settingsUrl} />}
             </LockedChart>
         );
     }
 
     return (
-        <Panel title={t('title')}>
+        <Panel index={STEP.years} title={t('title')}>
             <div aria-hidden="true" className="hours-by-year__chart">
                 {ready ? (
                     <ResponsiveContainer height={220} width="100%">
@@ -67,13 +65,7 @@ export function HoursByYear({ summary, settingsUrl }: HoursByYearProps) {
                                 cursor={{ fill: 'var(--color-border)', opacity: 0.4 }}
                                 formatter={(value) => [format.number(Number(value)), t('hours')]}
                             />
-                            <Bar
-                                dataKey="hours"
-                                fill="var(--color-accent)"
-                                animationDuration={CHART_ANIMATION_MS}
-                                isAnimationActive={!reducedMotion}
-                                radius={[4, 4, 0, 0]}
-                            />
+                            <Bar dataKey="hours" fill="var(--color-accent)" {...chartMotion} radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 ) : (

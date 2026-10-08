@@ -77,3 +77,13 @@
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+    .library-toolbar__chip-label {
+        transition: transform var(--motion-quick) var(--ease-standard);
+    }
+
+    .library-toolbar__chip-label:active {
+        transform: scale(0.97);
+    }
+}

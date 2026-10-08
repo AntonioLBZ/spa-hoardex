@@ -13,3 +13,13 @@
     padding-inline: var(--size-100);
     text-decoration: none;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+    .button {
+        transition: transform var(--motion-quick) var(--ease-standard);
+    }
+
+    .button:active {
+        transform: scale(0.98);
+    }
+}

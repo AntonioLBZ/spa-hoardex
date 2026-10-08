@@ -37,7 +37,7 @@ Dashboard web de la biblioteca de Steam de un usuario: horas jugadas, backlog, l
 
 ## 3. Stack (versiones a 2026-10-07)
 
-React 19.3 · Vite 8.3 · TypeScript · Hono 4.13 · Zod 4.6 · TanStack Query 5.104 · Motion 14 · GSAP 3.15 + `@gsap/react` · Recharts 3.10 · use-intl 4.14 · TanStack Router 1.170 · Vitest 5 · `sass` · pnpm (como en tus otros repos).
+React 19.3 · Vite 8.3 · TypeScript · Hono 4.13 · Zod 4.6 · TanStack Query 5.104 · Motion 14.0.0 · GSAP 3.15.0 + `@gsap/react` 2.1.2 · Recharts 3.10 · use-intl 4.14 · TanStack Router 1.170 · Vitest 5 · `sass` · pnpm (como en tus otros repos).
 
 ## 4. Estructura propuesta del repo
 
@@ -238,7 +238,8 @@ Respuestas `GET` públicas de `/api` con `Cache-Control: s-maxage=…, stale-whi
 | Pieza | Elección | Reglas |
 |---|---|---|
 | Layout, exit, contadores | **Motion** con `LazyMotion` + `domMax` (~30 KB gzip) | `layout` no funciona en SVG. No combinar `layout` con `animate`/`whileHover` en el mismo cambio |
-| Stagger en cuadrícula, entradas por scroll | **GSAP** (gratis, plugins incluidos) con `useGSAP`, `grid` stagger y `ScrollTrigger.batch` | Nunca sobre el mismo elemento ni la misma propiedad que Motion. Nunca sobre nodos que desmonta `AnimatePresence`. Nunca dentro del SVG de Recharts |
+| Stagger en cuadrícula, entradas por scroll | **GSAP** (gratis) con `useGSAP`, `grid` stagger e **IntersectionObserver** (no `ScrollTrigger.batch`, ver «Coreografía de movimiento») | Nunca sobre el mismo elemento ni la misma propiedad que Motion. Nunca sobre nodos que desmonta `AnimatePresence`. Nunca dentro del SVG de Recharts |
+| Entradas de página, barras del top, portadas, pulsación | **CSS** (`@keyframes`, `@starting-style`, `transition`) | Sin JS, así que la pantalla de entrada no carga ni Motion ni GSAP |
 | Barras, líneas, donut, radial | **Recharts 3** | Usar `animationMatchBy` para actualizaciones en vivo |
 | Heatmap de actividad, rareza | **SVG a mano** (d3-scale + Motion) | Recharts no trae heatmap |
 | Cambio de vista | View Transitions / `<ViewTransition>` de React 19.3 | No para animar 300 elementos |
@@ -249,6 +250,30 @@ Respuestas `GET` públicas de `/api` con `Cache-Control: s-maxage=…, stale-whi
 - **Accesibilidad:** Recharts trae `accessibilityLayer`; los gráficos propios llevan alternativa en tabla o texto.
 - **Rendimiento:** animar solo `transform` y `opacity`. **No hay benchmarks públicos de 300 elementos** con Motion ni GSAP Flip, así que se mide con un spike propio (§14).
 - **Alternativa "espectacular" (no ahora):** ECharts 6 en canvas (`universalTransition`, `realtimeSort`, calendar heatmap) a cambio de ~150 KB y de no poder orquestar el interior con GSAP.
+
+#### Coreografía de movimiento (diseño del 2026-10-08, arquitecto Opus 5.5)
+
+- **Personalidad: «un contador que cuadra las cuentas».** Preciso, rápido, sin rebote (nada de `back`/`elastic`, ni parallax). Se mueven los datos; el contenido entra una sola vez; las respuestas a una acción son breves; **el marco nunca se mueve** (cabecera, pie, selector de idioma, foco, mensajes de estado).
+- **Momento firma, «la cuenta»:** al llegar la biblioteca los cuatro KPI y el total del donut cuentan desde 0, el donut barre y las barras del top se llenan. Arrancan en cascada (60 ms entre bloques, la cifra 80 ms después de que su panel empiece a aparecer) y cada una dura 900 ms. En la fase 2 cada lote de logros repite la cuenta desde el valor anterior (500 ms, §9.7). Fuera de ahí, el movimiento es contenido a propósito: una secuencia de entrada, no un efecto por sección.
+- **Tokens** (`--motion-*` y `--ease-*` en `_tokens.scss`, espejo en `src/lib/motion/tokens.ts`): `quick` 120 ms (pulsar), `swift` 200 ms (fundido de portada y de lista), `reveal` 450 ms (bloques y tarjetas), `build` 900 ms (contadores, Recharts, barras); en la fase 2 se añadirá `batch` (500 ms); `settle` = `cubic-bezier(0.25, 1, 0.5, 1)` (`power3.out` en GSAP) para entradas y datos, `standard` = `cubic-bezier(0.2, 0, 0, 1)` para cambios de estado; desplazamiento de entrada de los bloques 12 px (solo `transform` de CSS, que va por el compositor), escalonado 60 ms entre bloques y 35 ms entre tarjetas (tope total 0,3 s). **`CustomEase` descartado:** no se distingue de `power3.out`.
+- **Dueño por elemento (nada tiene dos):** GSAP solo toca `li.game-card` y `ul.library-view__grid`; Motion solo el texto de los contadores (`animate()`; en la fase 2 `m.*` dentro de `AnimatePresence`); el CSS anima los descendientes (`.cover`, barras, paneles); Recharts su SVG. El hover y la pulsación van siempre en un hijo, nunca en el `li` que mueve GSAP.
+- **Reparto:**
+
+| Pieza | Motor | Detalle |
+|---|---|---|
+| Entrada de ruta, cabecera de perfil, KPI, paneles | CSS | `@keyframes rise-in` (opacidad + 12 px) con `--i` para el escalonado; solo dentro de `prefers-reduced-motion: no-preference`; el skeleton desaparece en seco y el contenido entra (mismo tamaño: se lee como fundido cruzado) |
+| Cifras de los KPI y total del donut | Motion (`animate` numérico) | `CountUp`: el texto final está siempre en el DOM para el lector de pantalla y la copia que cuenta va en `aria-hidden`; no re-cuenta si el valor no cambia (de ahí el `memo` de `Dashboard`) |
+| Donut y barras por año | Recharts | `useChartMotion`: 900 ms y `cubic-bezier(0.25,1,0.5,1)`; `animationMatchBy` en la fase 2 |
+| Barras del top | CSS `@starting-style` | `transition: transform` con `--i`; en la fase 2 cambiar `--share` vuelve a transicionar solo |
+| Cuadrícula (primera tanda y siguientes) | GSAP + IntersectionObserver | Solo las tarjetas **nuevas** de cada tanda se ocultan antes de pintar y se funden **en ola diagonal** al entrar en pantalla (`useGridReveal`); las ya montadas no se tocan. **Solo opacidad:** cualquier desplazamiento (`y` con o sin 3D, de 6 o 16 px) añadió ~300 ms de frames largos a CPU ×6 y la opacidad sola costó lo mismo que no animar. La ola sale de los rectángulos que ya entrega el observer, no de `stagger.grid`, que lee el layout de todas las tarjetas en cada tanda. IO en lugar de `ScrollTrigger.batch`: entrega en una llamada las entradas del mismo frame, no necesita `refresh()` con cada tanda, convive con `content-visibility`, el repo ya lo usa y ahorra ~12 KB gzip |
+| Filtro y orden | GSAP sobre el `<ul>` | Un fundido corto de la lista (0,55 → 1; un tween, igual con 48 que con 3 000 tarjetas), solo al cambiar el estado o el orden, no en cada tecla del buscador. **`Flip`/`layout` sobre cientos de tarjetas descartado:** `getState` lee el rect de hasta 336 nodos y los que salen exigen posicionado absoluto |
+| Portada (relleno → imagen), chips, botones | CSS | `data-loaded` en el `<img>` al cargar (sin re-render); `:active` con `scale`; el chip seleccionado funde un `::before` |
+| Tarjetas | nada | No son interactivas; elevarlas al pasar el ratón promete un clic que no existe |
+
+- **Movimiento reducido y pruebas:** `MotionConfig reducedMotion="user"` solo cubre los `m.*`; `animate()` no lo respeta, así que `CountUp` comprueba `useReducedMotion` por su cuenta. Hoy no hay `LazyMotion` ni `MotionConfig` porque nada usa `m.*`: se montan (con `domAnimation`) con el primer componente `m`. jsdom no tiene `window.matchMedia` y `gsap.matchMedia()` lo llama sin comprobar: `src/lib/test/setup.ts` lo define en modo reducido (los tests ven el estado final).
+- **Si el hilo está saturado:** `isBusy()` (un frame largo de más de 100 ms en el último 1,5 s, vía Long Animation Frames, solo Chromium) hace que revelados y fundidos de portada sean instantáneos. Recortes por orden si la medición del spike 0C no pasa: tandas posteriores a la primera solo con opacidad; stagger solo en la primera tanda; portadas sin fundido; sin revelado de la rejilla con `hardwareConcurrency <= 4`; al final, solo «la cuenta».
+- **Carga:** las queries arrancan en `ProfilePage`, así que todo lo que pese en el chunk de esa ruta retrasa los datos. `Dashboard` y `LibraryView` (con Recharts, Motion y GSAP) van en un chunk diferido (`profile-content`) que `useProfileContent` empieza a pedir en cuanto se evalúa el chunk de la ruta. **No `React.lazy`:** su primer render suspende aunque el módulo ya esté cargado y React retiene el contenido 300 ms tras mostrar un fallback (medido: los KPI salían 300 ms tarde). Los módulos que importa una ruta fuera de su `component` (p. ej. `parseLibrarySearch` en `validateSearch`) se importan desde su fichero, no desde el índice de la feature: el índice arrastraba la vista entera, GSAP incluido, al chunk principal.
+- **Resultados (2026-10-08; Chromium 152 headless por CDP, build de producción, biblioteca sintética de 639 juegos con portadas de relleno, sin GPU; móvil real sin medir):** ruta `profile-page` 111 KB → 5 KB gzip, principal 91 → 95 KB, contenido diferido 156 KB (Recharts, Motion `animate` ~20 KB, GSAP ~29 KB; +50 KB gzip en total). La primera petición a la API sale ~110 ms antes y los KPI aparecen antes que en la versión anterior (Fast 4G emulada, 390 px: 639 frente a 730 ms a ×1 y 773 frente a 886 ms a ×4). Entrada de la rejilla a ×6 (mediana de 3, LoAF total / p95 de frame): base 252 ms / 17 ms; fundido con desplazamiento 570–681 ms / 67–83 ms; **solo fundido 300 ms / 33 ms**; sin animar la rejilla 307 ms / 17 ms. Bajar por 240 tarjetas: a ×1 ningún frame largo (igual que la base); a ×4 LoAF total 307 ms frente a 145 ms y p95 de frame 50 frente a 17 ms (peor frame 77 ms en ambos). Con movimiento reducido ninguna opacidad baja de 1 y los contadores muestran el texto plano.
 
 ### Estilos
 SCSS + variables CSS (tema claro/oscuro), BEM y stylelint con la configuración que ya usas en `dev-portfolio` y `spa-anicalendar`. Sin Tailwind.
@@ -344,6 +369,8 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 
 **0C. Animación (puede aplazarse a la fase 1)**
 10. 300 portadas + 3 gráficas con datos entrando por lotes; medir fps en un móvil modesto con Motion y GSAP.
+
+**Resultados de 0C (2026-10-08, parcial):** hecho en Chromium headless con CPU ×1, ×4 y ×6 y sin GPU (cifras en §10, «Coreografía de movimiento»). A ×1 no hay frames largos y a ×4 el peor frame no empeora (77 ms); a ×6 la entrada de la rejilla cuesta lo mismo que no animarla siempre que sea solo opacidad. **Falta un móvil real** (con GPU, que cambia el coste del pintado). Si allí se nota, los recortes por orden son: tandas posteriores a la primera sin fundido, ola solo en la primera tanda, portadas sin fundido, nada de rejilla con `hardwareConcurrency <= 4`; al final queda solo «la cuenta».
 
 ### Fases del producto
 

@@ -12,6 +12,16 @@
     --size-content-width: 40rem;
     --size-page-width: 64rem;
 
+    /* Motion, mirrored in src/lib/motion/tokens.ts */
+    --motion-quick: 120ms;
+    --motion-swift: 200ms;
+    --motion-reveal: 450ms;
+    --motion-build: 900ms;
+    --motion-rise: 0.75rem;
+    --motion-stagger: 60ms;
+    --ease-settle: cubic-bezier(0.25, 1, 0.5, 1);
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
     /* Typography */
     --font-family: system-ui, -apple-system, 'Segoe UI', roboto, sans-serif;
 

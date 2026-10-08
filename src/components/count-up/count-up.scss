@@ -1,0 +1,21 @@
+.count-up {
+    display: inline-grid;
+}
+
+.count-up__final,
+.count-up__tick {
+    grid-area: 1 / 1;
+}
+
+/* The final text sizes the box, so the digits never reflow the layout */
+.count-up[data-running] .count-up__final {
+    opacity: 0;
+}
+
+.count-up__tick {
+    visibility: hidden;
+}
+
+.count-up[data-running] .count-up__tick {
+    visibility: visible;
+}

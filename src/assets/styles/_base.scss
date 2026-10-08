@@ -36,3 +36,17 @@ a {
     position: absolute;
     white-space: nowrap;
 }
+
+@keyframes rise-in {
+    from {
+        opacity: 0;
+        transform: translateY(var(--motion-rise));
+    }
+}
+
+/* One step of the page-load sequence: --i is its position, set inline */
+@media (prefers-reduced-motion: no-preference) {
+    .rise-in {
+        animation: rise-in var(--motion-reveal) var(--ease-settle) calc(var(--i, 0) * var(--motion-stagger)) backwards;
+    }
+}

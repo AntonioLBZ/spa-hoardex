@@ -5,11 +5,11 @@ import { useTranslations } from 'use-intl';
 
 import type { Library, ProfileAccess } from '@core/domain';
 import { StateMessage } from '@/components/state-message';
-import { Dashboard } from '@/features/dashboard';
-import { LibraryView, parseLibrarySearch, type LibrarySearch } from '@/features/library-view';
+import { parseLibrarySearch, type LibrarySearch } from '@/features/library-view/library-search';
 import { Pending } from './pending';
 import { Problem, problemFromError } from './problem';
 import { settingsUrlFor } from './settings-url';
+import { useProfileContent } from './use-profile-content';
 import type { ProfileSource } from './profile-page';
 
 interface LibrarySectionProps {
@@ -22,6 +22,7 @@ export function LibrarySection({ source, library }: LibrarySectionProps) {
     const rawSearch = useSearch({ strict: false });
     const search = useMemo(() => parseLibrarySearch(rawSearch), [rawSearch]);
     const navigate = useNavigate();
+    const content = useProfileContent();
     // Filters are not navigation: replace the entry and keep the scroll position
     const onSearchChange = useCallback(
         (next: LibrarySearch) => void navigate({ to: '.', search: next, replace: true, resetScroll: false }),
@@ -36,6 +37,9 @@ export function LibrarySection({ source, library }: LibrarySectionProps) {
     if (library.data.kind !== 'ok')
         return <Problem kind={library.data.kind} onRetry={() => void library.refetch()} source={source} />;
     if (library.data.data.games.length === 0) return <StateMessage title={t('emptyLibrary')} />;
+    if (content === null) return <Pending label={t('loadingLibrary')} />;
+
+    const { Dashboard, LibraryView } = content;
 
     return (
         <>

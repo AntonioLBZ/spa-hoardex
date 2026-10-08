@@ -5,14 +5,13 @@ import { useFormatter, useTranslations } from 'use-intl';
 import { BACKLOG_STATES } from '@core/backlog';
 import type { LibrarySummary } from '@core/stats';
 import { Panel } from '@/components/panel';
+import { CountUp } from '@/components/count-up';
 import { ChartSkeleton } from '@/components/skeleton';
+import { STEP, stepDelay, useChartMotion } from '@/lib/motion';
 import { useAfterPaint } from '@/lib/use-after-paint';
 import { STATE_COLOR } from '@/lib/state-colors';
-import { useReducedMotion } from '@/lib/use-reduced-motion';
 
 import './state-breakdown.scss';
-
-const CHART_ANIMATION_MS = 800;
 
 // "Completed" needs achievements, which are not loaded yet
 const SHOWN_STATES = BACKLOG_STATES.filter((state) => state !== 'completed');
@@ -20,7 +19,7 @@ const SHOWN_STATES = BACKLOG_STATES.filter((state) => state !== 'completed');
 export function StateBreakdown({ summary }: { summary: LibrarySummary }) {
     const t = useTranslations('dashboard.states');
     const format = useFormatter();
-    const reducedMotion = useReducedMotion();
+    const chartMotion = useChartMotion(STEP.states);
     // The donut is the costly part: the rest of the page paints first
     const ready = useAfterPaint();
 
@@ -39,7 +38,7 @@ export function StateBreakdown({ summary }: { summary: LibrarySummary }) {
     const slices = useMemo(() => rows.filter((row) => row.value > 0), [rows]);
 
     return (
-        <Panel title={t('title')}>
+        <Panel index={STEP.states} title={t('title')}>
             <div className="state-breakdown">
                 <div aria-hidden="true" className="state-breakdown__chart">
                     {ready ? (
@@ -49,9 +48,7 @@ export function StateBreakdown({ summary }: { summary: LibrarySummary }) {
                                     data={slices}
                                     dataKey="value"
                                     innerRadius="62%"
-                                    animationBegin={0}
-                                    animationDuration={CHART_ANIMATION_MS}
-                                    isAnimationActive={!reducedMotion}
+                                    {...chartMotion}
                                     nameKey="name"
                                     outerRadius="100%"
                                     stroke="none"
@@ -62,7 +59,13 @@ export function StateBreakdown({ summary }: { summary: LibrarySummary }) {
                         <ChartSkeleton shape="donut" />
                     )}
                     <p className="state-breakdown__total">
-                        <strong className="state-breakdown__total-value">{format.number(summary.gameCount)}</strong>
+                        <strong className="state-breakdown__total-value">
+                            <CountUp
+                                delay={stepDelay(STEP.states)}
+                                format={(value) => format.number(Math.round(value))}
+                                value={summary.gameCount}
+                            />
+                        </strong>
                         <span className="state-breakdown__total-label">{t('total')}</span>
                     </p>
                 </div>

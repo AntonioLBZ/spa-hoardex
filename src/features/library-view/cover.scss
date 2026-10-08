@@ -12,6 +12,17 @@
     display: block;
     inline-size: 100%;
     object-fit: cover;
+    opacity: 0;
+}
+
+.cover__image[data-loaded] {
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .cover__image[data-loaded='fade'] {
+        transition: opacity var(--motion-swift) var(--ease-standard);
+    }
 }
 
 .cover--landscape .cover__image {

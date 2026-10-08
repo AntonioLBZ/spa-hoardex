@@ -31,3 +31,16 @@
     transform: scaleX(var(--share));
     transform-origin: left;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+    .top-games__bar {
+        transition: transform var(--motion-build) var(--ease-settle)
+            calc(var(--i, 0) * var(--motion-stagger) + var(--bar, 0) * 20ms);
+    }
+
+    @starting-style {
+        .top-games__bar {
+            transform: scaleX(0);
+        }
+    }
+}

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
 
+import { riseStyle } from '@/lib/motion';
 import { LibrarySection } from './library-section';
 import { Pending } from './pending';
 import { Problem, problemFromError } from './problem';
@@ -34,7 +35,7 @@ export function ProfilePage({ source }: { source: ProfileSource }) {
                     {t('demoNotice')}
                 </p>
             ) : null}
-            <header className="profile-page__header">
+            <header className="profile-page__header rise-in" style={riseStyle(0)}>
                 <img alt="" className="profile-page__avatar" height={64} src={avatarUrl} width={64} />
                 <h1 className="profile-page__name">{displayName}</h1>
             </header>

@@ -9,13 +9,15 @@ interface LockedChartProps {
     // The title of the chart that cannot be drawn
     title: string;
     body: string;
+    // Step in the page-load sequence, as in `Panel`
+    index?: number;
     children?: ReactNode;
 }
 
 // A chart's place when Steam does not share the data behind it
-export function LockedChart({ title, body, children }: LockedChartProps) {
+export function LockedChart({ title, body, index, children }: LockedChartProps) {
     return (
-        <Panel title={title}>
+        <Panel index={index} title={title}>
             <div aria-hidden="true" className="locked-chart__ghost">
                 <ChartSkeleton shape="bars" />
             </div>

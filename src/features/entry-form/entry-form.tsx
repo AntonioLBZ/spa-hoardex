@@ -3,6 +3,7 @@ import { useId, useState, type ChangeEvent, type SubmitEvent } from 'react';
 import { useTranslations } from 'use-intl';
 
 import { Button } from '@/components/button';
+import { riseStyle } from '@/lib/motion';
 import { toProfileSlug } from '@/lib/profile-slug';
 
 import './entry-form.scss';
@@ -31,7 +32,7 @@ export function EntryForm() {
     }
 
     return (
-        <form className="entry-form" noValidate onSubmit={onSubmit}>
+        <form className="entry-form rise-in" noValidate onSubmit={onSubmit} style={riseStyle(1)}>
             <label className="entry-form__label" htmlFor={inputId}>
                 {t('label')}
             </label>
