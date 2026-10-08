@@ -11,6 +11,10 @@ export function withoutQuery(url: string): string {
 const beforeSend: BeforeSend = (event) => ({ ...event, url: withoutQuery(event.url) });
 
 // Automatic page views only: no track(), no custom events. Development logs to the console instead of sending
+// The build config (set by Vercel, absent locally) moves the script and its endpoints to a per-project path
 export function startAnalytics(): void {
-    inject({ mode: import.meta.env.PROD ? 'production' : 'development', beforeSend });
+    inject(
+        { mode: import.meta.env.PROD ? 'production' : 'development', beforeSend },
+        import.meta.env.VITE_VERCEL_OBSERVABILITY_CLIENT_CONFIG
+    );
 }

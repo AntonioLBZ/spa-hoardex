@@ -6,7 +6,7 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 ### Phase 1, in order
 
-- Analytics: the code is in (`src/lib/analytics.ts`, called from `main.tsx`; §10). Enable Web Analytics in the Vercel project (project → Analytics tab → Enable) and redeploy. Free plan: 50k events per month for the whole account, 1 month of history.
+- Analytics: enabled and receiving page views. Deploy the build-config change (`src/lib/analytics.ts`; §10) and check that the production bundle contains `{"analytics":{` (the injected config; the script must load from a per-project path, not `/_vercel/insights/script.js`, which content blockers stop) and that a visit with a blocker on is counted. Free plan: 50k events per month for the whole account, 1 month of history.
 - Privacy policy page (new route, needs its own `vercel.json` rewrite). It must say that analytics record the visited path (profile name included, no query string, no cookies), that the refresh cooldown keeps the SteamID for 10 min, and that covers and avatars load from Steam's CDN, which sees the visitor's IP.
 - Public README, favicon, per-route title and metadata.
 - `Content-Security-Policy` (§11); it must allow the analytics script (same origin: `script-src 'self'`, `connect-src 'self'`) and the Steam image hosts (`cdn.cloudflare.steamstatic.com` for covers; the avatar host is not checked against a real profile yet).

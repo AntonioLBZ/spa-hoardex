@@ -1,5 +1,5 @@
 import type { BeforeSend } from '@vercel/analytics';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { startAnalytics, withoutQuery } from './analytics';
 
@@ -17,6 +17,7 @@ describe('withoutQuery', () => {
 
 describe('startAnalytics', () => {
     afterEach(() => {
+        vi.unstubAllEnvs();
         document.head.querySelectorAll('script').forEach((script) => script.remove());
         delete window.va;
         delete window.vaq;
@@ -30,6 +31,17 @@ describe('startAnalytics', () => {
         const scripts = document.head.querySelectorAll('script[src*="vercel-scripts.com"]');
         expect(scripts).toHaveLength(1);
         expect((scripts[0] as HTMLScriptElement).defer).toBe(true);
+    });
+
+    it('moves the script and its endpoints to the path of the build config', () => {
+        const analytics = { scriptSrc: 'abc123/script.js', viewEndpoint: 'abc123/view' };
+        vi.stubEnv('VITE_VERCEL_OBSERVABILITY_CLIENT_CONFIG', JSON.stringify({ analytics }));
+
+        startAnalytics();
+
+        const script = document.head.querySelector('script') as HTMLScriptElement;
+        expect(script.getAttribute('src')).toBe('/abc123/script.js');
+        expect(script.dataset.viewEndpoint).toBe('/abc123/view');
     });
 
     it('registers a beforeSend that strips the query string', () => {
