@@ -50,7 +50,8 @@ core/            dominio y lógica pura
     steam/       SteamAdapter: cliente fetch, schemas Zod, normalizadores (tipos crudos de Steam SOLO aquí)
   cache/         interfaz Cache + implementación Upstash + claves y TTLs
   backlog/       clasificación de estados (función pura, umbrales configurables)
-api/             Hono: rutas, validación de entrada, rate limiting, cabeceras de caché
+api/             punto de entrada de Vercel (cada fichero se vuelve una función)
+server/          Hono: rutas, validación de entrada, cabeceras de caché
 src/             frontend: vistas, componentes, hooks de Query, i18n, estilos SCSS
 fixtures/        anonimizados/sintéticos (los completos, fuera del repo)
 scripts/         extracción y anonimizado de fixtures desde Postman
@@ -183,12 +184,20 @@ Respuestas `GET` públicas de `/api` con `Cache-Control: s-maxage=…, stale-whi
 | Ítems de tienda (precio) | `item:{appid}:{lang}:{cc}` | 6–24 h |
 | Resultado negativo ("privado", "no encontrado") | dentro de la propia entrada (`alias:`, `profile:`, `lib:`) | 60 s (privado) – 5 min (no encontrado). `rateLimited` no se cachea |
 | Presupuesto diario de Steam | `shared:budget:steam:{YYYYMMDD}` (**sin prefijo de entorno**: el límite es de la key) | contador, 2 días |
-| Cooldown de refresco | `refresh:{steamid}` | 10 min (**sin implementar**: llega con el botón de la UI) |
+| Cooldown de refresco | `refresh:{source}:{steamid}` (valor = fin del cooldown en ms) | 10 min; 60 s si Steam falla o limita (**sin implementar**, diseño abajo) |
 
 - **Invalidación de logros por "huella":** cada campo del hash guarda `hash(playtime_forever, rtime_last_played)` del momento en que se pidió. Si la biblioteca nueva trae la misma huella, no se vuelve a pedir ese juego. Un refresco normal cuesta unas pocas llamadas.
 - **Idioma:** el progreso por usuario va **sin idioma** (`apiname`, `achieved`, `unlocktime`). Los textos se guardan por `(appid, lang)` y se rellenan de forma oportunista con la primera respuesta de `GetPlayerAchievements`. La rareza y el esquema no dependen del idioma.
 - **Juegos sin stats** (400 "no stats"): se guarda un marcador `none` en el hash para no preguntar de nuevo.
-- **Refresco manual:** botón con cooldown por perfil (`refresh:{steamid}`).
+- **Refresco manual (diseño del 2026-10-08, arquitecto Opus 5.5; sin implementar):** `POST /api/refresh/:input`, con la misma entrada que los GET y `Cache-Control: no-store`. La lógica va en `CachedAdapter.refresh` (sin Hono; la ruta solo traduce a HTTP):
+  1. Valida la entrada (400) y obtiene el id; un alias desconocido da 200 `notFound` sin gastar cooldown.
+  2. Reclama el cooldown con `SET refresh:{source}:{id} <fin en ms> NX GET EX 600` (un comando; si ya existía devuelve el valor previo, de donde sale el tiempo restante). Si Redis falla se deja pasar, igual que el presupuesto. Hace falta `CacheStore.setIfAbsent`.
+  3. Pide perfil y biblioteca a Steam saltándose Redis y sobrescribe `profile:` y `lib:` solo con resultados cacheables. **No borra nada:** si Steam falla o limita, siguen los datos anteriores. No refresca `alias:` (24 h) ni, en la fase 2, `ach:` (la huella decide qué juegos vuelven a pedirse).
+  4. Si Steam limita o falla, acorta el cooldown a 60 s (`CACHE_TTL.refreshRetry`).
+  - Respuestas: 200 `{kind:'refreshed', cooldownSeconds, profile, library}` (el acceso puede ser `ok` o privado), 429 `{error:'cooldown', retryAfterSeconds}`, 503 `{error:'rateLimited', retryAfterSeconds}` (un 429 de Steam y el presupuesto agotado se ven igual) y 502 `upstream`. 429 y 503 llevan `Retry-After`. `api/index.ts` debe exportar también `POST`.
+  - Coste: unos 5 comandos de Redis (cooldown, 2 `INCR` del presupuesto, 2 `SET`) y 2 llamadas a Steam; con el cooldown activo, 1 comando y ninguna llamada (+1 con vanity).
+  - **CDN:** tras refrescar, el CDN puede servir la copia previa de `GET /api/library/:input` hasta 60 + 300 s. El cliente siembra la caché de Query con el cuerpo del POST (no hace GET) y, como paso opcional, `libraryQuery` conserva la biblioteca con `fetchedAt` más reciente. Los demás visitantes ven la copia anterior hasta `s-maxage` y luego Redis, ya fresco. Descartados: un parámetro cache-buster (abre un bypass del CDN que cuesta Redis), la purga por tag (disponible en Hobby, pero «invalidate» sirve una copia vieja una vez más y `vercel dev` no emula el CDN; mejora futura) y acortar `s-maxage`.
+  - Descartados en el servidor: borrar las claves y hacer un GET normal (un `rateLimited` dejaría la caché vacía), un `Map` de cooldowns en memoria (estado oculto, no determinista en Fluid) y derivar el cooldown de `fetchedAt` (carrera entre peticiones paralelas).
 - **Normalizar siempre** el SteamID antes de usarlo como clave (un vanity y su ID resuelto deben compartir caché de datos).
 - **Implementación (Fase 1, paso 3):** `core/cache` (`CacheStore`, `createCachedAdapter`, `createDailyBudget`) y `server/` (Hono). Las lecturas se validan con Zod: una entrada con otra forma cuenta como fallo de caché. Si Redis falla, la petición sigue contra Steam; si falla el contador, se deja pasar. Superado el presupuesto, `withBudget` responde como un 429 de Steam y el adapter devuelve `rateLimited`. Sin caché negativa para 429 de Steam hasta observarlo.
 - **Medido en local con Steam y Upstash reales (2026-10-07):** el contador sube solo con llamadas reales a Steam (caliente = 0); los TTL salen como en la tabla; la biblioteca normalizada de 334 juegos pesa **144 KB** (~430 B por juego), más que las "decenas de KB" estimadas, aún muy por debajo de 5 MB. Si molesta se puede recortar (`iconUrl` se deriva del hash, `platforms`). Tiempos locales (España → Steam/Upstash): ~1,9 s en frío, ~0,8 s en caliente; no son referencia para producción.
@@ -232,6 +241,16 @@ Respuestas `GET` públicas de `/api` con `Cache-Control: s-maxage=…, stale-whi
   - *Lo que sigue pendiente:* cada «Mostrar más» a CPU ×4–×6 deja el hilo ocupado 1–2 s mientras llegan las portadas (script ~40 ms; el resto es pintado/decodificación) y crece con las tarjetas ya montadas; a ×1 no hay ni un frame largo. La ráfaga de imágenes de la prueba (192 en ~1,5 s) es un caso extremo. Medir en un móvil real.
 - **Alias de importación (solo en `src/`):** `@/` apunta a `src/` y `@core/` a `core/`, declarados en `tsconfig.json` (`paths`) y leídos por Vite 8 con `resolve.tsconfigPaths` (también en el proyecto `front` de Vitest). `./` se mantiene dentro de la misma carpeta; `../` ya no se usa. No valen en `api/`, `server/`, `core/` ni `scripts/`: corren en Node, que no los conoce (ahí siguen los relativos con `.js`, ver §14 0A). `core/` queda fuera de `src/`, de ahí el segundo alias.
 - Router de cliente: **TanStack Router** con rutas por ficheros (`@tanstack/router-plugin/vite`, que genera `routeTree.gen.ts`). Rutas previstas: `/` (introducir perfil) y `/p/$profile` (dashboard) con los filtros (estado, orden, vista) como parámetros de búsqueda tipados. Alternativa descartada: React Router 8 (sin búsqueda tipada).
+
+### Refresco y analíticas (diseño del 2026-10-08, arquitecto Opus 5.5; sin implementar)
+
+- **Botón de refresco** (`RefreshControl`, en `src/features/profile-page`): en la cabecera del perfil, solo con `source.kind === 'steam'` y la biblioteca `ok`. No aparece en la demo ni en los paneles bloqueados: su *Reintentar* sigue siendo el GET (un refresco gastaría los 10 min de cooldown si el ajuste de Steam aún no ha cambiado).
+- **Estados:** `idle → refreshing → coolingDown{done | cooldown | rateLimited}`, o `failed`. Se deshabilita con `aria-disabled` y una guarda en `onClick` (sigue siendo enfocable); el motivo («Disponible de nuevo en N min») va en `aria-describedby`; al refrescar el texto pasa a «Actualizando…» (no solo el color). Un `<p role="status">` habla solo en las transiciones, nunca en cada tic. `useNow({ updateInterval: 30_000 })` de use-intl, solo dentro del control, para la cuenta atrás y para «Actualizado hace X» (`Library.fetchedAt`). Sin spinner: el marco no se mueve.
+- **Cooldown del cliente:** en memoria (un `Map` por SteamID leído con `useSyncExternalStore`), nada en `localStorage`: la verdad es el servidor y un clic de más cuesta 1 comando. Tras recargar, el botón parece habilitado hasta que el POST responde 429. Los GET no llevan el cooldown: seguirían siendo iguales para todos y cacheables.
+- **Petición:** `useMutation` sobre `postRefresh(input)` (200, 429 y 503 como datos; el resto, `ApiError`). `onSuccess` hace `setQueryData` en `profileQuery` y `libraryQuery`.
+- **Sin reanimar:** `Dashboard` pasa a recibir `games` en vez de `library`, y `LibraryView` memoiza sobre `library.games`. `fetchedAt` cambia en cada refresco, pero el *structural sharing* de Query conserva la referencia de `games` si nada cambió, y Recharts no repite la animación. Si hay cambios, `CountUp` sigue desde su valor, Recharts anima los datos nuevos y las tarjetas con `key` = appid no se vuelven a fundir (solo entran las nuevas, con opacidad). `useRevealedCount` no se reinicia (su clave es `state|sort|q`).
+- **Textos** (`refresh.*`, en y es): `action`, `busy`, `updatedAgo`, `done`, `cooldown`, `availableIn`, `rateLimited`, `failed`.
+- **Analíticas:** `@vercel/analytics` 2.0.1 fijado; `inject()` desde `src/lib/analytics.ts`, llamado en `main.tsx` tras el render. No va en el árbol de rutas, así que ningún test lo carga (`renderApp` no importa `main.tsx`); sí corre en `pnpm dev` y `vercel dev`, con `mode: import.meta.env.PROD ? 'production' : 'development'` (en desarrollo es el script de depuración de `va.vercel-scripts.com`, que escribe en consola en vez de enviar; leído en el código, sin ver en ejecución). Solo páginas vistas automáticas: el script parchea `history.pushState` y escucha `popstate`, cuenta un cambio de ruta y no de query, así que los `replace` de los filtros no cuentan. `beforeSend` quita la query string y el hash (el buscador pone el texto del visitante en `q`); el nombre de perfil de la ruta se conserva. `/demo` y las previews se cuentan. Sin `track()`, sin eventos propios, sin `route`/`path`. Descartados: `<Analytics />` de `@vercel/analytics/react` (el mismo `inject()` en un `useEffect`, que lee `REACT_APP_*`, variables que Vite no expone) y Resilient Intake (necesita el `configString` del build).
 
 ### Animación y gráficas
 
@@ -293,10 +312,12 @@ El idioma de la UI se traduce al parámetro `l=` de Steam (`english`, `spanish`)
   - También aceptar SteamID2/ID3 convertidos con `BigInt` (`[U:1:N]` → `76561197960265728n + N`).
   - Extraer el identificador de URLs `/id/<vanity>` y `/profiles/<id64>`.
 - **Rate limiting propio:**
-  - WAF de Vercel por IP (en Hobby solo hay **1 regla por proyecto**, contadores por región). Debe permitir las ~10 llamadas por carga completa.
+  - WAF de Vercel por IP (en Hobby solo hay **1 regla por proyecto**, contadores por región). Debe permitir las ~10 llamadas por carga completa y cubrir todo `/api/` (GET y POST). Es la única defensa real contra un script.
   - Contador diario en Redis como **presupuesto global de Steam** (techo blando, p. ej. 80 k). Al superarlo se sirve solo caché y se avisa en la UI.
-- **429 de Steam:** concurrencia limitada, backoff con jitter, caché negativa corta, y estado `rateLimited` visible.
+- **429 de Steam:** concurrencia limitada, backoff con jitter, sin caché negativa hasta observarlo (§8), y estado `rateLimited` visible.
 - **Cabeceras:** CORS mismo origen (el front y la API comparten dominio), `Content-Security-Policy` restrictiva, sin cookies en `/api` públicas (así el CDN puede cachear).
+- **Refresco:** cualquier visitante puede refrescar cualquier perfil, como mucho una vez cada 10 min por perfil y entorno; el techo global sigue siendo el presupuesto diario. Un script que recorra ids (enumerables) gasta Steam igual que hoy con GET en frío, y un query string aleatorio salta el CDN y gasta Redis (ya ocurre hoy): de ahí la regla de WAF sobre `/api/`.
+- **CSP y analíticas:** el script es `/_vercel/insights/script.js` y envía a `/_vercel/insights/view` (mismo origen), así que basta `script-src 'self'` y `connect-src 'self'` (`inject()` crea un `<script src>`, sin script en línea). Leído en el código de `@vercel/analytics` 2.0.1; falta verlo desplegado.
 - **Login con Steam (fase 4):** OpenID 2.0, sin OAuth/OIDC. Verificar con `check_authentication` por `fetch` directo (~40 líneas), más comprobar `mode=id_res`, `op_endpoint`, `return_to` propio, regex del `claimed_id` y frescura del nonce. Sesión sin BD: cookie HttpOnly, Secure, SameSite=Lax con JWT HS256 (`jose`). Solo se obtiene el SteamID64.
 - **Logs:** nunca registrar la key ni cabeceras completas.
 
@@ -305,7 +326,7 @@ El idioma de la UI se traduce al parámetro `l=` de Steam (`english`, `spanish`)
 - **Riesgo principal:** los términos dicen que solo se recuperan datos de un usuario "as requested by the end user" (steamcommunity.com/dev/apiterms, versión de 2010). Consultar perfiles de terceros **no queda amparado expresamente**, y Valve puede revocar la key "at any time for any reason, without notice" (§11). Que Valve lo tolere de hecho es una suposición.
 - **Mitigaciones:**
   1. Texto de la UI que pide el perfil **propio** (hecho: etiqueta «Tu perfil de Steam» y aviso «Introduce tu propio perfil»).
-  2. Cachés cortas para datos por usuario; sin historial propio salvo opt-in. Las analíticas de Vercel sí registran las URLs visitadas (nombre de perfil incluido) durante 30 días, solo visibles para el dueño; se declara en la política de privacidad.
+  2. Cachés cortas para datos por usuario; sin historial propio salvo opt-in. Las analíticas de Vercel registran la ruta visitada (nombre de perfil incluido, **sin query string**: se quita antes de enviar), sin cookies y con un hash diario del visitante; la ventana de informes en Hobby es de 1 mes y solo la ve el dueño. El cooldown `refresh:` guarda el SteamID y una marca de tiempo durante 10 min. Todo se declara en la política de privacidad.
   3. Login con Steam como vía limpia, en cuanto exista (fase 4).
   4. **Modo demo con datos sintéticos:** la demo del portfolio sigue funcionando aunque la key se pierda (hecho, §10).
   5. Plan de contingencia: la capa Steam está aislada en el adapter.
@@ -374,7 +395,7 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 
 ### Fases del producto
 
-**Estado de la fase 1 (2026-10-07).** Hecho: `core` (dominio, adapter, backlog, caché, stats), API con Redis y presupuesto (verificada desplegada), esqueleto del front (router, i18n, Query, entrada), dashboard base (KPIs, estados, top, horas por año), aviso de marcas de Valve, modo demo en el servidor, vista de biblioteca, paneles bloqueados por privacidad. **Pendiente:** la lista viva está en el `README.md` (sección *To do*); se borra de allí cada punto al completarlo. Decisión sobre analíticas (2026-10-07): se registra la URL completa, incluido el nombre de perfil de `/p/{vanity}`, y se declara en la política de privacidad.
+**Estado de la fase 1 (2026-10-07).** Hecho: `core` (dominio, adapter, backlog, caché, stats), API con Redis y presupuesto (verificada desplegada), esqueleto del front (router, i18n, Query, entrada), dashboard base (KPIs, estados, top, horas por año), aviso de marcas de Valve, modo demo en el servidor, vista de biblioteca, paneles bloqueados por privacidad. **Pendiente:** la lista viva está en el `README.md` (sección *To do*); se borra de allí cada punto al completarlo. Decisión sobre analíticas (2026-10-07, matizada el 2026-10-08): se registra la ruta, incluido el nombre de perfil de `/p/{vanity}`, sin la query string (`beforeSend`), y se declara en la política de privacidad.
 
 | Fase | Contenido |
 |---|---|
@@ -419,7 +440,8 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 - Mínimo real del vanity (2 o 3 caracteres).
 - **Rewrite de SPA en `vercel.json`:** una regla por ruta del cliente (`/p/:profile` → `/index.html`, después de la de `/api`). **No usar un comodín `/(.*)`**: `vercel dev` reescribe también `/src/main.tsx` y `/@vite/client` a `index.html` y Vite falla con "Failed to parse source for import analysis" (reproducido 2026-10-07). Con la regla acotada, `vercel dev` sirve los módulos como JavaScript y la carga directa de `/p/...` funciona (verificado en local, incluido en navegador). Reglas actuales: `/p/:profile` y `/demo`. Consecuencias: cada ruta nueva del cliente necesita su regla, y una ruta desconocida fuera de `/p/` la contesta el 404 de Vercel, no la página 404 del SPA. **Verificado desplegado (2026-10-07)** en `https://hoardex.vercel.app` (dominio de producción, público): `/`, `/demo`, `/demo?state=backlog` y `/p/foo` devuelven 200 con `index.html`, una ruta desconocida (`/nope`) devuelve el 404 de texto plano de Vercel, y `/api/demo/library` da `x-vercel-cache: HIT` en repeticiones. Los alias con el nombre del equipo (`*-<equipo>.vercel.app`) y las URL de cada despliegue llevan Vercel Authentication (`ssoProtection: all_except_custom_domains`): solo el dominio de producción es público.
 - Cuota gratuita y tamaño total de Runtime Cache en Hobby.
-- Desde dónde se sirve el script de Web Analytics (para la CSP). Cuota de Hobby según el dueño: 50 k eventos al mes y 30 días de historial (no comprobado en la documentación).
+- Script de Web Analytics: `/_vercel/insights/script.js` (leído en el código de `@vercel/analytics` 2.0.1; falta verlo desplegado, y que el script de producción cuente solo cambios de ruta como el de depuración). Hobby (doc de precios, 2026-10-08): 50 k eventos al mes para toda la cuenta, ventana de 1 mes, sin eventos propios; al pasar el límite hay 3 días de gracia y la recogida se pausa. Comando de CLI `vercel project web-analytics`: está en la doc, sin comprobar que exista en la 62.7.0.
+- Refresco: que Upstash acepte `SET … NX GET` (si no, `SET NX` + `GET`, 2 comandos) y que la rewrite `/api/:path*` deje pasar el POST (probar en `vercel dev`).
 - Si Valve tolera de hecho las consultas a terceros.
 - **Decisiones abiertas:** licencia del repo (sin licencia = visible pero no reutilizable), restricciones de PR en GitHub (revisar los ajustes del repo), dominio propio frente a `*.vercel.app`, y si fusionar *Pausado* con *En curso*.
 

@@ -3,6 +3,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { startAnalytics } from './lib/analytics';
 import { LocaleProvider } from './lib/i18n';
 import { createQueryClient } from './lib/query-client';
 import { createAppRouter } from './router';
@@ -21,3 +22,5 @@ createRoot(document.getElementById('root')!).render(
         </LocaleProvider>
     </StrictMode>
 );
+
+startAnalytics();
