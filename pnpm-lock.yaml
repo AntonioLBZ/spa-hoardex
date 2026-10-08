@@ -11,6 +11,9 @@ importers:
       '@gsap/react':
         specifier: 2.1.2
         version: 2.1.2(gsap@3.15.0)(react@19.3.0)
+      '@hono/vercel':
+        specifier: 1.0.1
+        version: 1.0.1(hono@4.13.13)
       '@tanstack/react-query':
         specifier: 5.104.1
         version: 5.104.1(react@19.3.0)
@@ -281,6 +284,12 @@ packages:
     peerDependencies:
       gsap: ^3.12.5
       react: '>=17'
+
+  '@hono/vercel@1.0.1':
+    resolution: {integrity: sha512-2g9P7VOHB7k99t20vZd6Mv8Pvq/PwgTYI29NBgDPohUy4KNceylHW7hCSrD7Q8XrbFo0p+Na2ScymTFDCRX3Uw==}
+    engines: {node: '>=16.9.0'}
+    peerDependencies:
+      hono: '>=4.13.9 || ^5.0.0-0'
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2082,6 +2091,10 @@ snapshots:
     dependencies:
       gsap: 3.15.0
       react: 19.3.0
+
+  '@hono/vercel@1.0.1(hono@4.13.13)':
+    dependencies:
+      hono: 4.13.13
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

@@ -20,6 +20,16 @@
         "emptyLibrary": "This library has no games.",
         "demoNotice": "This is a demo with a fictional library. No real Steam account is involved."
     },
+    "refresh": {
+        "action": "Refresh",
+        "busy": "Refreshing…",
+        "updatedAgo": "Updated {ago}",
+        "done": "Library updated.",
+        "cooldown": "Updated recently. You can refresh again in {minutes, plural, one {# minute} other {# minutes}}.",
+        "availableIn": "Available again in {minutes, plural, one {# minute} other {# minutes}}",
+        "rateLimited": "Steam is busy. Try again in a minute.",
+        "failed": "Could not refresh. Try again in a moment."
+    },
     "problem": {
         "notFound": {
             "title": "Profile not found",

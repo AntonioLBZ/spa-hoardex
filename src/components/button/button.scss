@@ -14,12 +14,23 @@
     text-decoration: none;
 }
 
+.button--secondary {
+    background-color: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-content);
+}
+
+.button[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 @media (prefers-reduced-motion: no-preference) {
     .button {
         transition: transform var(--motion-quick) var(--ease-standard);
     }
 
-    .button:active {
+    .button:not([aria-disabled='true']):active {
         transform: scale(0.98);
     }
 }

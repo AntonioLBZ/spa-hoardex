@@ -5,6 +5,7 @@ import { riseStyle } from '@/lib/motion';
 import { LibrarySection } from './library-section';
 import { Pending } from './pending';
 import { Problem, problemFromError } from './problem';
+import { RefreshControl } from './refresh-control';
 import { libraryQueryFor, profileQueryFor } from './source-queries';
 
 import './profile-page.scss';
@@ -38,6 +39,9 @@ export function ProfilePage({ source }: { source: ProfileSource }) {
             <header className="profile-page__header rise-in" style={riseStyle(0)}>
                 <img alt="" className="profile-page__avatar" height={64} src={avatarUrl} width={64} />
                 <h1 className="profile-page__name">{displayName}</h1>
+                {source.kind === 'steam' && library.data?.kind === 'ok' ? (
+                    <RefreshControl input={source.input} library={library.data.data} />
+                ) : null}
             </header>
             <LibrarySection library={library} source={source} />
         </article>

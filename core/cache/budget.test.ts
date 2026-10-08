@@ -28,6 +28,7 @@ describe('daily budget', () => {
         const store: CacheStore = {
             get: async () => null,
             set: async () => {},
+            setIfAbsent: async () => null,
             increment: async (key) => {
                 seen.push(key);
                 return 1;
@@ -44,6 +45,7 @@ describe('daily budget', () => {
         const store: CacheStore = {
             get: async () => null,
             set: async () => {},
+            setIfAbsent: async () => null,
             increment: () => Promise.reject(new Error('down')),
         };
         const budget = createDailyBudget({ store, name: 'steam', limit: 1, onStoreError: (e) => errors.push(e) });

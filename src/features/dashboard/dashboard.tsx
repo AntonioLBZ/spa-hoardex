@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 
-import type { Library } from '@core/domain';
+import type { Game } from '@core/domain';
 import { summarizeLibrary } from '@core/stats';
 import { HoursByYear } from './hours-by-year';
 import { KpiGrid } from './kpi-grid';
@@ -10,14 +10,15 @@ import { TopGames } from './top-games';
 import './dashboard.scss';
 
 interface DashboardProps {
-    library: Library;
+    // The games, not the library: a refresh renews the library's fetch time, but Query keeps the list if nothing changed
+    games: Game[];
     // Steam privacy settings of the profile; null for the demo
     settingsUrl?: string | null;
 }
 
 // Memoized: the filters below live in the URL and re-render the page on every keystroke, which would replay the chart animations
-export const Dashboard = memo(function Dashboard({ library, settingsUrl = null }: DashboardProps) {
-    const summary = useMemo(() => summarizeLibrary(library.games, new Date()), [library]);
+export const Dashboard = memo(function Dashboard({ games, settingsUrl = null }: DashboardProps) {
+    const summary = useMemo(() => summarizeLibrary(games, new Date()), [games]);
 
     return (
         <div className="dashboard">

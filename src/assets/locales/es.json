@@ -20,6 +20,16 @@
         "emptyLibrary": "Esta biblioteca no tiene juegos.",
         "demoNotice": "Esto es una demo con una biblioteca ficticia. No interviene ninguna cuenta real de Steam."
     },
+    "refresh": {
+        "action": "Actualizar",
+        "busy": "Actualizando…",
+        "updatedAgo": "Actualizado {ago}",
+        "done": "Biblioteca actualizada.",
+        "cooldown": "Se actualizó hace poco. Podrás volver a actualizar en {minutes, plural, one {# minuto} other {# minutos}}.",
+        "availableIn": "Disponible de nuevo en {minutes, plural, one {# minuto} other {# minutos}}",
+        "rateLimited": "Steam está ocupado. Inténtalo de nuevo en un minuto.",
+        "failed": "No se pudo actualizar. Inténtalo de nuevo en un momento."
+    },
     "problem": {
         "notFound": {
             "title": "Perfil no encontrado",

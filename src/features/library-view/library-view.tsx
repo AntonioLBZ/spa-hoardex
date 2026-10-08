@@ -26,7 +26,7 @@ export function LibraryView({ library, withImages, search, onSearchChange }: Lib
     const t = useTranslations('library');
     const { locale } = useLocale();
     const titleId = useId();
-    const entries = useMemo(() => classifyLibrary(library.games, new Date()), [library]);
+    const entries = useMemo(() => classifyLibrary(library.games, new Date()), [library.games]);
     const counts = useMemo(() => countByFilter(entries), [entries]);
     // Typing stays responsive while the list catches up
     const settled = useDeferredValue(search);

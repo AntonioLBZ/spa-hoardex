@@ -24,7 +24,12 @@ function setup(table: Table) {
         const text = await response.text();
         return { response, text, body: JSON.parse(text) as Record<string, unknown> };
     };
-    return { get, steamCalls: () => fake.calls.length };
+    const post = async (path: string) => {
+        const response = await app.request(path, { method: 'POST' });
+        const text = await response.text();
+        return { response, text, body: JSON.parse(text) as Record<string, unknown> };
+    };
+    return { get, post, steamCalls: () => fake.calls.length };
 }
 
 const PUBLIC = { vanity: 'ResolveVanityURL.found', summaries: 'GetPlayerSummaries.public' };
@@ -141,6 +146,107 @@ describe('GET /api/library/:input', () => {
             expect(steamCalls()).toBe(0);
         }
     );
+});
+
+describe('POST /api/refresh/:input', () => {
+    const FULL = { ...PUBLIC, ownedGames: 'GetOwnedGames.library' };
+
+    it('asks Steam again past the cache and answers the fresh profile and library, never cached', async () => {
+        const { get, post, steamCalls } = setup(FULL);
+        await get(`/api/library/${ID}`);
+        expect(steamCalls()).toBe(1);
+
+        const { response, body } = await post(`/api/refresh/${ID}`);
+        expect(response.status).toBe(200);
+        expect(response.headers.get('cache-control')).toBe('no-store');
+        expect(body).toMatchObject({
+            kind: 'refreshed',
+            cooldownSeconds: 600,
+            profile: { kind: 'ok', data: { id: { externalId: ID } } },
+            library: { kind: 'ok', data: { owner: { externalId: ID } } },
+        });
+        expect((body.library as { data: { games: unknown[] } }).data.games).toHaveLength(GAME_COUNT);
+        // GetPlayerSummaries and GetOwnedGames, whatever was cached
+        expect(steamCalls()).toBe(3);
+
+        await get(`/api/library/${ID}`);
+        await get(`/api/profile/${ID}`);
+        expect(steamCalls()).toBe(3);
+    });
+
+    it('answers 429 with the time left and asks Steam nothing while the cooldown runs', async () => {
+        const { post, steamCalls } = setup(FULL);
+        await post(`/api/refresh/${ID}`);
+
+        const { response, body } = await post(`/api/refresh/${ID}`);
+        expect(response.status).toBe(429);
+        expect(response.headers.get('cache-control')).toBe('no-store');
+        expect(response.headers.get('retry-after')).toBe('600');
+        expect(body).toEqual({ error: 'cooldown', retryAfterSeconds: 600 });
+        expect(steamCalls()).toBe(2);
+    });
+
+    it('takes a vanity and shares the cooldown with the id', async () => {
+        const { post, steamCalls } = setup({ ...FULL, vanity: 'ResolveVanityURL.found' });
+        expect((await post('/api/refresh/Some_Name')).body).toMatchObject({ kind: 'refreshed' });
+        expect(steamCalls()).toBe(3);
+        expect((await post(`/api/refresh/${ID}`)).response.status).toBe(429);
+        expect((await post('/api/refresh/SOME_NAME')).response.status).toBe(429);
+        expect(steamCalls()).toBe(3);
+    });
+
+    it('answers 503 with Retry-After when Steam throttles, and keeps the cooldown short', async () => {
+        const { post } = setup({ ...PUBLIC, ownedGames: 'GetOwnedGames.rateLimited' });
+        const { response, body } = await post(`/api/refresh/${ID}`);
+        expect(response.status).toBe(503);
+        expect(response.headers.get('cache-control')).toBe('no-store');
+        expect(response.headers.get('retry-after')).toBe('60');
+        expect(body).toEqual({ error: 'rateLimited', retryAfterSeconds: 60 });
+
+        const again = await post(`/api/refresh/${ID}`);
+        expect(again.response.status).toBe(429);
+        expect(again.response.headers.get('retry-after')).toBe('60');
+    });
+
+    it('answers a vanity that does not exist as refreshed notFound, without a cooldown', async () => {
+        const { post } = setup({ vanity: 'ResolveVanityURL.notFound' });
+        const { response, body } = await post('/api/refresh/nobody_here');
+        expect(response.status).toBe(200);
+        expect(body).toEqual({
+            kind: 'refreshed',
+            cooldownSeconds: 0,
+            profile: { kind: 'notFound' },
+            library: { kind: 'notFound' },
+        });
+    });
+
+    it.each(['a', 'bad%20name', 'x'.repeat(40), encodeURIComponent('https://evil.example/id/someone')])(
+        'rejects the input %j with a 400 and never calls Steam',
+        async (input) => {
+            const { post, steamCalls } = setup({});
+            const { response, body } = await post(`/api/refresh/${input}`);
+            expect(response.status).toBe(400);
+            expect(body).toEqual({ error: 'invalidInput' });
+            expect(steamCalls()).toBe(0);
+        }
+    );
+
+    it('is not a GET route', async () => {
+        const { get } = setup(FULL);
+        const { response, body } = await get(`/api/refresh/${ID}`);
+        expect(response.status).toBe(404);
+        expect(body).toEqual({ error: 'notFound' });
+    });
+
+    it('maps an upstream failure to a 502 without leaking details', async () => {
+        const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const { post } = setup({ ...PUBLIC, ownedGames: () => new Response('<html>boom</html>', { status: 503 }) });
+        const { response, text, body } = await post(`/api/refresh/${ID}`);
+        expect(response.status).toBe(502);
+        expect(body).toEqual({ error: 'upstream' });
+        expect(text).not.toContain(TEST_KEY);
+        expect(JSON.stringify(log.mock.calls)).not.toContain(TEST_KEY);
+    });
 });
 
 describe('failures', () => {

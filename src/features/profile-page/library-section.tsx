@@ -43,7 +43,7 @@ export function LibrarySection({ source, library }: LibrarySectionProps) {
 
     return (
         <>
-            <Dashboard library={library.data.data} settingsUrl={settingsUrlFor(source)} />
+            <Dashboard games={library.data.data.games} settingsUrl={settingsUrlFor(source)} />
             <LibraryView
                 library={library.data.data}
                 onSearchChange={onSearchChange}

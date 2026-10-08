@@ -45,7 +45,7 @@ const LIBRARY: Library = {
 function renderDashboard(library: Library = LIBRARY, settingsUrl?: string | null) {
     render(
         <LocaleProvider>
-            <Dashboard library={library} settingsUrl={settingsUrl} />
+            <Dashboard games={library.games} settingsUrl={settingsUrl} />
         </LocaleProvider>
     );
 }
@@ -148,7 +148,7 @@ describe('Dashboard', () => {
     it('does not render again when only its parent does, so the charts do not replay their animation', () => {
         const page = (
             <LocaleProvider>
-                <Dashboard library={LIBRARY} settingsUrl={null} />
+                <Dashboard games={LIBRARY.games} settingsUrl={null} />
             </LocaleProvider>
         );
         const { rerender } = render(page);
@@ -156,7 +156,7 @@ describe('Dashboard', () => {
 
         rerender(
             <LocaleProvider>
-                <Dashboard library={LIBRARY} settingsUrl={null} />
+                <Dashboard games={LIBRARY.games} settingsUrl={null} />
             </LocaleProvider>
         );
 

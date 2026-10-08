@@ -48,3 +48,36 @@ export function fetchDemoLibrary(signal?: AbortSignal) {
 export function fetchLibrary(input: string, signal?: AbortSignal) {
     return getAccess<Library>(`/api/library/${encodeURIComponent(input)}`, signal);
 }
+
+export type RefreshOutcome =
+    | { kind: 'refreshed'; cooldownSeconds: number; profile: ProfileAccess<Profile>; library: ProfileAccess<Library> }
+    | { kind: 'cooldown'; retryAfterSeconds: number }
+    // Steam is throttling, or the daily budget is spent
+    | { kind: 'rateLimited'; retryAfterSeconds: number };
+
+function isRecord(body: unknown): body is Record<string, unknown> {
+    return typeof body === 'object' && body !== null;
+}
+
+// A refresh answers with the fresh data, or says when to come back; both are data, anything else is an ApiError
+export async function postRefresh(input: string, signal?: AbortSignal): Promise<RefreshOutcome> {
+    const response = await fetch(`/api/refresh/${encodeURIComponent(input)}`, { method: 'POST', signal });
+    const body: unknown = await response.json().catch(() => null);
+
+    if (response.status === 429 || response.status === 503) {
+        const retryAfterSeconds = isRecord(body) ? body.retryAfterSeconds : undefined;
+        if (typeof retryAfterSeconds !== 'number') throw new ApiError(response.status, errorCode(body));
+        return { kind: response.status === 429 ? 'cooldown' : 'rateLimited', retryAfterSeconds };
+    }
+    if (!response.ok) throw new ApiError(response.status, errorCode(body));
+    if (
+        !isRecord(body) ||
+        body.kind !== 'refreshed' ||
+        typeof body.cooldownSeconds !== 'number' ||
+        !isAccess(body.profile) ||
+        !isAccess(body.library)
+    ) {
+        throw new ApiError(response.status, 'badResponse');
+    }
+    return body as RefreshOutcome;
+}

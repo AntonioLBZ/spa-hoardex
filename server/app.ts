@@ -28,6 +28,12 @@ function failure(c: Context, error: string, status: 400 | 404 | 500 | 502) {
     return c.json({ error }, status);
 }
 
+function retryLater(c: Context, error: string, status: 429 | 503, retryAfterSeconds: number) {
+    c.header('Cache-Control', NO_STORE);
+    c.header('Retry-After', String(retryAfterSeconds));
+    return c.json({ error, retryAfterSeconds }, status);
+}
+
 // `getData` runs per request: a config error is a 500. The demo never touches it
 export function createApp(getData: () => CachedAdapter, demo: DemoData = createDemoData()) {
     const app = new Hono().basePath('/api');
@@ -51,6 +57,19 @@ export function createApp(getData: () => CachedAdapter, demo: DemoData = createD
         const input = data.parseInput(c.req.param('input'));
         if (input.kind === 'invalid') return failure(c, 'invalidInput', 400);
         return access(c, await data.resolveLibrary(input));
+    });
+
+    // Asks Steam again past the cache, once per cooldown per account. The answer carries the fresh data: the CDN may still hold the old GET
+    app.post('/refresh/:input', async (c) => {
+        const data = getData();
+        const input = data.parseInput(c.req.param('input'));
+        if (input.kind === 'invalid') return failure(c, 'invalidInput', 400);
+
+        const result = await data.refresh(input);
+        if (result.kind === 'cooldown') return retryLater(c, 'cooldown', 429, result.retryAfterSeconds);
+        if (result.kind === 'rateLimited') return retryLater(c, 'rateLimited', 503, result.retryAfterSeconds);
+        c.header('Cache-Control', NO_STORE);
+        return c.json(result);
     });
 
     // Fictional library through the real adapter: needs no key, Redis or Steam

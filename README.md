@@ -6,8 +6,7 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 ### Phase 1, in order
 
-- Refresh button: `POST /api/refresh/:input` with a 10 min `refresh:{source}:{steamid}` cooldown (§8, §10). Suggested steps, one commit each: store `setIfAbsent`; `CachedAdapter.refresh`; route + `export const POST` in `api/index.ts`; API client; `Dashboard` takes `games`; `RefreshControl` + i18n; optional `newerLibrary` guard in `libraryQuery`.
-- Analytics (do it first, it needs a deploy to verify): `@vercel/analytics` 2.0.1 pinned, `inject()` from `src/lib/analytics.ts` called in `main.tsx` (runs in dev too, never in tests), automatic page views only (no `track()`, no custom events), `beforeSend` strips the query string, the profile name stays in the recorded path (§10). Then enable Web Analytics in the Vercel project and redeploy. Free plan: 50k events per month for the whole account, 1 month of history.
+- Analytics: the code is in (`src/lib/analytics.ts`, called from `main.tsx`; §10). Enable Web Analytics in the Vercel project (project → Analytics tab → Enable) and redeploy. Free plan: 50k events per month for the whole account, 1 month of history.
 - Privacy policy page (new route, needs its own `vercel.json` rewrite). It must say that analytics record the visited path (profile name included, no query string, no cookies), that the refresh cooldown keeps the SteamID for 10 min, and that covers and avatars load from Steam's CDN, which sees the visitor's IP.
 - Public README, favicon, per-route title and metadata.
 - `Content-Security-Policy` (§11); it must allow the analytics script (same origin: `script-src 'self'`, `connect-src 'self'`) and the Steam image hosts (`cdn.cloudflare.steamstatic.com` for covers; the avatar host is not checked against a real profile yet).
@@ -16,7 +15,7 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 ### After the next deploy
 
 - Page views reach the analytics dashboard as `/demo` and `/p/<name>`, without the query string; changing a filter adds none.
-- `POST /api/refresh/<name>` works in production: 200, then 429 with `Retry-After` near 600.
+- `POST /api/refresh/<name>` works in production: 200, then 429 with `Retry-After` near 600. The button shows the cooldown and swaps the data without a second GET.
 
 ### Unverified with real data
 
@@ -27,7 +26,7 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 - Minimum length of a vanity (2 or 3).
 - Why a third-party profile with friends-only game details comes without `rtime_last_played` even though the key's account is friends with it (one account, §7).
 - The Steam privacy settings pages `/id/{vanity}/edit/settings` and `/profiles/{id64}/edit/settings` (owner-only, so not checkable without a login).
-- Upstash accepts `SET … NX GET` (otherwise `SET NX` + `GET`), and the `/api/:path*` rewrite lets a POST through (`vercel dev`).
+- The `/api/:path*` rewrite lets a POST through once deployed (checked in `vercel dev`).
 - That the production analytics script behaves like the debug one (path-only page views, `beforeSend` applied), and that `vercel project web-analytics` exists in CLI 62.7.0.
 
 ### Owner decisions

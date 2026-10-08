@@ -25,9 +25,9 @@ interface StubbedAnswer {
     body: unknown;
 }
 
-// Answers by exact request path; anything else is a failed test
+// Answers by exact request path, whatever the method (the calls keep it); anything else is a failed test
 export function stubApi(answers: Record<string, StubbedAnswer>) {
-    const fetchMock = vi.fn((input: string | URL | Request) => {
+    const fetchMock = vi.fn((input: string | URL | Request, _init?: RequestInit) => {
         const answer = answers[String(input)];
         if (answer === undefined) return Promise.reject(new Error(`Unexpected request: ${String(input)}`));
         return Promise.resolve(Response.json(answer.body, { status: answer.status ?? 200 }));

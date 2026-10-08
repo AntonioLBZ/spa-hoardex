@@ -41,6 +41,31 @@ describe('memory store', () => {
         expect(await store.get('k')).toEqual({ a: 2 });
     });
 
+    it('writes a free key and answers null', async () => {
+        const store = createMemoryStore();
+        expect(await store.setIfAbsent('k', { a: 1 }, 60)).toBeNull();
+        expect(await store.get('k')).toEqual({ a: 1 });
+    });
+
+    it('leaves a taken key alone and answers the value that holds it', async () => {
+        const store = createMemoryStore();
+        await store.set('k', 111, 60);
+        expect(await store.setIfAbsent('k', 222, 60)).toBe(111);
+        expect(await store.get('k')).toBe(111);
+    });
+
+    it('does not extend the expiry of a taken key, and frees it once expired', async () => {
+        const time = clock();
+        const store = createMemoryStore({ now: time.now });
+        await store.setIfAbsent('k', 1, 60);
+        time.advance(59);
+        await store.setIfAbsent('k', 2, 60);
+        time.advance(1);
+        expect(await store.get('k')).toBeNull();
+        expect(await store.setIfAbsent('k', 3, 60)).toBeNull();
+        expect(await store.get('k')).toBe(3);
+    });
+
     it('counts up from one and keeps the expiry set by the first increment', async () => {
         const time = clock();
         const store = createMemoryStore({ now: time.now });

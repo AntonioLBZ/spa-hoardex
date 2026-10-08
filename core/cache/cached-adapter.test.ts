@@ -70,6 +70,7 @@ function setup(script?: Script, store?: CacheStore) {
         adapter: fake.adapter,
         store: store ?? memory,
         onStoreError: (operation) => errors.push(operation),
+        now: () => now,
     });
     return { ...fake, cached, store: store ?? memory, errors, advance: (seconds: number) => (now += seconds * 1000) };
 }
@@ -256,6 +257,149 @@ describe('library by alias', () => {
     });
 });
 
+describe('refresh', () => {
+    const NEWER_LIBRARY: Library = { ...LIBRARY, fetchedAt: '2026-10-08T00:00:00.000Z' };
+    const NEWER_PROFILE: Profile = { ...PROFILE, displayName: 'Player 0001, renamed' };
+
+    it('asks Steam past the cache and overwrites it, so the next read costs nothing', async () => {
+        let library = LIBRARY;
+        const { cached, calls } = setup({ library: () => ({ kind: 'ok', data: library }) });
+        await cached.getLibrary(ID);
+        library = NEWER_LIBRARY;
+
+        const result = await cached.refresh(byId);
+
+        expect(result).toEqual({
+            kind: 'refreshed',
+            profile: { kind: 'ok', data: PROFILE },
+            library: { kind: 'ok', data: NEWER_LIBRARY },
+            cooldownSeconds: CACHE_TTL.refresh,
+        });
+        expect(await cached.getLibrary(ID)).toEqual({ kind: 'ok', data: NEWER_LIBRARY });
+        expect(await cached.resolveProfile(byId)).toEqual({ kind: 'ok', data: PROFILE });
+        expect(calls).toEqual([`library:${ID.externalId}`, `profile:${ID.externalId}`, `library:${ID.externalId}`]);
+    });
+
+    it('costs two Steam calls for an id and three for a vanity', async () => {
+        const byIdRun = setup();
+        await byIdRun.cached.refresh(byId);
+        expect(byIdRun.calls).toEqual([`profile:${ID.externalId}`, `library:${ID.externalId}`]);
+
+        const byAliasRun = setup();
+        await byAliasRun.cached.refresh(byAlias('someone'));
+        expect(byAliasRun.calls).toEqual(['alias:someone', `profile:${ID.externalId}`, `library:${ID.externalId}`]);
+    });
+
+    it('answers the time left while the cooldown runs, without asking Steam', async () => {
+        const { cached, calls, advance } = setup();
+        await cached.refresh(byId);
+        advance(100);
+
+        expect(await cached.refresh(byId)).toEqual({ kind: 'cooldown', retryAfterSeconds: CACHE_TTL.refresh - 100 });
+        expect(calls).toHaveLength(2);
+
+        advance(CACHE_TTL.refresh - 100);
+        expect((await cached.refresh(byId)).kind).toBe('refreshed');
+        expect(calls).toHaveLength(4);
+    });
+
+    it('shares one cooldown between a vanity and its id', async () => {
+        const { cached, calls } = setup();
+        await cached.refresh(byAlias('someone'));
+        expect((await cached.refresh(byId)).kind).toBe('cooldown');
+        expect((await cached.refresh(byAlias('someone'))).kind).toBe('cooldown');
+        expect(calls).toHaveLength(3);
+    });
+
+    it('keeps one cooldown per account', async () => {
+        const { cached } = setup();
+        await cached.refresh(byId);
+        expect((await cached.refresh({ kind: 'id', id: steam('76561198000000002') })).kind).toBe('refreshed');
+    });
+
+    it('does not spend a cooldown on an alias that does not exist', async () => {
+        const { cached, calls } = setup({ alias: () => ({ kind: 'notFound' }) });
+        expect(await cached.refresh(byAlias('ghost'))).toEqual({
+            kind: 'refreshed',
+            profile: { kind: 'notFound' },
+            library: { kind: 'notFound' },
+            cooldownSeconds: 0,
+        });
+        expect(calls).toEqual(['alias:ghost']);
+    });
+
+    it('answers rateLimited, without a cooldown, when the alias cannot be resolved', async () => {
+        const { cached, calls, advance } = setup({ alias: () => ({ kind: 'rateLimited' }) });
+        expect(await cached.refresh(byAlias('someone'))).toEqual({
+            kind: 'rateLimited',
+            retryAfterSeconds: CACHE_TTL.refreshRetry,
+        });
+        advance(1);
+        await cached.refresh(byAlias('someone'));
+        expect(calls).toEqual(['alias:someone', 'alias:someone']);
+    });
+
+    it('keeps the cached library when Steam throttles, stores the half that arrived and shortens the cooldown', async () => {
+        let throttled = false;
+        const { cached, calls, advance } = setup({
+            profile: () => ({ kind: 'ok', data: throttled ? NEWER_PROFILE : PROFILE }),
+            library: () => (throttled ? { kind: 'rateLimited' } : { kind: 'ok', data: LIBRARY }),
+        });
+        await cached.getLibrary(ID);
+        throttled = true;
+
+        expect(await cached.refresh(byId)).toEqual({ kind: 'rateLimited', retryAfterSeconds: CACHE_TTL.refreshRetry });
+        expect(await cached.getLibrary(ID)).toEqual({ kind: 'ok', data: LIBRARY });
+        expect(await cached.resolveProfile(byId)).toEqual({ kind: 'ok', data: NEWER_PROFILE });
+        expect(calls).toHaveLength(3);
+
+        advance(CACHE_TTL.refreshRetry - 1);
+        expect(await cached.refresh(byId)).toEqual({ kind: 'cooldown', retryAfterSeconds: 1 });
+        advance(1);
+        expect((await cached.refresh(byId)).kind).toBe('rateLimited');
+        expect(calls).toHaveLength(5);
+    });
+
+    it('lets an upstream failure through and shortens the cooldown', async () => {
+        const { cached, advance } = setup({
+            library: () => {
+                throw new UpstreamError('Steam request failed');
+            },
+        });
+        await expect(cached.refresh(byId)).rejects.toBeInstanceOf(UpstreamError);
+
+        advance(CACHE_TTL.refreshRetry - 1);
+        expect((await cached.refresh(byId)).kind).toBe('cooldown');
+        advance(1);
+        await expect(cached.refresh(byId)).rejects.toBeInstanceOf(UpstreamError);
+    });
+
+    it('replaces a cached library with the private answer that Steam gives now', async () => {
+        let isPrivate = false;
+        const { cached } = setup({
+            library: () => (isPrivate ? { kind: 'libraryPrivate' } : { kind: 'ok', data: LIBRARY }),
+        });
+        await cached.getLibrary(ID);
+        isPrivate = true;
+
+        const result = await cached.refresh(byId);
+        expect(result).toMatchObject({ kind: 'refreshed', library: { kind: 'libraryPrivate' } });
+        expect(await cached.getLibrary(ID)).toEqual({ kind: 'libraryPrivate' });
+    });
+
+    it('lets the refresh through, and reports it, when the store cannot hold the cooldown', async () => {
+        const broken: CacheStore = {
+            get: () => Promise.reject(new Error('down')),
+            set: () => Promise.reject(new Error('down')),
+            setIfAbsent: () => Promise.reject(new Error('down')),
+            increment: () => Promise.reject(new Error('down')),
+        };
+        const { cached, errors } = setup(undefined, broken);
+        expect((await cached.refresh(byId)).kind).toBe('refreshed');
+        expect(errors[0]).toBe('set');
+    });
+});
+
 describe('a misbehaving store', () => {
     it('treats an entry in an unexpected shape as a miss and overwrites it', async () => {
         const { cached, calls, store } = setup();
@@ -276,6 +420,7 @@ describe('a misbehaving store', () => {
         const broken: CacheStore = {
             get: () => Promise.reject(new Error('down')),
             set: () => Promise.reject(new Error('down')),
+            setIfAbsent: () => Promise.reject(new Error('down')),
             increment: () => Promise.reject(new Error('down')),
         };
         const { cached, calls, errors } = setup(undefined, broken);

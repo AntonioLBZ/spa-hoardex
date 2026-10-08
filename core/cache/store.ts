@@ -6,6 +6,8 @@ export interface CacheStore {
     // Null when missing or expired
     get(key: string): Promise<unknown>;
     set(key: string, value: unknown, ttlSeconds: number): Promise<void>;
+    // Atomic: writes only when the key is free. Null when it wrote, the value already there otherwise
+    setIfAbsent(key: string, value: unknown, ttlSeconds: number): Promise<unknown>;
     // Atomic counter; sets the expiry on creation
     increment(key: string, ttlSeconds: number): Promise<number>;
 }
@@ -18,6 +20,9 @@ export function createUpstashStore(redis: Redis, namespace: string): CacheStore 
         },
         async set(key, value, ttlSeconds) {
             await redis.set(scoped(key), value, { ex: ttlSeconds });
+        },
+        async setIfAbsent(key, value, ttlSeconds) {
+            return redis.set<unknown>(scoped(key), value, { nx: true, get: true, ex: ttlSeconds });
         },
         async increment(key, ttlSeconds) {
             const count = await redis.incr(scoped(key));
@@ -51,6 +56,12 @@ export function createMemoryStore({ now = Date.now }: { now?: () => number } = {
         },
         async set(key, value, ttlSeconds) {
             entries.set(key, { value: JSON.stringify(value), expiresAt: now() + ttlSeconds * 1000 });
+        },
+        async setIfAbsent(key, value, ttlSeconds) {
+            const entry = live(key);
+            if (entry !== undefined) return JSON.parse(entry.value);
+            entries.set(key, { value: JSON.stringify(value), expiresAt: now() + ttlSeconds * 1000 });
+            return null;
         },
         async increment(key, ttlSeconds) {
             const entry = live(key);

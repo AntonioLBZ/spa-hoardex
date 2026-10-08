@@ -1,0 +1,24 @@
+.refresh-control {
+    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    margin-inline-start: auto;
+}
+
+.refresh-control__meta {
+    color: var(--color-content-muted);
+    font-size: 0.8125rem;
+    line-height: 1.2;
+    margin-block-start: var(--size-25);
+}
+
+.refresh-control__notice {
+    color: var(--color-content-muted);
+    font-size: 0.8125rem;
+    max-width: 18rem;
+    text-align: end;
+}
+
+.refresh-control__notice:not(:empty) {
+    margin-block-start: var(--size-25);
+}
