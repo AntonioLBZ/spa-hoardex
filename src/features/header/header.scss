@@ -9,10 +9,18 @@
 }
 
 .header__brand {
+    align-items: center;
     color: var(--color-content);
+    display: inline-flex;
     font-size: 1.25rem;
     font-weight: 700;
+    gap: var(--size-50);
     text-decoration: none;
+}
+
+.header__logo {
+    height: 1.5rem;
+    width: 1.5rem;
 }
 
 .header__language {

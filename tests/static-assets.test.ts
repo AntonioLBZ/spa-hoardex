@@ -13,6 +13,13 @@ describe('static head and public files', () => {
         expect(existsSync(fileURLToPath(new URL(`../public/${href}`, import.meta.url)))).toBe(true);
     });
 
+    it('draws the favicon and the header logo from the same chest', () => {
+        // The mask with its cuts and the group with the two shapes
+        const chest = (file: string) => read(file).match(/<mask[\s\S]*?<\/mask>|<g mask[\s\S]*?<\/g>/g);
+        expect(chest('public/logo.svg')).toHaveLength(2);
+        expect(chest('public/logo.svg')).toEqual(chest('public/favicon.svg'));
+    });
+
     it('describes the site and colours the browser bar for both themes', () => {
         const html = read('index.html');
         expect(html).toMatch(/<meta\s+name="description"\s+content="[^"]{20,}"/);

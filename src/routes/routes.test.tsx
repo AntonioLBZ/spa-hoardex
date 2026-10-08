@@ -345,6 +345,16 @@ describe('app shell', () => {
         );
     });
 
+    it('puts the logo before the name, as a decoration that the name already announces', async () => {
+        renderApp('/');
+
+        const brand = await screen.findByRole('link', { name: 'Hoardex' });
+        const logo = brand.querySelector('img');
+        expect(logo?.getAttribute('src')).toBe('/logo.svg');
+        expect(logo?.getAttribute('alt')).toBe('');
+        expect(brand.firstElementChild).toBe(logo);
+    });
+
     it("asks for the visitor's own profile", async () => {
         renderApp('/');
 

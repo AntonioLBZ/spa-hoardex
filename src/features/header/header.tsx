@@ -19,6 +19,7 @@ export function Header() {
     return (
         <header className="header">
             <Link className="header__brand" to="/">
+                <img alt="" className="header__logo" height="24" src="/logo.svg" width="24" />
                 {t('name')}
             </Link>
             <select aria-label={t('language')} className="header__language" onChange={onChange} value={locale}>

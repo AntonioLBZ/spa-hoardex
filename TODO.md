@@ -14,7 +14,7 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 ### Unverified with real data
 
-- The favicon in a real tab with a light and a dark browser theme (only the dark variant has been seen).
+- The chest favicon (`public/favicon.svg`) in a real tab with a light and a dark browser theme, and the header logo (`public/logo.svg`) in both: neither was seen rendered while designing it. Both use an SVG `<mask>` for the cuts, so check that the lid seam, the bands and the lock show.
 - The count-up, the donut and the card fade-in on a real phone (spike 0C was run in headless Chromium with CPU throttling and no GPU, `ARCHITECTURE.md` §14). If the cards stutter, `ARCHITECTURE.md` §14 lists the cuts in order.
 - "Show more" on a modest phone: at CPU x4 to x6 in headless Chromium every batch keeps the main thread busy for a second or two while its covers arrive, and the cost grows with the cards already on screen (none at x1). Check on a real phone; if it shows, trace the paint cost and consider unmounting the first cards or smaller later batches (§10).
 - How the Upstash dashboard counts commands (does `HSET` with N fields count as 1?).
@@ -29,7 +29,7 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 - A preview when the URL is shared: Open Graph and Twitter tags plus a 1200×630 image (for example a capture of `/demo`). The tags need an absolute URL, so it depends on the domain decision.
 - Screenshots in the README, of `/demo` only (fictional data), kept in `docs/`.
-- A PNG favicon and an `apple-touch-icon` once the icon is final (today only `public/favicon.svg`).
+- A PNG favicon and an `apple-touch-icon` from `public/favicon.svg` (the chest is the chosen icon; today only the SVG exists). The logo options that were not chosen (dragon on a pie chart, card index, gem, pixel H) are not kept in the repo.
 
 ### Owner decisions
 
