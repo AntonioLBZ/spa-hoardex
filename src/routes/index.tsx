@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useTranslations } from 'use-intl';
 
+import { PageTitle } from '@/components/page-title';
 import { EntryForm } from '@/features/entry-form';
 import { riseStyle } from '@/lib/motion';
 
@@ -14,6 +15,7 @@ function EntryRoute() {
 
     return (
         <div className="entry">
+            <PageTitle />
             <h1 className="rise-in" style={riseStyle(0)}>
                 {t('tagline')}
             </h1>

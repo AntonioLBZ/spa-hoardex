@@ -1,46 +1,63 @@
-# spa-hoardex
+# Hoardex
 
-## To do
+A dashboard for your Steam library: hours played, backlog state and most played games, with animated charts.
 
-Delete each item when it is done. Design notes for every item are in `ARCHITECTURE.md`.
+**Live:** <https://hoardex.vercel.app>, or [explore a fictional library](https://hoardex.vercel.app/demo) without entering anything.
 
-### Phase 1, in order
+Hoardex is a personal portfolio project and it is still in progress (phase 1): achievements and the wishlist are not built yet.
 
-- Public README, favicon, per-route title and metadata.
-- `Content-Security-Policy` (§11); it must allow the analytics script (same origin: `script-src 'self'`, `connect-src 'self'`) and the Steam image hosts (`cdn.cloudflare.steamstatic.com` for covers; the avatar host is not checked against a real profile yet).
-- Vercel WAF rate-limit rule over `/api/`, GET and POST (Hobby allows one rule per project; leave room for ~10 calls per full page load, §11). Before sharing the URL publicly.
+## Features
 
-### After the next deploy
+- Enter a Steam profile as a URL, a custom name or a SteamID64 (SteamID2 and SteamID3 work too).
+- A dashboard with the number of games and hours, the backlog by state (untouched, tried, in progress, paused, finished), the most played games and the hours by year of last play.
+- A library view: a cover grid with state filters, search and sorting, all kept in the URL.
+- A manual refresh with a cooldown, so one profile cannot drain the Steam API.
+- A demo library with fictional data that needs no Steam key.
+- English and Spanish, light and dark.
+- No accounts, no cookies and short-lived caches: see the [privacy policy](https://hoardex.vercel.app/privacy).
 
-- `/demo` page views reach the analytics dashboard without the query string; changing a filter adds none (`/p/<name>` is verified).
-- `POST /api/refresh/<name>` works in production: 200, then 429 with `Retry-After` near 600. The button shows the cooldown and swaps the data without a second GET.
+## Stack
 
-### Unverified with real data
+Vite 8, React 19 and TypeScript; TanStack Router and Query; Recharts, Motion and GSAP; SCSS. A Hono API served as one Vercel Function, with Upstash Redis as the cache. Vitest and Testing Library. pnpm. Hosted on Vercel Hobby.
 
-- The count-up, the donut and the card fade-in on a real phone (spike 0C was run in headless Chromium with CPU throttling and no GPU, `ARCHITECTURE.md` §14). If the cards stutter, `ARCHITECTURE.md` §14 lists the cuts in order.
-- "Show more" on a modest phone: at CPU x4 to x6 in headless Chromium every batch keeps the main thread busy for a second or two while its covers arrive, and the cost grows with the cards already on screen (none at x1). Check on a real phone; if it shows, trace the paint cost and consider unmounting the first cards or smaller later batches (§10).
-- How the Upstash dashboard counts commands (does `HSET` with N fields count as 1?).
-- `libraryPrivate` and `wishlistPrivate` (needs another account).
-- Minimum length of a vanity (2 or 3).
-- Why a third-party profile with friends-only game details comes without `rtime_last_played` even though the key's account is friends with it (one account, §7).
-- The Steam privacy settings pages `/id/{vanity}/edit/settings` and `/profiles/{id64}/edit/settings` (owner-only, so not checkable without a login).
-- The `/api/:path*` rewrite lets a POST through once deployed (checked in `vercel dev`).
-- That `beforeSend` strips the query string in production (a visit with `?q=`), and that `vercel project web-analytics` exists in CLI 62.7.0.
+## How it works
 
-### Owner decisions
+The browser talks to `/api` on the same origin. The server asks Steam's Web API through an adapter, so Steam's types never reach the front. Redis is the source of truth for the cache; the CDN is only an optimization. The design, the Steam API behaviour and the decisions behind them are in [`ARCHITECTURE.md`](ARCHITECTURE.md) (in Spanish).
 
-- Repo license.
-- PR restrictions on GitHub.
-- Merge *Pausado* into *En curso*.
-- Animation weight: Motion (`animate`, ~20 KB gzip) and GSAP (~29 KB gzip) cost +50 KB gzip, loaded beside the API call. Motion only runs the counters until phase 2, and GSAP only the card fade-in, which Web Animations could do in ~1.5 KB. Keep both (the plan for phase 2: `AnimatePresence`, heatmap, rarity) or drop one?s
-- The grid reveal uses IntersectionObserver instead of `ScrollTrigger.batch` (`ARCHITECTURE.md` §10 explains why). Accept it?
-- The bars of hours by year animate on load, so on a phone they probably play off screen. Animate them when they scroll into view (a step the design left optional)?
-- The key acts as its owner, so friends-only data of the owner's friends is shown to every visitor (§12): accept it or warn the visitor. Postponed.
-- What to show for a played game with no last-played date: today it counts as *Finished* (§7). Proposal: a separate *Played, date unknown* state.
+## Run it locally
 
-### Later phases
+You need Node.js 24 and pnpm.
 
-- 2: achievements, rarity, the *Completado* state.
-- 3: wishlist and unplayed value.
-- 4: Steam login, Neon, editable backlog, opt-in snapshots.
-- 5: other adapters, RetroAchievements first.
+```bash
+pnpm install
+cp .env.example .env.local   # then put your Steam API key in it
+pnpm dlx vercel@62.7.0 dev   # serves the app and /api; the first run asks to link a Vercel project
+```
+
+| Variable                                                  | Use                                                                                                                  |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `STEAM_API_KEY`                                           | Required for real profiles. Get one at <https://steamcommunity.com/dev/apikey>. The demo does not need it.           |
+| `UPSTASH_KV_REST_API_URL`, `UPSTASH_KV_REST_API_TOKEN`    | Upstash Redis REST credentials. Required in production; locally the cache falls back to memory.                      |
+| `STEAM_DAILY_BUDGET`                                      | Optional. Daily cap on Steam requests (a positive integer, 80000 by default); past it only cached data is served.   |
+
+```bash
+pnpm test           # unit and component tests
+pnpm typecheck
+pnpm build          # typecheck, then Vite
+pnpm format:check
+pnpm lint:css
+```
+
+## Steam and Valve
+
+Hoardex is an independent project. It is not affiliated with or endorsed by Valve Corporation. Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the U.S. and/or other countries. Data comes from Steam's official Web API; enter your own profile, and keep it private on Steam if you do not want it shown.
+
+## More
+
+- [`ARCHITECTURE.md`](ARCHITECTURE.md): design and decisions (Spanish).
+- [`AGENTS.md`](AGENTS.md): conventions for working in this repo.
+- [`TODO.md`](TODO.md): what is left.
+
+## License
+
+None for now: all rights reserved. The source is public so it can be read; ask before reusing it (the contact address is in the [privacy policy](https://hoardex.vercel.app/privacy)).

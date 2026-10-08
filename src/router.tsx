@@ -1,12 +1,18 @@
 import { createRouter, type RouterHistory } from '@tanstack/react-router';
 import { useTranslations } from 'use-intl';
 
+import { PageTitle } from './components/page-title';
 import { StateMessage } from './components/state-message';
 import { routeTree } from './routeTree.gen';
 
 function NotFound() {
     const t = useTranslations('notFound');
-    return <StateMessage body={t('body')} title={t('title')} />;
+    return (
+        <>
+            <PageTitle title={t('title')} />
+            <StateMessage body={t('body')} title={t('title')} />
+        </>
+    );
 }
 
 export function createAppRouter(history?: RouterHistory) {

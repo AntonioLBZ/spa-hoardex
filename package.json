@@ -1,6 +1,7 @@
 {
     "name": "spa-hoardex",
     "private": true,
+    "license": "UNLICENSED",
     "type": "module",
     "scripts": {
         "dev": "vite",

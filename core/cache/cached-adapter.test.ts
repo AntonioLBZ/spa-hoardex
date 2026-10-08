@@ -3,8 +3,9 @@ import { FIXTURE_NOW } from '../../fixtures/load.js';
 import type { ProfileInput, StoreAdapter } from '../adapters/types.js';
 import { UpstreamError } from '../adapters/types.js';
 import type { EntityId, Library, Profile, ProfileAccess } from '../domain/index.js';
-import { CACHE_TTL, createCachedAdapter, type ResolvableInput } from './cached-adapter.js';
+import { createCachedAdapter, type ResolvableInput } from './cached-adapter.js';
 import { createMemoryStore, type CacheStore } from './store.js';
+import { CACHE_TTL } from './ttl.js';
 
 const steam = (externalId: string): EntityId => ({ source: 'steam', externalId });
 const ID = steam('76561198000000001');

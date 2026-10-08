@@ -357,3 +357,84 @@ describe('app shell', () => {
         expect(await screen.findByText('Page not found')).toBeTruthy();
     });
 });
+
+describe('page titles', () => {
+    it('names the app on the entry screen', async () => {
+        renderApp('/');
+
+        await screen.findByRole('heading', { level: 1 });
+        expect(document.title).toBe('Hoardex');
+    });
+
+    it('names the app while the profile loads', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => new Promise<Response>(() => {}))
+        );
+        renderApp('/p/someone');
+
+        await screen.findByText('Loading profile…');
+        expect(document.title).toBe('Hoardex');
+    });
+
+    it('names the profile once it is known', async () => {
+        stubApi({
+            [PROFILE_PATH]: { body: { kind: 'ok', data: PROFILE } },
+            [LIBRARY_PATH]: { body: { kind: 'ok', data: LIBRARY } },
+        });
+        renderApp('/p/someone');
+
+        await screen.findByRole('heading', { level: 1 });
+        expect(document.title).toBe('Test Person · Hoardex');
+    });
+
+    it('keeps the app name when the profile is a problem', async () => {
+        stubApi({ [PROFILE_PATH]: { body: { kind: 'notFound' } } });
+        renderApp('/p/someone');
+
+        await screen.findByText('Profile not found');
+        expect(document.title).toBe('Hoardex');
+    });
+
+    it('calls the demo a demo, whatever its fictional name', async () => {
+        stubApi({
+            [DEMO_PROFILE_PATH]: { body: { kind: 'ok', data: PROFILE } },
+            [DEMO_LIBRARY_PATH]: { body: { kind: 'ok', data: LIBRARY } },
+        });
+        renderApp('/demo');
+
+        await screen.findByRole('heading', { level: 1 });
+        expect(document.title).toBe('Demo library · Hoardex');
+    });
+
+    it('titles the policy and the not-found page', async () => {
+        const { router } = renderApp('/privacy');
+        await screen.findByRole('heading', { level: 1, name: 'Privacy policy' });
+        expect(document.title).toBe('Privacy policy · Hoardex');
+
+        router.history.push('/nope');
+        await screen.findByText('Page not found', { selector: 'h1, h2' });
+        expect(document.title).toBe('Page not found · Hoardex');
+    });
+
+    it('keeps the description in the language of the page', async () => {
+        const tag = document.createElement('meta');
+        tag.name = 'description';
+        tag.content = 'static';
+        document.head.append(tag);
+        localStorage.setItem('hoardex:locale', 'es');
+        renderApp('/privacy');
+
+        await screen.findByRole('heading', { level: 1 });
+        expect(tag.content).toMatch(/^Un panel de tu biblioteca de juegos/);
+        tag.remove();
+    });
+
+    it('follows the language', async () => {
+        localStorage.setItem('hoardex:locale', 'es');
+        renderApp('/privacy');
+
+        await screen.findByRole('heading', { level: 1 });
+        expect(document.title).toBe('Política de privacidad · Hoardex');
+    });
+});

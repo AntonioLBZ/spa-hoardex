@@ -16,6 +16,10 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         document.documentElement.lang = locale;
+        // index.html carries the English one, for readers that run no script
+        document
+            .querySelector('meta[name="description"]')
+            ?.setAttribute('content', MESSAGES[locale].metadata.description);
     }, [locale]);
 
     const setLocale = useCallback((next: AppLocale) => {

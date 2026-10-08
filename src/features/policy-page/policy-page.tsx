@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 
+import { CACHE_TTL } from '@core/cache/ttl';
+import { PageTitle } from '@/components/page-title';
+import { toDuration } from './durations';
 import { MailLink } from './mail-link';
 
 import './policy-page.scss';
 
-const STORAGE_ITEMS = ['alias', 'profile', 'library', 'misses', 'cooldown'] as const;
 const VERCEL_PRIVACY_URL = 'https://vercel.com/legal/privacy-policy';
 
 function PolicySection({ heading, children }: { heading: string; children: ReactNode }) {
@@ -21,8 +23,22 @@ export function PolicyPage() {
     const t = useTranslations('policy');
     const tPrivacy = useTranslations('privacy');
 
+    // Every stated duration comes from the cache's own TTLs
+    function duration(seconds: number): string {
+        const { unit, count } = toDuration(seconds);
+        return t(`duration.${unit}`, { count });
+    }
+    const storageItems = [
+        { key: 'alias', values: { duration: duration(CACHE_TTL.alias) } },
+        { key: 'profile', values: { duration: duration(CACHE_TTL.profile) } },
+        { key: 'library', values: { duration: duration(CACHE_TTL.library) } },
+        { key: 'misses', values: { missing: duration(CACHE_TTL.notFound), locked: duration(CACHE_TTL.private) } },
+        { key: 'cooldown', values: { refresh: duration(CACHE_TTL.refresh), retry: duration(CACHE_TTL.refreshRetry) } },
+    ] as const;
+
     return (
         <article className="policy-page">
+            <PageTitle title={t('title')} />
             <header className="policy-page__header">
                 <h1 className="policy-page__title">{t('title')}</h1>
                 <p className="policy-page__updated">{t('updated')}</p>
@@ -34,8 +50,8 @@ export function PolicyPage() {
             <PolicySection heading={t('storage.heading')}>
                 <p>{t('storage.body')}</p>
                 <ul className="policy-page__list">
-                    {STORAGE_ITEMS.map((item) => (
-                        <li key={item}>{t(`storage.items.${item}`)}</li>
+                    {storageItems.map(({ key, values }) => (
+                        <li key={key}>{t(`storage.items.${key}`, values)}</li>
                     ))}
                 </ul>
                 <p>{t('storage.after')}</p>
@@ -53,13 +69,18 @@ export function PolicyPage() {
                 <p>{t('analytics.body')}</p>
             </PolicySection>
             <PolicySection heading={t('device.heading')}>
-                <p>{t('device.body')}</p>
+                <p>{t('device.body', { refresh: duration(CACHE_TTL.refresh) })}</p>
             </PolicySection>
             <PolicySection heading={t('steam.heading')}>
                 <p>{t('steam.body')}</p>
             </PolicySection>
             <PolicySection heading={t('rights.heading')}>
-                <p>{t('rights.body')}</p>
+                <p>
+                    {t('rights.body', {
+                        longest: duration(Math.max(...Object.values(CACHE_TTL))),
+                        profile: duration(CACHE_TTL.profile),
+                    })}
+                </p>
                 <p>
                     <MailLink />
                 </p>

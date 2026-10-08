@@ -6,6 +6,7 @@ import { LibrarySection } from './library-section';
 import { Pending } from './pending';
 import { Problem, problemFromError } from './problem';
 import { RefreshControl } from './refresh-control';
+import { ProfileTitle } from './profile-title';
 import { libraryQueryFor, profileQueryFor } from './source-queries';
 
 import './profile-page.scss';
@@ -14,6 +15,15 @@ import './profile-page.scss';
 export type ProfileSource = { kind: 'steam'; input: string } | { kind: 'demo' };
 
 export function ProfilePage({ source }: { source: ProfileSource }) {
+    return (
+        <>
+            <ProfileTitle source={source} />
+            <ProfileContent source={source} />
+        </>
+    );
+}
+
+function ProfileContent({ source }: { source: ProfileSource }) {
     const t = useTranslations('profile');
     const profile = useQuery(profileQueryFor(source));
     // Started together with the profile: the library takes the same input, so it does not wait to learn the id

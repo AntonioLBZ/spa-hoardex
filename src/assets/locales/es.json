@@ -131,11 +131,11 @@
             "heading": "Qué guarda Hoardex",
             "body": "Para no preguntar a Steam una y otra vez, Hoardex guarda copias durante poco tiempo en una base de datos (Upstash Redis, en AWS, Virginia del Norte, EE. UU.):",
             "items": {
-                "alias": "El nombre que escribiste y el SteamID al que corresponde: 1 día.",
-                "profile": "El perfil: nombre, dirección del avatar, dirección del perfil, visibilidad y fecha de creación: 2 horas.",
-                "library": "La biblioteca: nombres de los juegos, horas jugadas y fechas de la última partida: 1 hora.",
-                "misses": "Una respuesta «no encontrado»: 5 minutos. Una respuesta «privado»: 1 minuto.",
-                "cooldown": "Tras un refresco manual, el SteamID y la hora: 10 minutos (1 minuto si el refresco falló), para limitar cada cuánto se refresca un perfil."
+                "alias": "El nombre que escribiste y el SteamID al que corresponde: {duration}.",
+                "profile": "El perfil: nombre, dirección del avatar, dirección del perfil, visibilidad y fecha de creación: {duration}.",
+                "library": "La biblioteca: nombres de los juegos, horas jugadas y fechas de la última partida: {duration}.",
+                "misses": "Una respuesta «no encontrado»: {missing}. Una respuesta «privado»: {locked}.",
+                "cooldown": "Tras un refresco manual, el SteamID y la hora: {refresh} ({retry} si el refresco falló), para limitar cada cuánto se refresca un perfil."
             },
             "after": "No se guarda nada más tiempo y no hay historial. La CDN del sitio también puede conservar una respuesta unos minutos."
         },
@@ -150,7 +150,7 @@
         },
         "device": {
             "heading": "En tu dispositivo",
-            "body": "Hoardex guarda dos cosas en tu navegador (almacenamiento local, no cookies): tu idioma, y el SteamID de cada perfil que refrescas con la hora en que termina su espera de 10 minutos (se borra la próxima vez que refrescas). Se quedan en tu dispositivo. Hoardex no usa cookies."
+            "body": "Hoardex guarda dos cosas en tu navegador (almacenamiento local, no cookies): tu idioma, y el SteamID de cada perfil que refrescas con la hora en que termina su espera de {refresh} (se borra la próxima vez que refrescas). Se quedan en tu dispositivo. Hoardex no usa cookies."
         },
         "steam": {
             "heading": "Imágenes de Steam",
@@ -158,8 +158,18 @@
         },
         "rights": {
             "heading": "Tus datos y cómo pedirlos",
-            "body": "Las copias caducan solas en un día como máximo, la mayoría en dos horas. Para que se quiten antes las copias de un perfil, para saber qué se guarda o para cualquier otra cuestión sobre tus datos, escribe a:",
+            "body": "Las copias caducan solas en {longest} como máximo, la mayoría en {profile}. Para que se quiten antes las copias de un perfil, para saber qué se guarda o para cualquier otra cuestión sobre tus datos, escribe a:",
             "authority": "También puedes reclamar ante tu autoridad de protección de datos (en España, la AEPD)."
+        },
+        "duration": {
+            "day": "{count, plural, one {# día} other {# días}}",
+            "hour": "{count, plural, one {# hora} other {# horas}}",
+            "minute": "{count, plural, one {# minuto} other {# minutos}}",
+            "second": "{count, plural, one {# segundo} other {# segundos}}"
         }
+    },
+    "metadata": {
+        "demo": "Biblioteca de demostración",
+        "description": "Un panel de tu biblioteca de juegos: horas jugadas, backlog y juegos más jugados, con gráficas animadas."
     }
 }

@@ -131,11 +131,11 @@
             "heading": "What Hoardex keeps",
             "body": "To avoid asking Steam again and again, Hoardex keeps copies for a short time in a database (Upstash Redis, on AWS in North Virginia, USA):",
             "items": {
-                "alias": "The name you typed and the SteamID it matches: 1 day.",
-                "profile": "The profile: display name, avatar address, profile address, visibility and creation date: 2 hours.",
-                "library": "The library: game names, hours played and last-played dates: 1 hour.",
-                "misses": "A “not found” answer: 5 minutes. A “private” answer: 1 minute.",
-                "cooldown": "After a manual refresh, the SteamID and the time: 10 minutes (1 minute if the refresh failed), to limit how often a profile is refreshed."
+                "alias": "The name you typed and the SteamID it matches: {duration}.",
+                "profile": "The profile: display name, avatar address, profile address, visibility and creation date: {duration}.",
+                "library": "The library: game names, hours played and last-played dates: {duration}.",
+                "misses": "A “not found” answer: {missing}. A “private” answer: {locked}.",
+                "cooldown": "After a manual refresh, the SteamID and the time: {refresh} ({retry} if the refresh failed), to limit how often a profile is refreshed."
             },
             "after": "Nothing is kept longer and there is no history. The site’s CDN may also hold an answer for a few minutes."
         },
@@ -150,7 +150,7 @@
         },
         "device": {
             "heading": "On your device",
-            "body": "Hoardex saves two things in your browser (local storage, not cookies): your language, and the SteamID of each profile you refresh with the time its 10-minute wait ends (removed the next time you refresh). They stay on your device. Hoardex sets no cookies."
+            "body": "Hoardex saves two things in your browser (local storage, not cookies): your language, and the SteamID of each profile you refresh with the time its wait of {refresh} ends (removed the next time you refresh). They stay on your device. Hoardex sets no cookies."
         },
         "steam": {
             "heading": "Steam images",
@@ -158,8 +158,18 @@
         },
         "rights": {
             "heading": "Your data and how to ask",
-            "body": "Copies expire on their own within a day, most within two hours. To have a profile’s copies removed sooner, to ask what is kept, or for anything else about your data, write to:",
+            "body": "Copies expire on their own within {longest}, most within {profile}. To have a profile’s copies removed sooner, to ask what is kept, or for anything else about your data, write to:",
             "authority": "You can also complain to your data protection authority (in Spain, the AEPD)."
+        },
+        "duration": {
+            "day": "{count, plural, one {# day} other {# days}}",
+            "hour": "{count, plural, one {# hour} other {# hours}}",
+            "minute": "{count, plural, one {# minute} other {# minutes}}",
+            "second": "{count, plural, one {# second} other {# seconds}}"
         }
+    },
+    "metadata": {
+        "demo": "Demo library",
+        "description": "A dashboard for your game library: hours played, backlog and most played games, with animated charts."
     }
 }
