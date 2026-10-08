@@ -66,7 +66,8 @@
     },
     "footer": {
         "disclaimer": "Hoardex es un proyecto independiente. No está afiliado ni respaldado por Valve Corporation.",
-        "trademark": "©{year} Valve Corporation. Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the U.S. and/or other countries."
+        "trademark": "©{year} Valve Corporation. Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the U.S. and/or other countries.",
+        "privacy": "Política de privacidad"
     },
     "dashboard": {
         "kpi": {
@@ -117,5 +118,48 @@
         "clear": "Quitar filtros",
         "shownOf": "{shown, number} de {matching, number} mostrados",
         "showMore": "Mostrar {next, number} más"
+    },
+    "policy": {
+        "title": "Política de privacidad",
+        "updated": "Última actualización: 8 de octubre de 2026.",
+        "intro": "Hoardex es un proyecto personal de portfolio, sin ánimo de lucro, que muestra la biblioteca y el tiempo de juego de un perfil de Steam. No tiene cuentas ni anuncios. Esta página explica qué datos trata, dónde se guardan y durante cuánto tiempo.",
+        "input": {
+            "heading": "Qué envías y qué se muestra",
+            "body": "El perfil que introduces (una URL, un nombre personalizado o un SteamID64) llega al servidor de Hoardex, que pide a la API web oficial de Steam el perfil y su biblioteca de juegos y te los devuelve. La clave de la API de Steam no sale nunca del servidor. Hoardex muestra lo que Steam devuelve para ese perfil: nombre, avatar, juegos y horas jugadas. No puede comprobar qué podría ver cada visitante en Steam, así que introduce tu propio perfil y ponlo en privado en Steam si no quieres que se muestre."
+        },
+        "storage": {
+            "heading": "Qué guarda Hoardex",
+            "body": "Para no preguntar a Steam una y otra vez, Hoardex guarda copias durante poco tiempo en una base de datos (Upstash Redis, en AWS, Virginia del Norte, EE. UU.):",
+            "items": {
+                "alias": "El nombre que escribiste y el SteamID al que corresponde: 1 día.",
+                "profile": "El perfil: nombre, dirección del avatar, dirección del perfil, visibilidad y fecha de creación: 2 horas.",
+                "library": "La biblioteca: nombres de los juegos, horas jugadas y fechas de la última partida: 1 hora.",
+                "misses": "Una respuesta «no encontrado»: 5 minutos. Una respuesta «privado»: 1 minuto.",
+                "cooldown": "Tras un refresco manual, el SteamID y la hora: 10 minutos (1 minuto si el refresco falló), para limitar cada cuánto se refresca un perfil."
+            },
+            "after": "No se guarda nada más tiempo y no hay historial. La CDN del sitio también puede conservar una respuesta unos minutos."
+        },
+        "hosting": {
+            "heading": "Alojamiento",
+            "body": "El sitio está alojado en Vercel, con su servidor en el este de Estados Unidos. Vercel, como cualquier proveedor de alojamiento, trata datos técnicos como tu dirección IP para entregarte el sitio, según su propia política de privacidad. Hoardex no guarda registros propios de los visitantes.",
+            "link": "Política de privacidad de Vercel"
+        },
+        "analytics": {
+            "heading": "Analíticas",
+            "body": "Vercel Web Analytics cuenta las páginas vistas: la dirección visitada (con el nombre del perfil, pero nunca lo que escribes en el buscador ni eliges en un filtro), el país, el dispositivo, el navegador, el sistema operativo y de dónde vienes. No usa cookies; para distinguir visitantes usa un hash que cambia cada día. Los informes se conservan un mes y solo los puede ver el dueño del sitio."
+        },
+        "device": {
+            "heading": "En tu dispositivo",
+            "body": "Hoardex guarda dos cosas en tu navegador (almacenamiento local, no cookies): tu idioma, y el SteamID de cada perfil que refrescas con la hora en que termina su espera de 10 minutos (se borra la próxima vez que refrescas). Se quedan en tu dispositivo. Hoardex no usa cookies."
+        },
+        "steam": {
+            "heading": "Imágenes de Steam",
+            "body": "Las portadas y los avatares se cargan directamente desde los servidores de Steam (Valve y sus proveedores de red de entrega de contenido), que por tanto reciben tu dirección IP y datos de tu navegador, como en cualquier imagen. Hoardex las pide sin decirle a Steam en qué página estás."
+        },
+        "rights": {
+            "heading": "Tus datos y cómo pedirlos",
+            "body": "Las copias caducan solas en un día como máximo, la mayoría en dos horas. Para que se quiten antes las copias de un perfil, para saber qué se guarda o para cualquier otra cuestión sobre tus datos, escribe a:",
+            "authority": "También puedes reclamar ante tu autoridad de protección de datos (en España, la AEPD)."
+        }
     }
 }

@@ -1,0 +1,37 @@
+.policy-page {
+    display: grid;
+    gap: var(--size-150);
+    margin-inline: auto;
+    max-width: var(--size-content-width);
+}
+
+.policy-page__header {
+    display: grid;
+    gap: var(--size-25);
+}
+
+.policy-page__title {
+    font-size: 1.75rem;
+    line-height: 1.2;
+}
+
+.policy-page__updated {
+    color: var(--color-content-muted);
+    font-size: 0.875rem;
+}
+
+.policy-page__section {
+    display: grid;
+    gap: var(--size-75);
+}
+
+.policy-page__heading {
+    font-size: 1.125rem;
+}
+
+.policy-page__list {
+    display: grid;
+    gap: var(--size-50);
+    margin: 0;
+    padding-inline-start: var(--size-150);
+}

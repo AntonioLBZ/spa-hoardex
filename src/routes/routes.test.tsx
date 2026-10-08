@@ -77,6 +77,17 @@ describe('profile page', () => {
         expect(await screen.findByText('Hours played')).toBeTruthy();
     });
 
+    it('asks Steam for the avatar without a referrer', async () => {
+        stubApi({
+            [PROFILE_PATH]: { body: { kind: 'ok', data: PROFILE } },
+            [LIBRARY_PATH]: { body: { kind: 'ok', data: LIBRARY } },
+        });
+        renderApp('/p/someone');
+
+        await screen.findByRole('heading', { level: 1 });
+        expect(document.querySelector('.profile-page__avatar')?.getAttribute('referrerpolicy')).toBe('no-referrer');
+    });
+
     it('says so when the library is empty', async () => {
         stubApi({
             [PROFILE_PATH]: { body: { kind: 'ok', data: PROFILE } },

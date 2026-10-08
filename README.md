@@ -6,15 +6,13 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 ### Phase 1, in order
 
-- Analytics: enabled and receiving page views. Deploy the build-config change (`src/lib/analytics.ts`; §10) and check that the production bundle contains `{"analytics":{` (the injected config; the script must load from a per-project path, not `/_vercel/insights/script.js`, which content blockers stop) and that a visit with a blocker on is counted. Free plan: 50k events per month for the whole account, 1 month of history.
-- Privacy policy page (new route, needs its own `vercel.json` rewrite). It must say that analytics record the visited path (profile name included, no query string, no cookies), that the refresh cooldown keeps the SteamID for 10 min, and that covers and avatars load from Steam's CDN, which sees the visitor's IP.
 - Public README, favicon, per-route title and metadata.
 - `Content-Security-Policy` (§11); it must allow the analytics script (same origin: `script-src 'self'`, `connect-src 'self'`) and the Steam image hosts (`cdn.cloudflare.steamstatic.com` for covers; the avatar host is not checked against a real profile yet).
 - Vercel WAF rate-limit rule over `/api/`, GET and POST (Hobby allows one rule per project; leave room for ~10 calls per full page load, §11). Before sharing the URL publicly.
 
 ### After the next deploy
 
-- Page views reach the analytics dashboard as `/demo` and `/p/<name>`, without the query string; changing a filter adds none.
+- `/demo` page views reach the analytics dashboard without the query string; changing a filter adds none (`/p/<name>` is verified).
 - `POST /api/refresh/<name>` works in production: 200, then 429 with `Retry-After` near 600. The button shows the cooldown and swaps the data without a second GET.
 
 ### Unverified with real data
@@ -27,7 +25,7 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 - Why a third-party profile with friends-only game details comes without `rtime_last_played` even though the key's account is friends with it (one account, §7).
 - The Steam privacy settings pages `/id/{vanity}/edit/settings` and `/profiles/{id64}/edit/settings` (owner-only, so not checkable without a login).
 - The `/api/:path*` rewrite lets a POST through once deployed (checked in `vercel dev`).
-- That the production analytics script behaves like the debug one (path-only page views, `beforeSend` applied), and that `vercel project web-analytics` exists in CLI 62.7.0.
+- That `beforeSend` strips the query string in production (a visit with `?q=`), and that `vercel project web-analytics` exists in CLI 62.7.0.
 
 ### Owner decisions
 

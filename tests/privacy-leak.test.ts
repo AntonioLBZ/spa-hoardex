@@ -20,6 +20,8 @@ const PUBLIC_STEAMIDS = new Set([
     '76561100000000000',
 ]);
 const STEAMID = /(?<!\d)765611\d{11}(?!\d)/g;
+// Publish the owner's contact address on purpose, and it holds a private string: only strings are exempt there
+const CONTACT_FILES = new Set(['src/features/policy-page/mail-link.tsx']);
 
 interface PrivateTerms {
     steamids: string[];
@@ -110,6 +112,7 @@ describe('privacy leaks in repo files', () => {
         expect(paths).toContain('ARCHITECTURE.md');
         expect(paths).toContain('AGENTS.md');
         expect(paths).toContain('tests/privacy-leak.test.ts');
+        CONTACT_FILES.forEach((path) => expect(paths).toContain(path));
         expect(paths.filter((path) => path.startsWith('fixtures/full/'))).toEqual([]);
     });
 
@@ -125,7 +128,7 @@ describe('privacy leaks in repo files', () => {
         const terms = readTerms();
         expect(terms.steamids.length).toBeGreaterThan(0);
         const offenders = files.flatMap(({ path, text }) => {
-            const kinds = findPrivateTerms(text, terms);
+            const kinds = findPrivateTerms(text, CONTACT_FILES.has(path) ? { ...terms, strings: [] } : terms);
             return kinds.length > 0 ? [`${path}: ${kinds.join(', ')}`] : [];
         });
         expect(offenders).toEqual([]);

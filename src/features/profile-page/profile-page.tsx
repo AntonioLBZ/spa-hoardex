@@ -37,7 +37,14 @@ export function ProfilePage({ source }: { source: ProfileSource }) {
                 </p>
             ) : null}
             <header className="profile-page__header rise-in" style={riseStyle(0)}>
-                <img alt="" className="profile-page__avatar" height={64} src={avatarUrl} width={64} />
+                <img
+                    alt=""
+                    className="profile-page__avatar"
+                    height={64}
+                    referrerPolicy="no-referrer"
+                    src={avatarUrl}
+                    width={64}
+                />
                 <h1 className="profile-page__name">{displayName}</h1>
                 {source.kind === 'steam' && library.data?.kind === 'ok' ? (
                     <RefreshControl input={source.input} library={library.data.data} />
