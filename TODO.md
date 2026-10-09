@@ -2,19 +2,16 @@
 
 Delete each item when it is done. Design notes for every item are in `ARCHITECTURE.md`.
 
-### After the next deploy
+### Check in production
 
-- Open your own profile in production (the CSP is in `vercel.json`, not deployed yet): the covers of a public library must load, and nothing must be blocked. If images break, `ARCHITECTURE.md` §11 lists the hosts to allow. (On previews the Vercel comments toolbar is blocked by the CSP; that is expected.)
-- A visit with a query string (`/demo?state=backlog`, `/p/<name>?q=x`) shows in the analytics dashboard without it (`/demo` and `/p/<name>` page views already arrive).
+- Open your own profile in production (the CSP is live since 2026-10-09): the covers of a public library must load, and nothing must be blocked. If images break, `ARCHITECTURE.md` §11 lists the hosts to allow. (On previews the Vercel comments toolbar is blocked by the CSP; that is expected.)
+- Web Analytics, after this deploy: *Routes* lists `/p/[profile]`, `/demo`, `/privacy` and `/`; *Pages* still shows the plain path; one page view per navigation (not two) and none when you change a filter or type in the search box.
 - `POST /api/refresh/<name>` works in production: 200, then 429 with `Retry-After` near 600. The button shows the cooldown and swaps the data without a second GET. This also confirms that the `/api/:path*` rewrite lets a POST through (only checked in `vercel dev`).
 
 ### Unverified with real data
 
-- The chest favicon (`public/favicon.svg`) and the header logo (`public/logo.svg`) in a dark browser theme (the light theme looks right, 2026-10-09). Both use an SVG `<mask>` for the cuts, so check that the lid seam, the bands and the lock show.
 - A modest phone (owner, evening of 2026-10-09): "Show more", plus the count-up, the donut and the card fade-in. On a vivo X300 Pro (high end) the animations run smoothly. In headless Chromium at CPU x4 to x6 every "Show more" batch keeps the main thread busy for a second or two while its covers arrive, and the cost grows with the cards already on screen (none at x1). If it shows, trace the paint cost and consider unmounting the first cards or smaller later batches (§10); if the cards stutter, `ARCHITECTURE.md` §14 lists the cuts in order.
-- How the Upstash dashboard counts commands (does `HSET` with N fields count as 1?).
 - `libraryPrivate` and `wishlistPrivate` (needs another account).
-- The Steam privacy settings links. `LockedPanel` links to `/id/{vanity}/edit/settings` and `/profiles/{id64}/edit/settings`, which only the profile's owner can open. Logged in to Steam, open both with your own vanity and id64 and check each lands on the privacy settings page.
 
 ### Extras to review later
 
