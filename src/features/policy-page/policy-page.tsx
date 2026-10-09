@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 
+import { AUTH_TTL } from '@core/auth/ttl';
 import { CACHE_TTL } from '@core/cache/ttl';
 import { PageTitle } from '@/components/page-title';
 import { toDuration } from './durations';
@@ -23,7 +24,7 @@ export function PolicyPage() {
     const t = useTranslations('policy');
     const tPrivacy = useTranslations('privacy');
 
-    // Every stated duration comes from the cache's own TTLs
+    // Every stated duration comes from the cache and sign-in TTLs
     function duration(seconds: number): string {
         const { unit, count } = toDuration(seconds);
         return t(`duration.${unit}`, { count });
@@ -64,6 +65,12 @@ export function PolicyPage() {
                         <span className="visually-hidden"> {tPrivacy('newTab')}</span>
                     </a>
                 </p>
+            </PolicySection>
+            <PolicySection heading={t('signIn.heading')}>
+                <p>{t('signIn.body', { login: duration(AUTH_TTL.login), session: duration(AUTH_TTL.session) })}</p>
+            </PolicySection>
+            <PolicySection heading={t('manual.heading')}>
+                <p>{t('manual.body', { backlog: duration(CACHE_TTL.backlog) })}</p>
             </PolicySection>
             <PolicySection heading={t('analytics.heading')}>
                 <p>{t('analytics.body')}</p>

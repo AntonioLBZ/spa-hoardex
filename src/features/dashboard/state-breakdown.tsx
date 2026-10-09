@@ -9,12 +9,10 @@ import { CountUp } from '@/components/count-up';
 import { ChartSkeleton } from '@/components/skeleton';
 import { STEP, stepDelay, useChartMotion } from '@/lib/motion';
 import { useAfterPaint } from '@/lib/use-after-paint';
+import { isShownState } from '@/lib/shown-states';
 import { STATE_COLOR } from '@/lib/state-colors';
 
 import './state-breakdown.scss';
-
-// "Completed" needs achievements, which are not loaded yet
-const SHOWN_STATES = BACKLOG_STATES.filter((state) => state !== 'completed');
 
 export function StateBreakdown({ summary }: { summary: LibrarySummary }) {
     const t = useTranslations('dashboard.states');
@@ -26,7 +24,7 @@ export function StateBreakdown({ summary }: { summary: LibrarySummary }) {
     // Recharts restarts its animation when the data array is a new reference
     const rows = useMemo(
         () =>
-            SHOWN_STATES.map((state) => ({
+            BACKLOG_STATES.filter((state) => isShownState(state, summary.stateCounts[state])).map((state) => ({
                 state,
                 name: t(state),
                 value: summary.stateCounts[state],

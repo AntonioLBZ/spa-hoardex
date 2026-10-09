@@ -27,6 +27,8 @@ export interface CachedAdapter {
     readonly parseInput: StoreAdapter['parseInput'];
     resolveProfile(input: ResolvableInput): Promise<ProfileAccess<Profile>>;
     getLibrary(id: EntityId): Promise<ProfileAccess<Library>>;
+    // Account id for an id or an alias, through the alias cache
+    resolveId(input: ResolvableInput): Promise<ProfileAccess<EntityId>>;
     // Library for an id or an alias, so the client does not wait for the profile to learn the id
     resolveLibrary(input: ResolvableInput): Promise<ProfileAccess<Library>>;
     // Asks Steam again past the cache, at most once per cooldown per account
@@ -181,6 +183,9 @@ export function createCachedAdapter({
         resolveProfile: (input) => (input.kind === 'id' ? profileById(input.id) : profileByAlias(input.alias)),
 
         getLibrary: libraryById,
+
+        resolveId: (input) =>
+            input.kind === 'id' ? Promise.resolve({ kind: 'ok', data: input.id }) : idByAlias(input.alias),
 
         async resolveLibrary(input) {
             if (input.kind === 'id') return libraryById(input.id);

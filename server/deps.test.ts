@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TEST_KEY, createFakeFetch, routes } from '../core/adapters/steam/test-utils.js';
-import { ConfigError, buildCachedAdapter, type Env } from './deps.js';
+import { ConfigError, buildAccounts, buildAuth, buildCachedAdapter, originPolicy, type Env } from './deps.js';
 
 const ID = '76561198000000001';
 
@@ -58,5 +58,62 @@ describe('buildCachedAdapter', () => {
             }
         })();
         expect(String(error?.message)).not.toContain(TEST_KEY);
+    });
+});
+
+describe('originPolicy', () => {
+    it('allows only localhost in development', () => {
+        const allowed = originPolicy({});
+        expect(allowed('http://localhost:3000')).toBe(true);
+        expect(allowed('https://localhost:3000')).toBe(false);
+        expect(allowed('http://localhost.evil.example:3000')).toBe(false);
+    });
+
+    it('allows only the production domain in production', () => {
+        const allowed = originPolicy({ VERCEL_ENV: 'production', VERCEL_PROJECT_PRODUCTION_URL: 'hoardex.example' });
+        expect(allowed('https://hoardex.example')).toBe(true);
+        expect(allowed('http://hoardex.example')).toBe(false);
+        expect(allowed('http://localhost:3000')).toBe(false);
+    });
+
+    it('allows the deployment and branch URLs of a preview', () => {
+        const allowed = originPolicy({
+            VERCEL_ENV: 'preview',
+            VERCEL_URL: 'a.example',
+            VERCEL_BRANCH_URL: 'b.example',
+        });
+        expect(allowed('https://a.example')).toBe(true);
+        expect(allowed('https://b.example')).toBe(true);
+        expect(allowed('https://hoardex.example')).toBe(false);
+    });
+
+    it('refuses to start in production without the domain', () => {
+        expect(() => originPolicy({ VERCEL_ENV: 'production' })).toThrow(ConfigError);
+    });
+});
+
+describe('buildAuth', () => {
+    it.each([undefined, '', 'short-secret'])('refuses SESSION_SECRET=%s', (secret) => {
+        expect(() => buildAuth({ SESSION_SECRET: secret })).toThrow(ConfigError);
+    });
+
+    it('claims each nonce once', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const auth = buildAuth({ SESSION_SECRET: 'a'.repeat(32) });
+        expect(await auth.claimNonce('2026-10-09T16:00:00Zx')).toBe(true);
+        expect(await auth.claimNonce('2026-10-09T16:00:00Zx')).toBe(false);
+    });
+});
+
+describe('buildAccounts', () => {
+    it('refuses to start without a database', () => {
+        expect(() => buildAccounts({})).toThrow(new ConfigError('DATABASE_URL is not set'));
+    });
+
+    it('accepts the integration’s variable when DATABASE_URL is missing', () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        expect(() =>
+            buildAccounts({ NEON_STORAGE_DATABASE_URL: 'postgresql://user:pass@ep-test.example/neondb' })
+        ).not.toThrow();
     });
 });

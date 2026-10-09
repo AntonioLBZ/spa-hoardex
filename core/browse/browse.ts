@@ -2,8 +2,10 @@ import {
     BACKLOG_STATES,
     classifyGame,
     isBacklog,
+    type BacklogOverride,
     type BacklogState,
     type BacklogThresholds,
+    type Overrides,
 } from '../backlog/index.js';
 import type { Game } from '../domain/index.js';
 
@@ -16,7 +18,11 @@ export type Sort = (typeof SORTS)[number];
 
 export interface BrowseEntry {
     game: Game;
+    // What the page shows: the manual state if there is one
     state: BacklogState;
+    // What the library alone gives
+    computed: BacklogState;
+    manual: BacklogOverride | null;
 }
 
 export interface BrowseOptions {
@@ -29,9 +35,22 @@ export interface BrowseOptions {
     locale?: string;
 }
 
-// Library-only states; achievements can move a game to "completed" later
-export function classifyLibrary(games: readonly Game[], now: Date, thresholds?: BacklogThresholds): BrowseEntry[] {
-    return games.map((game) => ({ game, state: classifyGame(game, now, undefined, thresholds) }));
+export interface ClassifyOptions {
+    overrides?: Overrides;
+    thresholds?: BacklogThresholds;
+}
+
+// Achievements can move a game to "completed" later
+export function classifyLibrary(
+    games: readonly Game[],
+    now: Date,
+    { overrides, thresholds }: ClassifyOptions = {}
+): BrowseEntry[] {
+    return games.map((game) => {
+        const computed = classifyGame(game, now, undefined, thresholds);
+        const manual = overrides?.[game.id.externalId] ?? null;
+        return { game, state: manual?.state ?? computed, computed, manual };
+    });
 }
 
 function matchesState(state: BacklogState, filter: StateFilter): boolean {
@@ -102,4 +121,14 @@ export function browseLibrary(entries: readonly BrowseEntry[], options: BrowseOp
                 (needle === '' || fold(entry.game.name).includes(needle))
         )
         .sort(comparator(sort, locale));
+}
+
+// One list per state, each in the order given
+export function groupByState(entries: readonly BrowseEntry[]): Record<BacklogState, BrowseEntry[]> {
+    const groups = Object.fromEntries(BACKLOG_STATES.map((state) => [state, []])) as unknown as Record<
+        BacklogState,
+        BrowseEntry[]
+    >;
+    for (const entry of entries) groups[entry.state].push(entry);
+    return groups;
 }

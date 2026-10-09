@@ -1,9 +1,34 @@
 import type { Game } from '../domain/index.js';
 
-// In evaluation order: first match wins
-export const BACKLOG_STATES = ['completed', 'untouched', 'tried', 'inProgress', 'paused', 'finished'] as const;
+// The computed ones in evaluation order (first match wins), then `abandoned`, which only an owner sets
+export const BACKLOG_STATES = [
+    'completed',
+    'untouched',
+    'tried',
+    'inProgress',
+    'paused',
+    'finished',
+    'abandoned',
+] as const;
 
 export type BacklogState = (typeof BACKLOG_STATES)[number];
+
+// What an owner can set by hand: every state
+export const MANUAL_STATES = BACKLOG_STATES;
+
+export type ManualState = BacklogState;
+
+// A state set by hand; it wins over the computed one
+export interface BacklogOverride {
+    state: BacklogState;
+    // ISO 8601
+    setAt: string;
+    // Playtime when it was set, to notice play since then
+    minutesAtSet: number;
+}
+
+// Keyed by game externalId (the appid)
+export type Overrides = Readonly<Record<string, BacklogOverride>>;
 
 export interface BacklogThresholds {
     // Below this many minutes a played game is only "tried"
@@ -56,17 +81,33 @@ export function classifyGame(
     return 'finished';
 }
 
+// An owner's choice first, then the computed state
+export function resolveState(
+    game: Game,
+    now: Date,
+    override?: BacklogOverride,
+    progress?: AchievementProgress,
+    thresholds?: BacklogThresholds
+): BacklogState {
+    return override?.state ?? classifyGame(game, now, progress, thresholds);
+}
+
 // Backlog = games never touched or barely tried
 export function isBacklog(state: BacklogState): boolean {
     return state === 'untouched' || state === 'tried';
 }
 
-// `progressByAppId` is keyed by `game.id.externalId`
+export interface StateOptions {
+    // Keyed by `game.id.externalId`
+    progressByAppId?: ReadonlyMap<string, AchievementProgress>;
+    overrides?: Overrides;
+    thresholds?: BacklogThresholds;
+}
+
 export function countByState(
     games: readonly Game[],
     now: Date,
-    progressByAppId?: ReadonlyMap<string, AchievementProgress>,
-    thresholds?: BacklogThresholds
+    { progressByAppId, overrides, thresholds }: StateOptions = {}
 ): Record<BacklogState, number> {
     const counts: Record<BacklogState, number> = {
         completed: 0,
@@ -75,9 +116,11 @@ export function countByState(
         inProgress: 0,
         paused: 0,
         finished: 0,
+        abandoned: 0,
     };
     for (const game of games) {
-        counts[classifyGame(game, now, progressByAppId?.get(game.id.externalId), thresholds)] += 1;
+        const id = game.id.externalId;
+        counts[resolveState(game, now, overrides?.[id], progressByAppId?.get(id), thresholds)] += 1;
     }
     return counts;
 }

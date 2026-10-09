@@ -1,10 +1,27 @@
 export {
     ApiError,
+    deleteBacklogState,
+    fetchBacklog,
     fetchDemoLibrary,
     fetchDemoProfile,
     fetchLibrary,
+    fetchMe,
+    fetchMyBacklog,
     fetchProfile,
+    loginHref,
+    postLogout,
     postRefresh,
+    putBacklogState,
+    type BacklogData,
+    type Me,
     type RefreshOutcome,
 } from './client';
-export { demoLibraryQuery, demoProfileQuery, libraryQuery, profileQuery } from './queries';
+export {
+    backlogQuery,
+    demoLibraryQuery,
+    demoProfileQuery,
+    libraryQuery,
+    meQuery,
+    myBacklogQuery,
+    profileQuery,
+} from './queries';

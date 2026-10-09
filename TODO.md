@@ -4,6 +4,7 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 ### Check in production
 
+
 - Open your own profile in production (the CSP is live since 2026-10-09): the covers of a public library must load, and nothing must be blocked. If images break, `ARCHITECTURE.md` §11 lists the hosts to allow. (On previews the Vercel comments toolbar is blocked by the CSP; that is expected.)
 - The new icons in production: `/favicon.ico` and `/apple-touch-icon.png` load, Safari shows the chest in its tab, and "Add to Home Screen" on an iPhone shows it too (`ARCHITECTURE.md` §10, «Iconos»).
 - `POST /api/refresh/<name>` works in production: 200, then 429 with `Retry-After` near 600. The button shows the cooldown and swaps the data without a second GET. This also confirms that the `/api/:path*` rewrite lets a POST through (only checked in `vercel dev`).
@@ -17,7 +18,11 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 - 2: achievements, rarity, the *Completado* state. Review the WAF rate limit (60 requests per minute per IP) when the achievement batches arrive (`ARCHITECTURE.md` §11).
 - 3: wishlist and unplayed value.
-- 4: Steam login, Neon, editable backlog, opt-in snapshots.
+- 4: Steam login, Neon, editable backlog, opt-in snapshots (design in `ARCHITECTURE.md` §19, in this order):
+    - Finish one sign-in on `localhost`: `vercel dev` plus `pnpm dev`, opened on :5173 (only the preview was tried).
+    - Measure a cold Neon read from `iad1` (only warm reads were seen, `ARCHITECTURE.md` §19.10).
+    - By hand: drag a card on the board with a real mouse and on a phone (synthetic events cannot start a native drag), the card select on a phone, and an owner edit in a preview.
+    - 4e opt-in snapshots (daily cron + on own visit), `/account` (snapshots, sign out everywhere, delete my data), privacy policy.
 - 5: other adapters, RetroAchievements first.
 
 ### At the very end (owner, 2026-10-09)

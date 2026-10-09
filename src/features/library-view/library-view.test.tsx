@@ -144,7 +144,7 @@ describe('library view', () => {
     });
 
     it('ignores values in the URL that mean nothing', async () => {
-        const { region } = await openLibrary('/demo?state=completed&sort=sideways');
+        const { region } = await openLibrary('/demo?state=wishlisted&sort=sideways');
 
         expect(names(region)).toHaveLength(5);
         expect(within(region).getByRole('radio', { name: /^All/ })).toHaveProperty('checked', true);

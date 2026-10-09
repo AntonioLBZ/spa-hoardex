@@ -1,6 +1,7 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "framework": "vite",
+    "buildCommand": "pnpm db:migrate && pnpm build",
     "rewrites": [
         { "source": "/api/:path*", "destination": "/api" },
         { "source": "/p/:profile", "destination": "/index.html" },

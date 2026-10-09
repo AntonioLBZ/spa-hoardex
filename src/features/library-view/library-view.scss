@@ -12,6 +12,11 @@
     font-size: 0.875rem;
 }
 
+.library-view__failed {
+    color: var(--color-danger);
+    font-size: 0.875rem;
+}
+
 .library-view__grid {
     display: grid;
     gap: var(--size-150) var(--size-100);

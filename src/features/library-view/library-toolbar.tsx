@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 
-import { SORTS, type Sort, type StateFilter } from '@core/browse';
+import { SORTS, STATE_FILTERS, type Sort, type StateFilter } from '@core/browse';
 import { STEP, riseStyle } from '@/lib/motion';
-import { DEFAULT_SORT, SHOWN_FILTERS, compactLibrarySearch, type LibrarySearch } from './library-search';
+import { isShownState } from '@/lib/shown-states';
+import { DEFAULT_SORT, VIEWS, compactLibrarySearch, type LibrarySearch } from './library-search';
 
 import './library-toolbar.scss';
 
@@ -25,6 +26,8 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
     const searchId = useId();
     const sortId = useId();
     const groupName = useId();
+    const viewName = useId();
+    const view = search.view ?? 'grid';
     const [text, setText] = useState(search.q ?? '');
 
     const searchRef = useRef<HTMLInputElement>(null);
@@ -46,7 +49,9 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
 
     const options: { value: StateFilter | undefined; label: string; count: number }[] = [
         { value: undefined, label: t('all'), count: total },
-        ...SHOWN_FILTERS.map((value) => ({
+        ...STATE_FILTERS.filter(
+            (value) => value === 'backlog' || value === search.state || isShownState(value, counts[value])
+        ).map((value) => ({
             value,
             label: value === 'backlog' ? t('backlog') : states(value),
             count: counts[value],
@@ -86,23 +91,44 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
                     ))}
                 </select>
             </div>
-            <fieldset className="library-toolbar__filters">
-                <legend className="visually-hidden">{t('stateLegend')}</legend>
-                {options.map(({ value, label, count }) => (
-                    <label className="library-toolbar__chip" key={value ?? 'all'}>
+            <fieldset className="library-toolbar__views">
+                <legend className="visually-hidden">{t('view.legend')}</legend>
+                {VIEWS.map((option) => (
+                    <label className="library-toolbar__chip" key={option}>
                         <input
-                            checked={search.state === value}
+                            checked={view === option}
                             className="library-toolbar__chip-input visually-hidden"
-                            name={groupName}
-                            onChange={() => onChange(compactLibrarySearch({ ...search, state: value }))}
+                            name={viewName}
+                            onChange={() =>
+                                onChange(
+                                    compactLibrarySearch({ ...search, view: option === 'board' ? 'board' : undefined })
+                                )
+                            }
                             type="radio"
                         />
-                        <span className="library-toolbar__chip-label">
-                            {label} <span className="library-toolbar__chip-count">{format.number(count)}</span>
-                        </span>
+                        <span className="library-toolbar__chip-label">{t(`view.${option}`)}</span>
                     </label>
                 ))}
             </fieldset>
+            {view === 'board' ? null : (
+                <fieldset className="library-toolbar__filters">
+                    <legend className="visually-hidden">{t('stateLegend')}</legend>
+                    {options.map(({ value, label, count }) => (
+                        <label className="library-toolbar__chip" key={value ?? 'all'}>
+                            <input
+                                checked={search.state === value}
+                                className="library-toolbar__chip-input visually-hidden"
+                                name={groupName}
+                                onChange={() => onChange(compactLibrarySearch({ ...search, state: value }))}
+                                type="radio"
+                            />
+                            <span className="library-toolbar__chip-label">
+                                {label} <span className="library-toolbar__chip-count">{format.number(count)}</span>
+                            </span>
+                        </label>
+                    ))}
+                </fieldset>
+            )}
         </div>
     );
 }

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { Game } from '../domain/index.js';
-import { browseLibrary, classifyLibrary, countByFilter, STATE_FILTERS, type BrowseOptions } from './index.js';
+import { BACKLOG_STATES } from '../backlog/index.js';
+import {
+    browseLibrary,
+    classifyLibrary,
+    countByFilter,
+    groupByState,
+    STATE_FILTERS,
+    type BrowseOptions,
+} from './index.js';
 
 const NOW = new Date('2026-10-07T12:00:00.000Z');
 
@@ -34,6 +42,18 @@ describe('classifyLibrary', () => {
             ['Bright Tide', 'tried'],
             ['Crimson Orbit', 'paused'],
         ]);
+        expect(entries.every((entry) => entry.manual === null && entry.computed === entry.state)).toBe(true);
+    });
+
+    it('shows a manual state over the computed one, and keeps both', () => {
+        const manual = { state: 'abandoned', setAt: '2026-10-01T00:00:00Z', minutesAtSet: 4000 } as const;
+        const [echo] = classifyLibrary(GAMES, NOW, { overrides: { '5': manual } });
+        expect(echo).toMatchObject({ state: 'abandoned', computed: 'finished', manual });
+
+        const withManual = classifyLibrary(GAMES, NOW, { overrides: { '5': manual } });
+        expect(countByFilter(withManual)).toMatchObject({ abandoned: 1, finished: 0 });
+        const abandoned = browseLibrary(withManual, { state: 'abandoned', sort: 'name' });
+        expect(abandoned.map((entry) => entry.game.name)).toEqual(['Echo Harbor']);
     });
 });
 
@@ -47,6 +67,7 @@ describe('countByFilter', () => {
             inProgress: 1,
             paused: 1,
             finished: 1,
+            abandoned: 0,
         });
     });
 
@@ -164,5 +185,15 @@ describe('browseLibrary sorting', () => {
             'Dated',
             'Broken Date',
         ]);
+    });
+});
+
+describe('groupByState', () => {
+    it('puts each game in its state’s list, keeping the order, with every state present', () => {
+        const groups = groupByState(browseLibrary(entries, { sort: 'name' }));
+        expect(Object.keys(groups)).toEqual([...BACKLOG_STATES]);
+        expect(groups.untouched.map((entry) => entry.game.name)).toEqual(['Álamo Run']);
+        expect(groups.abandoned).toEqual([]);
+        expect(Object.values(groups).flat()).toHaveLength(GAMES.length);
     });
 });

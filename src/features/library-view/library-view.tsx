@@ -1,14 +1,17 @@
 import { useDeferredValue, useId, useMemo, useRef } from 'react';
 import { useTranslations } from 'use-intl';
 
+import type { Overrides } from '@core/backlog';
 import { browseLibrary, classifyLibrary, countByFilter } from '@core/browse';
 import type { Library } from '@core/domain';
 import { Button } from '@/components/button';
 import { useLocale } from '@/lib/i18n';
 import { STEP, riseStyle } from '@/lib/motion';
+import { Board } from './board';
 import { GameCard } from './game-card';
 import { DEFAULT_SORT, type LibrarySearch } from './library-search';
 import { LibraryToolbar } from './library-toolbar';
+import type { StateEditor } from './state-editor';
 import { useGridReveal } from './use-grid-reveal';
 import { NEXT_BATCH, useRevealedCount } from './use-revealed-count';
 
@@ -20,25 +23,42 @@ interface LibraryViewProps {
     withImages: boolean;
     search: LibrarySearch;
     onSearchChange: (next: LibrarySearch) => void;
+    overrides?: Overrides;
+    // Null or absent: read only
+    editor?: StateEditor | null;
 }
 
-export function LibraryView({ library, withImages, search, onSearchChange }: LibraryViewProps) {
+const NO_OVERRIDES: Overrides = Object.freeze({});
+
+export function LibraryView({
+    library,
+    withImages,
+    search,
+    onSearchChange,
+    overrides = NO_OVERRIDES,
+    editor = null,
+}: LibraryViewProps) {
     const t = useTranslations('library');
     const { locale } = useLocale();
     const titleId = useId();
-    const entries = useMemo(() => classifyLibrary(library.games, new Date()), [library.games]);
+    const entries = useMemo(
+        () => classifyLibrary(library.games, new Date(), { overrides }),
+        [library.games, overrides]
+    );
     const counts = useMemo(() => countByFilter(entries), [entries]);
     // Typing stays responsive while the list catches up
     const settled = useDeferredValue(search);
+    const board = settled.view === 'board';
     const visible = useMemo(
         () =>
             browseLibrary(entries, {
-                state: settled.state,
+                // Each state is a column on the board
+                state: board ? undefined : settled.state,
                 query: settled.q,
                 sort: settled.sort ?? DEFAULT_SORT,
                 locale,
             }),
-        [entries, settled, locale]
+        [entries, settled, locale, board]
     );
 
     const resetKey = `${settled.state ?? ''}|${settled.sort ?? ''}|${settled.q ?? ''}`;
@@ -56,7 +76,14 @@ export function LibraryView({ library, withImages, search, onSearchChange }: Lib
             <p className="library-view__count" role="status">
                 {t('count', { shown: visible.length, total: entries.length })}
             </p>
-            {visible.length === 0 ? (
+            {editor?.failed ? (
+                <p className="library-view__failed" role="alert">
+                    {t('saveFailed')}
+                </p>
+            ) : null}
+            {board ? (
+                <Board editor={editor} entries={visible} key={`${settled.sort ?? ''}|${settled.q ?? ''}`} />
+            ) : visible.length === 0 ? (
                 <div className="library-view__empty">
                     <p>{t('empty')}</p>
                     <Button onClick={() => onSearchChange({})}>{t('clear')}</Button>
@@ -64,11 +91,16 @@ export function LibraryView({ library, withImages, search, onSearchChange }: Lib
             ) : (
                 <ul className="library-view__grid" ref={grid}>
                     {visible.slice(0, count).map((entry) => (
-                        <GameCard entry={entry} key={entry.game.id.externalId} withImages={withImages} />
+                        <GameCard
+                            entry={entry}
+                            key={entry.game.id.externalId}
+                            onChange={editor?.change ?? null}
+                            withImages={withImages}
+                        />
                     ))}
                 </ul>
             )}
-            {hasMore ? (
+            {!board && hasMore ? (
                 <div className="library-view__more">
                     <div aria-hidden="true" ref={sentinelRef} />
                     <p className="library-view__shown">{t('shownOf', { shown: count, matching: visible.length })}</p>

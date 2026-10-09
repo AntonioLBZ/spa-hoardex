@@ -447,7 +447,7 @@ describe('integration with the backlog classifier', () => {
     const nowSeconds = FIXTURE_NOW.getTime() / 1000;
 
     function expectedCounts(games: Record<string, unknown>[]) {
-        const counts = { completed: 0, untouched: 0, tried: 0, inProgress: 0, paused: 0, finished: 0 };
+        const counts = { completed: 0, untouched: 0, tried: 0, inProgress: 0, paused: 0, finished: 0, abandoned: 0 };
         for (const game of games) {
             const minutes = game.playtime_forever as number;
             const age = (nowSeconds - (game.rtime_last_played as number)) / SECONDS_PER_DAY;

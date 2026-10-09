@@ -1,3 +1,4 @@
+import type { BacklogState, Overrides } from '@core/backlog';
 import type { Library, Profile, ProfileAccess } from '@core/domain';
 
 // A non-200 answer from our API; access states are data, not errors
@@ -80,4 +81,68 @@ export async function postRefresh(input: string, signal?: AbortSignal): Promise<
         throw new ApiError(response.status, 'badResponse');
     }
     return body as RefreshOutcome;
+}
+
+export interface Me {
+    user: { steamId: string } | null;
+}
+
+function isMe(body: unknown): body is Me {
+    if (!isRecord(body) || !('user' in body)) return false;
+    return body.user === null || (isRecord(body.user) && typeof body.user.steamId === 'string');
+}
+
+export async function fetchMe(signal?: AbortSignal): Promise<Me> {
+    const response = await fetch('/api/me', { signal });
+    const body: unknown = await response.json().catch(() => null);
+    if (!response.ok) throw new ApiError(response.status, errorCode(body));
+    if (!isMe(body)) throw new ApiError(response.status, 'badResponse');
+    return body;
+}
+
+export async function postLogout(): Promise<Me> {
+    const response = await fetch('/api/auth/logout', { method: 'POST' });
+    const body: unknown = await response.json().catch(() => null);
+    if (!response.ok) throw new ApiError(response.status, errorCode(body));
+    return { user: null };
+}
+
+// A plain navigation: Steam's page is a full redirect, and the CSP's form-action would block a form
+export function loginHref(returnTo: string): string {
+    return `/api/auth/steam/login?returnTo=${encodeURIComponent(returnTo)}`;
+}
+
+export interface BacklogData {
+    overrides: Overrides;
+}
+
+// Anyone's manual states, cached by the CDN like the library
+export function fetchBacklog(input: string, signal?: AbortSignal) {
+    return getAccess<BacklogData>(`/api/backlog/${encodeURIComponent(input)}`, signal);
+}
+
+// The signed-in owner's, past the CDN: after a reload it must not see an older copy
+export function fetchMyBacklog(signal?: AbortSignal) {
+    return getAccess<BacklogData>('/api/me/backlog', signal);
+}
+
+async function writeBacklog(appid: string, init: RequestInit): Promise<Overrides> {
+    const response = await fetch(`/api/me/backlog/${encodeURIComponent(appid)}`, init);
+    const body: unknown = await response.json().catch(() => null);
+    if (!response.ok) throw new ApiError(response.status, errorCode(body));
+    if (!isAccess(body) || body.kind !== 'ok') throw new ApiError(response.status, 'badResponse');
+    return (body as { data: BacklogData }).data.overrides;
+}
+
+// Answers with every manual state after the change
+export function putBacklogState(appid: string, state: BacklogState): Promise<Overrides> {
+    return writeBacklog(appid, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ state }),
+    });
+}
+
+export function deleteBacklogState(appid: string): Promise<Overrides> {
+    return writeBacklog(appid, { method: 'DELETE' });
 }

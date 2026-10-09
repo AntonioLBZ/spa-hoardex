@@ -1,0 +1,21 @@
+import { z } from 'zod';
+import { MANUAL_STATES } from '../backlog/index.js';
+
+export const overrideSchema = z.object({
+    state: z.enum(MANUAL_STATES),
+    setAt: z.string(),
+    minutesAtSet: z.number().int().nonnegative(),
+});
+
+export const overridesSchema = z.record(z.string().regex(/^\d{1,10}$/), overrideSchema);
+
+export const cachedOverridesSchema = z.object({ overrides: overridesSchema });
+
+export const overrideRowSchema = z.object({
+    game_id: z.string(),
+    state: z.enum(MANUAL_STATES),
+    minutes_at_set: z.number().int(),
+    set_at: z.union([z.date(), z.string()]),
+});
+
+export const accountRowSchema = z.object({ user_id: z.string(), session_epoch: z.number().int() });

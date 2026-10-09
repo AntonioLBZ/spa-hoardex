@@ -20,8 +20,9 @@ describe('parseLibrarySearch', () => {
         expect(parseLibrarySearch({ state: ['paused'], sort: 7, q: null })).toEqual({});
     });
 
-    it('does not offer the completed state before achievements exist', () => {
-        expect(parseLibrarySearch({ state: 'completed' })).toEqual({});
+    it('accepts the states only a manual choice gives', () => {
+        expect(parseLibrarySearch({ state: 'completed' })).toEqual({ state: 'completed' });
+        expect(parseLibrarySearch({ state: 'abandoned' })).toEqual({ state: 'abandoned' });
     });
 
     it('trims the query, drops it when blank and caps its length', () => {
@@ -42,5 +43,13 @@ describe('compactLibrarySearch', () => {
 
     it('keeps a non-default sort', () => {
         expect(compactLibrarySearch({ sort: 'recent' })).toEqual({ sort: 'recent' });
+    });
+});
+
+describe('the board view', () => {
+    it('is kept in the URL, and the grid is left out as the default', () => {
+        expect(parseLibrarySearch({ view: 'board' })).toEqual({ view: 'board' });
+        expect(parseLibrarySearch({ view: 'grid' })).toEqual({});
+        expect(parseLibrarySearch({ view: 'list' })).toEqual({});
     });
 });

@@ -22,7 +22,7 @@ describe('summarizeLibrary', () => {
             totalMinutes: 0,
             recentMinutes: 0,
             backlogCount: 0,
-            stateCounts: { completed: 0, untouched: 0, tried: 0, inProgress: 0, paused: 0, finished: 0 },
+            stateCounts: { completed: 0, untouched: 0, tried: 0, inProgress: 0, paused: 0, finished: 0, abandoned: 0 },
             topGames: [],
             minutesByYear: [],
         });

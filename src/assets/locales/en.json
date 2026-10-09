@@ -4,13 +4,19 @@
         "tagline": "Your Steam library, at a glance.",
         "language": "Language"
     },
+    "account": {
+        "signIn": "Sign in with Steam",
+        "myProfile": "My profile",
+        "signOut": "Sign out"
+    },
     "entry": {
         "label": "Your Steam profile",
         "placeholder": "Profile URL, custom name or SteamID64",
         "submit": "View library",
         "invalid": "That does not look like a Steam profile. Try a profile URL, a custom name or a SteamID64.",
         "hint": "Enter your own profile. It and its game details must be public.",
-        "demo": "Or explore a demo library with fictional data."
+        "demo": "Or explore a demo library with fictional data.",
+        "loginFailed": "Signing in with Steam did not work. Try again."
     },
     "profile": {
         "loadingProfile": "Loading profile…",
@@ -94,7 +100,8 @@
             "tried": "Tried",
             "inProgress": "In progress",
             "paused": "Paused",
-            "finished": "Finished"
+            "finished": "Finished",
+            "abandoned": "Abandoned"
         },
         "top": {
             "title": "Most played"
@@ -122,12 +129,27 @@
         "empty": "No games match these filters.",
         "clear": "Clear filters",
         "shownOf": "{shown, number} of {matching, number} shown",
-        "showMore": "Show {next, number} more"
+        "showMore": "Show {next, number} more",
+        "stateOf": "State of {name}",
+        "automatic": "{state} · auto",
+        "manual": "Set by hand",
+        "playedSince": "Played since",
+        "saveFailed": "That change could not be saved. Try again.",
+        "demoEditing": "You can change any game’s state. In the demo, changes stay in this browser only.",
+        "view": {
+            "legend": "View",
+            "grid": "Grid",
+            "board": "Board"
+        },
+        "board": {
+            "hint": "Drag a game to another column, or pick its state in its menu.",
+            "empty": "No games"
+        }
     },
     "policy": {
         "title": "Privacy policy",
-        "updated": "Last updated: October 8, 2026.",
-        "intro": "Hoardex is a personal, non-commercial portfolio project that shows the library and playing time of a Steam profile. It has no accounts and no ads. This page explains what data it handles, where it is kept and for how long.",
+        "updated": "Last updated: October 9, 2026.",
+        "intro": "Hoardex is a personal, non-commercial portfolio project that shows the library and playing time of a Steam profile. Signing in is optional and there are no ads. This page explains what data it handles, where it is kept and for how long.",
         "input": {
             "heading": "What you send and what is shown",
             "body": "The profile you enter (a URL, a custom name or a SteamID64) goes to Hoardex’s server, which asks Steam’s official Web API for the profile and its game library and returns them. The Steam API key never leaves the server. Hoardex shows what Steam returns for that profile: display name, avatar, games and hours played. It cannot check what each visitor could see on Steam, so enter your own profile, and set it to private on Steam if you do not want it shown."
@@ -149,13 +171,21 @@
             "body": "The site is hosted on Vercel, with its server in the eastern United States. Vercel, like any host, processes technical data such as your IP address to deliver the site, under its own privacy policy. Hoardex does not keep its own logs of visitors.",
             "link": "Vercel’s privacy policy"
         },
+        "signIn": {
+            "heading": "Signing in with Steam",
+            "body": "Signing in is optional; without it everything works the same. Hoardex sends you to Steam’s own page, and Steam tells Hoardex only your SteamID: Hoardex never sees your password, your email or any data that is not already public. While a sign-in is under way your browser keeps a cookie for at most {login}, and Hoardex’s database keeps the one-time code Steam sent for {login} so it cannot be used twice. Once you are signed in, your browser keeps a cookie with your SteamID, signed by Hoardex, for {session} or until you sign out. Signing in does not make a private Steam library visible."
+        },
+        "manual": {
+            "heading": "Your manual states",
+            "body": "If you sign in, Hoardex keeps an account in its database (Neon Postgres, on AWS in North Virginia, USA): your SteamID and when you first and last signed in. When you set a game’s state by hand, it also keeps the state, when you set it and your playtime for that game at that moment. These states are public: anyone who opens your profile sees them, signed in or not. A copy is kept in Upstash Redis for up to {backlog}, renewed with every change. They stay until you return each game to its automatic state; to delete your account and everything in it, write to the address at the end of this page."
+        },
         "analytics": {
             "heading": "Analytics",
             "body": "Vercel Web Analytics counts page views: the address visited (profile name included, but never what you type in a search box or pick in a filter), country, device, browser, operating system and where you came from. It uses no cookies; to tell visitors apart it uses a hash that changes every day. Reports are kept for one month and only the site’s owner can see them."
         },
         "device": {
             "heading": "On your device",
-            "body": "Hoardex saves two things in your browser (local storage, not cookies): your language, and the SteamID of each profile you refresh with the time its wait of {refresh} ends (removed the next time you refresh). They stay on your device. Hoardex sets no cookies."
+            "body": "Hoardex saves a few things in your browser’s local storage: your language; the SteamID of each profile you refresh with the time its wait of {refresh} ends (removed the next time you refresh); and the states you set in the demo library. They stay on your device. The only cookies are the sign-in ones described above, and only if you sign in."
         },
         "steam": {
             "heading": "Steam images",

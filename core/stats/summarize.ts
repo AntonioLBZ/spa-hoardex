@@ -1,4 +1,10 @@
-import { countByState, isBacklog, type BacklogState, type BacklogThresholds } from '../backlog/index.js';
+import {
+    countByState,
+    isBacklog,
+    type BacklogState,
+    type BacklogThresholds,
+    type Overrides,
+} from '../backlog/index.js';
 import type { EntityId, Game } from '../domain/index.js';
 
 export interface TopGame {
@@ -30,6 +36,8 @@ export interface LibrarySummary {
 export interface SummaryOptions {
     topCount?: number;
     thresholds?: BacklogThresholds;
+    // An owner's manual states win over the computed ones
+    overrides?: Overrides;
 }
 
 const DEFAULT_TOP_COUNT = 10;
@@ -53,9 +61,9 @@ function minutesByYear(games: readonly Game[]): YearMinutes[] {
     return [...byYear].map(([year, minutes]) => ({ year, minutes })).sort((a, b) => a.year - b.year);
 }
 
-// Library-only summary: no achievements, so no game is "completed" yet
+// No achievements yet: only an owner's manual state can make a game "completed"
 export function summarizeLibrary(games: readonly Game[], now: Date, options: SummaryOptions = {}): LibrarySummary {
-    const stateCounts = countByState(games, now, undefined, options.thresholds);
+    const stateCounts = countByState(games, now, { overrides: options.overrides, thresholds: options.thresholds });
 
     return {
         gameCount: games.length,

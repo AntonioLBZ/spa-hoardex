@@ -40,6 +40,7 @@
     --color-state-in-progress: #2563eb;
     --color-state-paused: #7c3aed;
     --color-state-finished: #0d9488;
+    --color-state-abandoned: #e11d48;
 
     color-scheme: light dark;
 }
@@ -60,5 +61,6 @@
         --color-state-in-progress: #6ea0ff;
         --color-state-paused: #a78bfa;
         --color-state-finished: #2dd4bf;
+        --color-state-abandoned: #fb7185;
     }
 }

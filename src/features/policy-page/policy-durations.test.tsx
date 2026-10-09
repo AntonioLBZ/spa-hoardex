@@ -12,6 +12,7 @@ vi.mock('@core/cache/ttl', () => ({
         notFound: 90,
         refresh: 15 * 60,
         refreshRetry: 60,
+        backlog: 2 * 86_400,
     },
 }));
 
@@ -29,6 +30,7 @@ describe('privacy policy durations', () => {
         expect(text).toContain('the time: 15 minutes (1 minute if the refresh failed)');
         expect(text).toContain('within 3 days, most within 3 hours');
         expect(text).toContain('its wait of 15 minutes ends');
+        expect(text).toContain('Upstash Redis for up to 2 days');
     });
 
     it('are written in the language of the page', async () => {
@@ -40,5 +42,15 @@ describe('privacy policy durations', () => {
         expect(text).toContain('de la última partida: 1 hora.');
         expect(text).toContain('«no encontrado»: 90 segundos. Una respuesta «privado»: 1 minuto.');
         expect(text).toContain('en 3 días como máximo, la mayoría en 3 horas');
+    });
+});
+
+describe('privacy policy sign-in durations', () => {
+    it('are the sign-in TTLs', async () => {
+        renderApp('/privacy');
+
+        const text = (await screen.findByRole('article')).textContent;
+        expect(text).toContain('a cookie for at most 10 minutes');
+        expect(text).toContain('for 30 days or until you sign out');
     });
 });

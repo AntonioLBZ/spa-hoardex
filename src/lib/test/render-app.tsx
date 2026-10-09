@@ -20,6 +20,10 @@ export function renderApp(path: string) {
     return { router, user: userEvent.setup() };
 }
 
+const ME_PATH = '/api/me';
+const BACKLOG_PREFIX = '/api/backlog/';
+const NO_OVERRIDES = { kind: 'ok', data: { overrides: {} } };
+
 interface StubbedAnswer {
     status?: number;
     body?: unknown;
@@ -37,6 +41,14 @@ export function stubApi(answers: Record<string, StubbedAnswer>) {
                 : new Response(answer.text, { status, headers: { 'content-type': 'text/plain' } })
         );
     });
-    vi.stubGlobal('fetch', fetchMock);
+    // Signed out and without manual states by default, kept out of the recorded calls unless the test answers them
+    const withDefaults = (input: string | URL | Request, init?: RequestInit) => {
+        const path = String(input);
+        if (answers[path] !== undefined) return fetchMock(input, init);
+        if (path === ME_PATH) return Promise.resolve(Response.json({ user: null }));
+        if (path.startsWith(BACKLOG_PREFIX)) return Promise.resolve(Response.json(NO_OVERRIDES));
+        return fetchMock(input, init);
+    };
+    vi.stubGlobal('fetch', withDefaults);
     return fetchMock;
 }

@@ -31,6 +31,11 @@
     gap: var(--size-25);
 }
 
+.game-card__state--editable {
+    flex: 1 1 100%;
+    min-inline-size: 0;
+}
+
 .game-card__swatch {
     block-size: 0.5rem;
     border-radius: 50%;
@@ -40,4 +45,22 @@
 
 .game-card__hours {
     font-variant-numeric: tabular-nums;
+}
+
+.game-card__select {
+    background-color: var(--color-bg-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-border-radius);
+    color: var(--color-content);
+    font: inherit;
+    inline-size: 100%;
+    min-block-size: 2rem;
+    min-inline-size: 0;
+    padding: 0 var(--size-25);
+}
+
+.game-card__note {
+    color: var(--color-content-muted);
+    font-size: 0.75rem;
+    font-style: italic;
 }

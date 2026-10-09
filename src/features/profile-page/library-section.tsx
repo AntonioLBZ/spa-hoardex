@@ -9,20 +9,24 @@ import { parseLibrarySearch, type LibrarySearch } from '@/features/library-view/
 import { Pending } from './pending';
 import { Problem, problemFromError } from './problem';
 import { settingsUrlFor } from './settings-url';
+import { useBacklog } from './use-backlog';
 import { useProfileContent } from './use-profile-content';
 import type { ProfileSource } from './profile-page';
 
 interface LibrarySectionProps {
     source: ProfileSource;
+    // The account the page shows, to tell whether the visitor owns it
+    profileId: string;
     library: UseQueryResult<ProfileAccess<Library>>;
 }
 
-export function LibrarySection({ source, library }: LibrarySectionProps) {
+export function LibrarySection({ source, profileId, library }: LibrarySectionProps) {
     const t = useTranslations('profile');
     const rawSearch = useSearch({ strict: false });
     const search = useMemo(() => parseLibrarySearch(rawSearch), [rawSearch]);
     const navigate = useNavigate();
     const content = useProfileContent();
+    const { overrides, editor } = useBacklog(source, profileId);
     // Filters are not navigation: replace the entry and keep the scroll position
     const onSearchChange = useCallback(
         (next: LibrarySearch) => void navigate({ to: '.', search: next, replace: true, resetScroll: false }),
@@ -43,10 +47,12 @@ export function LibrarySection({ source, library }: LibrarySectionProps) {
 
     return (
         <>
-            <Dashboard games={library.data.data.games} settingsUrl={settingsUrlFor(source)} />
+            <Dashboard games={library.data.data.games} overrides={overrides} settingsUrl={settingsUrlFor(source)} />
             <LibraryView
+                editor={editor}
                 library={library.data.data}
                 onSearchChange={onSearchChange}
+                overrides={overrides}
                 search={search}
                 withImages={source.kind === 'steam'}
             />

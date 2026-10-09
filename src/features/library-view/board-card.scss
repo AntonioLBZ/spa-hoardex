@@ -1,0 +1,54 @@
+.board-card {
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-border-radius);
+    contain-intrinsic-size: auto 5rem;
+    content-visibility: auto;
+    display: grid;
+    gap: var(--size-25);
+    padding: var(--size-50);
+}
+
+.board-card[draggable='true'] {
+    cursor: grab;
+}
+
+.board-card--dragging {
+    opacity: 0.4;
+}
+
+.board-card__name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.board-card__hours {
+    color: var(--color-content-muted);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.board-card__select {
+    background-color: var(--color-bg-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-border-radius);
+    color: var(--color-content);
+    font: inherit;
+    font-size: 0.8125rem;
+    inline-size: 100%;
+    min-block-size: 2rem;
+}
+
+.board-card__note {
+    color: var(--color-content-muted);
+    font-size: 0.75rem;
+    font-style: italic;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .board-card {
+        transition: opacity var(--motion-quick) var(--ease-standard);
+    }
+}

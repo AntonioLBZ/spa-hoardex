@@ -165,13 +165,17 @@ describe('profile page', () => {
 });
 
 describe('loading', () => {
-    it('asks for the profile and the library at the same time', async () => {
+    it('asks for the profile, the library and the session at the same time', async () => {
         const fetchMock = vi.fn((_input: string) => new Promise<Response>(() => {}));
         vi.stubGlobal('fetch', fetchMock);
         renderApp('/p/someone');
 
-        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-        expect(fetchMock.mock.calls.map(([input]) => String(input)).sort()).toEqual([LIBRARY_PATH, PROFILE_PATH]);
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+        expect(fetchMock.mock.calls.map(([input]) => String(input)).sort()).toEqual([
+            LIBRARY_PATH,
+            '/api/me',
+            PROFILE_PATH,
+        ]);
     });
 
     it('shows a skeleton of the page with the loading text for assistive technology', async () => {

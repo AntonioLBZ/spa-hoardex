@@ -6,6 +6,7 @@ import {
     classifyGame,
     countByState,
     isBacklog,
+    resolveState,
     type AchievementProgress,
     type BacklogState,
     type BacklogThresholds,
@@ -29,8 +30,16 @@ function makeGame(totalMinutes: number, lastPlayedAt: string | null, appid = '1'
 }
 
 describe('constants', () => {
-    it('lists the states in evaluation order', () => {
-        expect(BACKLOG_STATES).toEqual(['completed', 'untouched', 'tried', 'inProgress', 'paused', 'finished']);
+    it('lists the computed states in evaluation order, then the manual-only one', () => {
+        expect(BACKLOG_STATES).toEqual([
+            'completed',
+            'untouched',
+            'tried',
+            'inProgress',
+            'paused',
+            'finished',
+            'abandoned',
+        ]);
     });
 
     it('has the agreed default thresholds', () => {
@@ -232,6 +241,7 @@ describe('isBacklog', () => {
         inProgress: false,
         paused: false,
         finished: false,
+        abandoned: false,
     };
 
     it.each(BACKLOG_STATES)('%s', (state) => {
@@ -248,6 +258,7 @@ describe('countByState', () => {
             inProgress: 0,
             paused: 0,
             finished: 0,
+            abandoned: 0,
         });
     });
 
@@ -276,6 +287,7 @@ describe('countByState', () => {
             inProgress: 1,
             paused: 1,
             finished: 2,
+            abandoned: 0,
         });
         expect(Object.values(counts).reduce((sum, n) => sum + n, 0)).toBe(games.length);
     });
@@ -287,20 +299,21 @@ describe('countByState', () => {
             ['20', { unlocked: 4, total: 5 }],
             ['999', { unlocked: 1, total: 1 }],
         ]);
-        expect(countByState(games, NOW, progress)).toEqual({
+        expect(countByState(games, NOW, { progressByAppId: progress })).toEqual({
             completed: 1,
             untouched: 0,
             tried: 0,
             inProgress: 2,
             paused: 0,
             finished: 0,
+            abandoned: 0,
         });
     });
 
     it('does not complete games whose progress has total 0', () => {
         const games = [makeGame(600, daysAgo(10), '1')];
         const progress = new Map<string, AchievementProgress>([['1', { unlocked: 0, total: 0 }]]);
-        expect(countByState(games, NOW, progress).completed).toBe(0);
+        expect(countByState(games, NOW, { progressByAppId: progress }).completed).toBe(0);
     });
 
     it('passes custom thresholds through', () => {
@@ -310,13 +323,14 @@ describe('countByState', () => {
             inProgressWithinDays: 30,
             pausedWithinDays: 180,
         };
-        expect(countByState(games, NOW, undefined, thresholds)).toEqual({
+        expect(countByState(games, NOW, { thresholds })).toEqual({
             completed: 0,
             untouched: 0,
             tried: 1,
             inProgress: 0,
             paused: 1,
             finished: 0,
+            abandoned: 0,
         });
     });
 
@@ -325,5 +339,28 @@ describe('countByState', () => {
         const counts = countByState(games, NOW);
         const backlog = BACKLOG_STATES.filter(isBacklog).reduce((sum, state) => sum + counts[state], 0);
         expect(backlog).toBe(2);
+    });
+});
+
+describe('manual states', () => {
+    const override = (state: BacklogState) => ({ state, setAt: '2026-10-01T00:00:00Z', minutesAtSet: 0 });
+
+    it('win over the computed state, achievements included', () => {
+        const game = makeGame(600, daysAgo(10), '1');
+        expect(resolveState(game, NOW, override('abandoned'), { unlocked: 5, total: 5 })).toBe('abandoned');
+        expect(resolveState(game, NOW)).toBe('inProgress');
+    });
+
+    it('are counted by game.id.externalId, and abandoned is never computed', () => {
+        const games = [makeGame(0, null, '1'), makeGame(600, daysAgo(10), '2'), makeGame(600, daysAgo(900), '3')];
+        const counts = countByState(games, NOW, {
+            overrides: { '1': override('completed'), '3': override('abandoned') },
+        });
+        expect(counts).toMatchObject({ completed: 1, untouched: 0, inProgress: 1, finished: 0, abandoned: 1 });
+        expect(countByState(games, NOW).abandoned).toBe(0);
+    });
+
+    it('do not make abandoned a backlog state', () => {
+        expect(isBacklog('abandoned')).toBe(false);
     });
 });

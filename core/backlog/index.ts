@@ -1,2 +1,18 @@
-export { BACKLOG_STATES, DEFAULT_BACKLOG_THRESHOLDS, classifyGame, countByState, isBacklog } from './classify.js';
-export type { AchievementProgress, BacklogState, BacklogThresholds } from './classify.js';
+export {
+    BACKLOG_STATES,
+    DEFAULT_BACKLOG_THRESHOLDS,
+    MANUAL_STATES,
+    classifyGame,
+    countByState,
+    isBacklog,
+    resolveState,
+} from './classify.js';
+export type {
+    AchievementProgress,
+    BacklogOverride,
+    BacklogState,
+    BacklogThresholds,
+    ManualState,
+    Overrides,
+    StateOptions,
+} from './classify.js';

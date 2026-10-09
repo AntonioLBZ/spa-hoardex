@@ -1,6 +1,8 @@
 .header {
     align-items: center;
     display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-50);
     justify-content: space-between;
     margin-inline: auto;
     max-width: var(--size-page-width);
@@ -30,4 +32,23 @@
     color: var(--color-content);
     font: inherit;
     padding: var(--size-25) var(--size-50);
+}
+
+.header__actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-50);
+    justify-content: flex-end;
+}
+
+.account-control {
+    align-items: center;
+    display: inline-flex;
+    gap: var(--size-50);
+}
+
+.account-control__profile {
+    color: var(--color-content);
+    font-weight: 600;
 }

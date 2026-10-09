@@ -7,4 +7,5 @@ export const STATE_COLOR: Record<BacklogState, string> = {
     inProgress: 'var(--color-state-in-progress)',
     paused: 'var(--color-state-paused)',
     finished: 'var(--color-state-finished)',
+    abandoned: 'var(--color-state-abandoned)',
 };

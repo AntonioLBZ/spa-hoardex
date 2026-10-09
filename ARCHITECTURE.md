@@ -23,7 +23,7 @@ Dashboard web de la biblioteca de Steam de un usuario: horas jugadas, backlog, l
 | API | **Hono** en una Vercel Function (`/api`) | Request/Response estándar, portable fuera de Vercel, tipos extremo a extremo con `hc` |
 | Hosting | **Vercel Hobby** | Ya lo usas; gratis. Cloudflare descartado (§16) |
 | Caché | **CDN (`s-maxage` + SWR) + Upstash Redis free** | Persistente y barata en comandos si se diseña bien (§8) |
-| Base de datos | **Ninguna en el MVP.** Neon (Postgres) solo en fase 4 | Snapshots opt-in y backlog editable lo necesitarán |
+| Base de datos | **Ninguna en el MVP.** Neon (Postgres) solo en fase 4, con Redis delante para las lecturas públicas (§19) | Snapshots opt-in y backlog editable lo necesitarán. Solo Redis descartado: Upstash free archiva tras 14–30 días sin actividad y los snapshots casan mal con un key-value |
 | Cliente Steam | **Propio**: `fetch` + Zod 4 | `steamapi` descartado (§16) |
 | Fetching | **TanStack Query 5** | Ya lo usas en `spa-anicalendar` |
 | Estilos | **SCSS** + variables CSS, sin Tailwind | Reutilizar convenciones de tus repos (stylelint + BEM) |
@@ -342,7 +342,7 @@ El idioma de la UI se traduce al parámetro `l=` de Steam (`english`, `spanish`)
   - **Hosts:** las portadas salen de `cdn.cloudflare.steamstatic.com` y el avatar de `avatars.steamstatic.com` (**verificado el 2026-10-09** pidiendo a producción un perfil público conocido). `avatarUrl` llega tal cual de Steam, así que si Steam cambiara de host el avatar dejaría de verse. `media.steampowered.com` (icono del juego) no se usa en la UI.
   - **Sin `'unsafe-inline'`:** el `index.html` construido no lleva scripts ni estilos en línea (comprobado en `dist/`), el CSS no usa `data:`, `url()` ni fuentes externas, y el análisis va por mismo origen. Los `style={…}` de React, Motion, GSAP y Recharts se aplican desde JS (CSSOM), que `style-src` no bloquea (la página sale con todos sus estilos).
   - **Comprobación (preview y Chrome, 2026-10-09):** se fue directo a la cabecera real, sin el modo solo-aviso, porque la señal que se mira (el evento `securitypolicyviolation`) es la misma al bloquear y al avisar. Recorrí `/`, `/demo` (filtros, «Mostrar más», enlaces) y `/privacy`, y `/p/<perfil público>` con su avatar de `avatars.steamstatic.com`: ningún evento y ninguna imagen rota; una imagen de prueba de otro host sí disparó el evento. **Límites:** el detector se engancha tras la carga (la consola de la herramienta no muestra los avisos de CSP), así que una violación solo en la carga inicial no se habría visto, y no se vieron portadas de una biblioteca pública real (su host sale de la misma constante que usa el test). **Solo en previews:** la barra de comentarios de Vercel (`vercel.live`) queda bloqueada por `script-src 'self'`; no existe en producción.
-- **Login con Steam (fase 4):** OpenID 2.0, sin OAuth/OIDC. Verificar con `check_authentication` por `fetch` directo (~40 líneas), más comprobar `mode=id_res`, `op_endpoint`, `return_to` propio, regex del `claimed_id` y frescura del nonce. Sesión sin BD: cookie HttpOnly, Secure, SameSite=Lax con JWT HS256 (`jose`). Solo se obtiene el SteamID64.
+- **Login con Steam (fase 4):** OpenID 2.0, sin OAuth/OIDC. Verificar con `check_authentication` por `fetch` directo (~40 líneas), más comprobar `mode=id_res`, `op_endpoint`, `return_to` propio, regex del `claimed_id` y frescura del nonce. Sesión sin BD: cookie HttpOnly, Secure, SameSite=Lax con JWT HS256 (`hono/jwt`, ya incluido en Hono; `jose` no hace falta). Solo se obtiene el SteamID64. Diseño completo en §19.
 - **Logs:** nunca registrar la key ni cabeceras completas.
 
 ## 12. Términos de Steam y privacidad
@@ -426,7 +426,7 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 | 1 | Perfil → biblioteca, horas, estados de backlog (excepto Completado), gráficas, caché, i18n base, modo demo con fixtures |
 | 2 | Logros progresivos, rareza, estado *Completado* |
 | 3 | Wishlist (`GetWishlist` + `GetItems`) y valor sin jugar |
-| 4 | Login con Steam, Neon, backlog editable y snapshots opt-in |
+| 4 | Login con Steam, Neon, backlog editable y snapshots opt-in (diseño en §19) |
 | 5 | Otros adapters. RetroAchievements primero (API pública); GOG, Epic, PSN y Xbox son frágiles |
 
 ## 15. Riesgos
@@ -472,5 +472,131 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 
 1. Leer `AGENTS.md` (reglas fáciles de romper) y este fichero (el porqué).
 2. Seguir `TODO.md`; se borra cada punto al completarlo.
-3. Probar la app con `pnpm dlx vercel@62.7.0 dev` (necesita `.env.local`, de `vercel env pull`); `pnpm dev` solo sirve para tocar la interfaz sin API.
+3. Probar la app con dos terminales: `pnpm dlx vercel@62.7.0 dev` (la API en :3000; necesita `.env.local`, de `vercel env pull`, y ningún `.env`, que `vercel dev` lee antes) y `pnpm dev` (la interfaz en :5173, con `/api` hacia :3000). La página de `vercel dev` sale en blanco: la CSP bloquea los scripts en línea de Vite en desarrollo (§19.11).
 4. Antes de cerrar un cambio: `pnpm typecheck`, `pnpm test`, `pnpm format:check` y `pnpm lint:css`. El test anti-fuga (§13) también lee los documentos.
+
+## 19. Fase 4: login, cuentas, backlog editable y snapshots (diseño del 2026-10-09, Opus 5.5)
+
+Decisiones del dueño (2026-10-09): estados manuales = los seis actuales más *Abandonado*; arrastre en una **vista tablero**; los estados manuales son **públicos** (los visitantes los ven en solo lectura); los **snapshots entran en esta misma fase**. Todo en planes gratuitos.
+
+### 19.1 Qué da y qué no da el login
+
+- Steam OpenID solo devuelve el SteamID64: **no hay token** para leer datos privados. Con "detalles de juego" privados, la biblioteca sigue sin verse aunque el dueño inicie sesión (la key no es suya). El login prueba la propiedad del perfil y habilita la edición; además encaja mejor con «as requested by the end user» (§12).
+- Sin sesión, todo sigue como hoy. Con sesión, `/p/X` entra en modo edición solo si X resuelve al SteamID de la sesión; cualquier otro perfil es de solo lectura.
+
+### 19.2 Login (OpenID 2.0)
+
+1. `GET /api/auth/steam/login?returnTo=/p/…` → 302 a `https://steamcommunity.com/openid/login` con `openid.mode=checkid_setup`, `identity`/`claimed_id` = `identifier_select`, `realm` = origen propio y `return_to` = `/api/auth/steam/callback?state=<aleatorio>`. Guarda el `state` en una cookie `HttpOnly` de 10 min (contra el CSRF de login). Es un **enlace**, no un `<form>`: `form-action 'self'` de la CSP también bloquea las redirecciones de un formulario.
+2. `GET /api/auth/steam/callback`: `state` igual que la cookie; `openid.mode=id_res`; `op_endpoint` exacto; `return_to` igual al nuestro; `claimed_id` con `^https://steamcommunity\.com/openid/id/(765611\d{11})$`; `response_nonce` con menos de 5 min y no usado (`SET NX` de 10 min en Redis, 1 comando); y `check_authentication` por POST a Steam con `is_valid:true`. Host en la lista cerrada (§11).
+3. Upsert de la cuenta en Neon, marcador en Redis (§19.4), cookie de sesión y 302 a `returnTo` (solo rutas propias: empieza por `/` y no por `//`).
+- **Sesión:** cookie `hx_session`, `HttpOnly; Secure; SameSite=Lax; Path=/`, JWT HS256 (`hono/jwt`) con `sub` (SteamID), `exp` 30 días y `epoch`. `SESSION_SECRET` (≥ 32 bytes, sensible) en Vercel. `epoch` = `users.session_epoch`, comprobado en cada escritura (ya va a Neon): «cerrar todas las sesiones» lo incrementa.
+- `GET /api/me` (`no-store`): `{ user: null }` o `{ user: { steamId } }`. `POST /api/auth/logout` borra la cookie.
+- **Mutaciones:** SameSite=Lax más comprobar que `Origin` es el propio.
+- **CDN:** ningún GET público lee la sesión ni envía `Set-Cookie`; solo `/api/me*` y `/api/auth/*` dependen de ella (`no-store`). Así `/api/profile` y `/api/library` siguen cacheándose. Que el CDN de Vercel siga dando HIT a peticiones con cookie está **(sin verificar)** → spike 4.0.
+- **Entornos:** `realm` y `return_to` salen de una lista cerrada (`https://hoardex.vercel.app`, la URL de rama del preview vía `VERCEL_BRANCH_URL`, `http://localhost:3000`), nunca de la cabecera `Host`. Que Steam acepte `localhost` y que el callback funcione detrás de Vercel Authentication está **(sin verificar)** → spike 4.0.
+
+### 19.3 Almacenamiento
+
+- **Neon free** (2026-10-09, [pricing](https://neon.com/pricing)): 0,5 GB y 100 CU-hora al mes por proyecto, se duerme tras 5 min y despierta en unos cientos de ms; a diferencia de Supabase, no hay que reactivarlo a mano. Desde el Marketplace de Vercel, región `aws-us-east-1` (junto a la función `iad1` y Upstash). Ramas: `main` (producción) y `dev` (preview y desarrollo); una rama por preview agotaría las 10 del plan.
+- **Driver:** `@neondatabase/serverless` por HTTP (una petición por consulta, sin pool), SQL a mano y Zod al leer; sin ORM. Migraciones: `db/migrations/NNN_nombre.sql` + `scripts/migrate.ts` con una tabla `schema_migrations`. Va en `core/accounts` (repositorio con interfaz pura e implementación Neon, como `core/cache` con Upstash) más una versión en memoria para tests; PGlite (Postgres en WASM, dev) para probar el SQL sin red.
+- **Esquema** (`source` previsto para la fase 5):
+
+```sql
+users (id uuid pk, created_at, last_login_at, session_epoch int default 0, snapshots_opt_in_at timestamptz null)
+identities (source text, external_id text, user_id uuid → users on delete cascade, pk (source, external_id))
+backlog_overrides (user_id, game_source, game_id, state text check (...), minutes_at_set int, set_at timestamptz,
+                   pk (user_id, game_source, game_id))
+playtime_snapshots (user_id, game_source, game_id, taken_on date, total_minutes int,
+                    pk (user_id, game_source, game_id, taken_on))
+```
+
+### 19.4 Lectura pública por Redis
+
+Si cada visita a un perfil consultara Neon, lo mantendría despierto. Las lecturas públicas van a Redis: `bl:{source}:{steamid}` es un hash (campo = appid, valor = estado) o un marcador `none` si no hay cuenta. Se escribe a la vez en Neon y Redis (write-through); si falta la clave, se lee Neon y se rellena. TTL largo (30 d), porque la escritura lo mantiene correcto. Coste: +1 comando de Redis por visita a un perfil. Neon solo se despierta con login, escrituras, fallos de caché y el cron.
+
+### 19.5 API
+
+| Ruta | Qué hace | Caché |
+|---|---|---|
+| `GET /api/backlog/:input` | Estados manuales de un perfil (desde Redis) | `s-maxage` corto, como la biblioteca |
+| `PUT /api/me/backlog/:appid` `{state}` | Pone un estado manual | `no-store` |
+| `DELETE /api/me/backlog/:appid` | Vuelve al estado automático | `no-store` |
+| `PUT /api/me/settings` `{snapshots}` | Activa o desactiva los snapshots | `no-store` |
+| `DELETE /api/me` | Borra cuenta, overrides, snapshots y claves de Redis (derecho de supresión) | `no-store` |
+| `GET /api/cron/snapshots` | Cron diario, con `Authorization: Bearer CRON_SECRET` | `no-store` |
+
+- El SteamID sale siempre de la sesión, nunca de la URL. El appid debe estar en la biblioteca cacheada de ese usuario (misma regla que los lotes de logros, §9). `state` es un enum Zod.
+- El cliente con sesión siembra su caché con la respuesta del PUT (optimista, `useMutation`), como el refresco (§8): el CDN puede tener la copia vieja del GET.
+- La regla del WAF sobre `/api` (§11) ya cubre estas rutas.
+
+### 19.6 Estados
+
+- Nuevo estado `abandoned`, **solo manual**. *Completado* a mano significa «lo doy por terminado»; automático solo con el 100 % de logros (§7).
+- `resolveState(game, now, override?, progress?)` en `core/backlog`: si hay override, gana; si no, `classifyGame`. `summarizeLibrary` y `classifyLibrary` reciben el mapa de overrides, y gráficas, chips y filtros lo siguen sin tocar las vistas. *Abandonado* no cuenta como backlog.
+- El override es **permanente**. Guarda `minutes_at_set`: si el juego suma minutos después, la UI muestra una pista («lo has jugado desde que lo marcaste») en vez de cambiar el estado sola.
+
+### 19.7 Front
+
+- Cabecera: botón «Sign in through Steam» con la imagen oficial de Valve, alojada en `public/` (la CSP no cambia). Con sesión: avatar, «Mi perfil» y «Cerrar sesión». La pantalla de entrada ofrece «Ir a mi perfil». `meQuery` en `src/lib/api`.
+- **Menú por tarjeta** («Cambiar estado», «Volver a automático»), solo para el dueño. Es obligatorio aunque exista el tablero: teclado, lector de pantalla y móvil. Los estados manuales llevan una marca visible y un texto accesible.
+- **Vista tablero** (`view=board`, parámetro de búsqueda como `state`/`sort`/`q`): una columna por estado con su contador, «Mostrar más» por columna (nunca cientos de tarjetas montadas a la vez) y arrastre con una librería pequeña (Pragmatic drag and drop o dnd-kit; se elige midiendo el peso en el chunk diferido). Fuera de edición, el tablero es de solo lectura. Las animaciones siguen §10: el tablero tiene sus propios elementos; nada de GSAP sobre `li.game-card` mientras se arrastra.
+- **Demo editable** sin login: los cambios van a `localStorage` con un aviso de que no se guardan, así el portfolio enseña la función.
+- `/account` (rewrite nueva en `vercel.json`): interruptor de snapshots, «Cerrar todas las sesiones» y «Borrar mis datos».
+- **Política de privacidad:** Neon (AWS us-east-1) como tercero; qué se guarda (SteamID, estados manuales y sus fechas, snapshots si se activan) y que los estados manuales son públicos; la cookie de sesión (estrictamente necesaria, sin banner); cómo borrar los datos.
+
+### 19.8 Snapshots opt-in
+
+- Cron de Vercel una vez al día (el máximo en Hobby; la hora exacta no está garantizada) en `/api/cron/snapshots`. Recorre los usuarios con `snapshots_opt_in_at` (en tandas, dentro de los 300 s), pide `GetOwnedGames` por el presupuesto diario (§8) y guarda **solo los juegos cuyos minutos han cambiado** desde el último snapshot. Idempotente por día (`on conflict do nothing`).
+- Snapshot oportunista: al abrir el dueño su propio perfil, si el último tiene más de 24 h.
+- Tamaño: unos pocos juegos cambiados al día por usuario activo (~decenas de bytes por fila): 0,5 GB dan para muchos años con tráfico de portfolio.
+- Habilita gráficas nuevas (horas por semana o mes), que Steam no da: solo entrega totales.
+
+### 19.9 Resultados del spike 4.0 y de 4a (2026-10-09)
+
+- **Login en un preview protegido (verificado por el dueño, 2026-10-09):** Steam OpenID completa el ciclo detrás de Vercel Authentication, el origen del preview (`VERCEL_URL`) pasa la lista cerrada y la sesión queda iniciada. **Sin probar todavía con `localhost`** (el 302 a Steam con `realm=http://localhost:3000` sale bien; falta completar el login).
+- **CDN con cookie (verificado en el preview):** tres `GET /api/demo/library` con `Cookie: hx_session=…` distinta cada vez dieron MISS, HIT, HIT. El CDN no mete la cookie en la clave, así que los GET públicos siguen cacheándose con sesión. `/api/me` sale `no-store` y con un token falso responde `{ user: null }`.
+- **Neon desde local (rama `dev`, 2026-10-09):** Postgres 18.6 en `us-east-1`, primera consulta 434 ms y siguientes ~118 ms desde España por HTTP (`scripts/spike-neon.ts`). Falta medir desde `iad1` (4b).
+- **`vercel dev` y un `.env` viejo (2026-10-09):** el login daba 500 `misconfigured` (sin `SESSION_SECRET`) y Redis fallaba con `WRONGPASS`. La causa era un `.env` del 7 de octubre con un token de Upstash ya revocado (la integración se reconectó el 9): con `.env` presente, `vercel dev` lo usa y no toma `.env.local`. Retirado ese fichero, `vercel dev` lee `.env.local` sin más (secretos de 64 caracteres y Redis con HIT). Las variables locales salen solo de `vercel env pull` (a `.env.local`); no crear un `.env`.
+- **Variables:** `SESSION_SECRET` y `CRON_SECRET` aleatorias (`openssl rand -base64 48`) en Production y Preview como *sensitive*, y otras distintas en Development. `DATABASE_URL` apunta a la rama `dev` en Preview y Development; producción usará `NEON_STORAGE_DATABASE_URL`, que pone la integración (Neon Auth vino activado y no se usa).
+- **Implementado (4a):** `core/adapters/steam/openid.ts` (`buildSteamLoginUrl`, `verifySteamLogin`: todas las comprobaciones de §19.2, el nonce se reclama antes de `check_authentication`), `core/auth/ttl.ts` (`AUTH_TTL`: sesión 30 días, intento de login 10 min; la política los lee), `server/session.ts` (JWT HS256 con `hono/jwt`, cookie `hx_session` con `Path=/api`) y `server/auth.ts` (`/api/auth/steam/login`, `/callback`, `/api/me`, `POST /api/auth/logout`; `safeReturnTo` solo admite rutas propias fuera de `/api`). `server/deps.ts`: `originPolicy` (producción `VERCEL_PROJECT_PRODUCTION_URL`, preview `VERCEL_URL` y `VERCEL_BRANCH_URL`, desarrollo `http://localhost:<puerto>`) y `buildAuth` (secreto de al menos 32 caracteres; nonce en Redis con `SET NX`, y si Redis falla se deja pasar porque `check_authentication` sigue). Un login fallido vuelve a `/?login=failed`, que muestra un aviso; sin `returnTo` (o con `/`) va a `/p/{steamid}`. Front: `AccountControl` en la cabecera (nada hasta conocer la sesión; «Entrar con Steam» o «Mi perfil» y «Cerrar sesión»), `meQuery` con `staleTime: Infinity`. `stubApi` responde «sin sesión» a `/api/me` por defecto y lo deja fuera de las llamadas registradas. Política de privacidad: sección «Iniciar sesión con Steam» y las cookies.
+
+### 19.10 Implementado en 4b (2026-10-09)
+
+- **Esquema:** `db/migrations/001_accounts.sql` (`users`, `identities`, `backlog_overrides`; los snapshots llegan con su propia migración en 4e). `state` lleva un `check` con los siete estados manuales (`MANUAL_STATES` en `core/backlog`: los seis calculados más `abandoned`).
+- **Migraciones:** `scripts/migrate.ts` (`pnpm db:migrate`) aplica cada fichero una vez, en orden, dentro de una transacción y con un `pg_advisory_lock` (dos builds a la vez no aplican lo mismo dos veces); lleva la cuenta en `schema_migrations`. Usa `Pool` (WebSocket) porque una migración tiene varias sentencias. **Corre en cada build de Vercel** (`buildCommand` en `vercel.json`: `pnpm db:migrate && pnpm build`), así que preview migra la rama `dev` y producción `main` antes de construir; verificado en un preview. Como el despliegue anterior sigue sirviendo hasta la promoción, **una migración debe ser compatible con el código anterior** (añadir, no renombrar ni borrar). En local: `node --env-file=.env.local scripts/migrate.ts`.
+- **Conexión:** `DATABASE_URL` (rama `dev`, en Preview y Development) y si falta `NEON_STORAGE_DATABASE_URL` (producción, de la integración). En tiempo de ejecución, Neon por HTTP (`core/accounts/neon.ts`, una petición por sentencia).
+- **`core/accounts`:** `createSqlRepository(query)` (SQL a mano, filas validadas con Zod, errores como `DatabaseError` sin SQL ni valores; el primer login crea usuario e identidad en una sentencia con CTE y reintenta una vez si dos primeros logins se cruzan, lo que puede dejar un `users` huérfano sin identidad) y `createBacklogService` (lee `bl:{source}:{id}` en Redis y, si falta o tiene otra forma, Neon; cada escritura vuelve a leer Neon y reescribe la copia; TTL `CACHE_TTL.backlog`, 1 día). Un perfil sin cuenta también se cachea (vacío), así que una visita normal no despierta Neon más de una vez al día por perfil.
+- **Tests:** PGlite (Postgres 17 en WASM, solo en desarrollo) aplica las mismas migraciones (`core/accounts/test-db.ts`); repositorio, servicio y rutas se prueban contra SQL real sin red.
+- **API** (`server/backlog.ts`): `GET /api/backlog/:input` (público, misma caché de CDN que la biblioteca), `GET /api/me/backlog` (el dueño, `no-store`, sin pasar por el CDN: si no, tras recargar vería su copia vieja hasta 6 min), `PUT /api/me/backlog/:appid` `{state}` y `DELETE /api/me/backlog/:appid`. Las escrituras exigen `Origin` propio, sesión, cuenta con el mismo `session_epoch` que el token (va en el JWT desde 4b; los tokens sin él cuentan como 0) y, en el PUT, que el juego esté en la biblioteca del dueño (`minutesAtSet` sale de su `playtime`). Respuestas: `{ kind: 'ok', data: { overrides } }`; 401 `signedOut`, 403 `origin`, 404 `notOwned`, 409 `library` (biblioteca privada o no disponible), 503 `database`. `CachedAdapter.resolveId` resuelve un vanity con la caché `alias:`.
+- **Login:** el callback registra la cuenta (`recordLogin`) y mete su `session_epoch` en el token; si la base de datos falla, el login falla (sin sesión a medias).
+- **Política de privacidad:** sección «Tus estados manuales» (Neon en AWS us-east-1, qué se guarda, que son públicos, la copia en Redis con su TTL y cómo borrar la cuenta, por correo hasta que llegue `/account` en 4e).
+- **Latencia (preview, 2026-10-09):** `GET /api/backlog/:id` desde España 0,23–0,49 s de punta a punta, sin diferencia apreciable entre la primera lectura (Neon) y las siguientes (Redis); Neon seguramente estaba despierto, así que el arranque en frío sigue sin medirse desde `iad1`.
+- **Concurrencia:** dos escrituras a la vez pueden dejar la copia de Redis sin la segunda hasta la siguiente escritura o el TTL. El cliente (4c) debe serializar sus mutaciones (`scope` de TanStack Query).
+
+### 19.11 Implementado en 4c (2026-10-09)
+
+- **Estados:** `abandoned` entra en `BACKLOG_STATES` (al final; `classifyGame` nunca lo devuelve) y `MANUAL_STATES` es la misma lista. `BacklogOverride` y `Overrides` viven en `core/backlog`. `resolveState` = manual o calculado; `countByState(games, now, { progressByAppId, overrides, thresholds })`, `summarizeLibrary(…, { overrides })` y `classifyLibrary(…, { overrides })`, cuya entrada lleva `state` (el que se ve), `computed` (el de la biblioteca) y `manual`. *Abandonado* no cuenta como backlog.
+- **Qué se enseña:** *Completado* y *Abandonado* solo aparecen en el donut y en los chips si algún juego los tiene (`isShownState`, `src/lib/shown-states.ts`): hasta la fase 2 solo los pone el dueño, y un 0 se leería como «ninguno». Un `?state=completed|abandoned` en la URL vale aunque no haya ninguno (el chip seleccionado se muestra).
+- **Datos en el cliente** (`useBacklog`, `src/features/profile-page/use-backlog.ts`): el visitante lee `GET /api/backlog/:input` (`backlogQuery`); si `meQuery` dice que la sesión es la del perfil, lee `GET /api/me/backlog` (`myBacklogQuery`, `staleTime: Infinity`) y edita. Las escrituras son un `useMutation` con `scope: { id: 'backlog' }` (de una en una, §19.10), optimistas (se aplica el cambio en `myBacklogQuery` antes de responder, con `minutesAtSet` = horas actuales) y, al volver, se guarda la lista entera que da el servidor; si falla, se restaura la anterior y la vista dice «No se pudo guardar ese cambio» (`role="alert"`). Un error al leer los estados se trata como «sin estados manuales».
+- **Demo editable:** `demo-backlog.ts` guarda los estados en `localStorage` (`hoardex:demo-backlog`, validados al leer) y en memoria (si el almacenamiento está bloqueado, el cambio dura lo que la página), con `useSyncExternalStore`. El aviso de la demo lo explica; la política de privacidad lo declara (sección «En tu dispositivo»).
+- **Tarjeta** (`GameCard`): para quien puede editar, un `<select>` nativo con etiqueta oculta «Estado de {juego}» y las opciones «{calculado} · auto» y los siete estados (nativo: teclado, lector de pantalla y móvil sin código propio); para el visitante, el texto de siempre. Un estado manual añade «Puesto a mano» y, si el juego suma minutos desde entonces, «Jugado desde entonces» (el estado no cambia solo). El selector ocupa el ancho de la tarjeta (`.game-card__state--editable`): con 9 rem cortaba «Automático: Acabado». Visto en la demo en escritorio con Vite y `/api` real (sin desbordamiento, el estado sobrevive a recargar); **el móvil no se pudo ver** (la ventana de la extensión no cambió de tamaño).
+- **`Dashboard` y `LibraryView`** reciben `overrides` (referencia estable: la da Query o el store de la demo; vacío = constante congelada) y `LibraryView` un `editor` (`StateEditor`, `library-view/state-editor.ts`) o `null`.
+- **Cabecera en su chunk:** `AccountControl` se carga con `lazy` (no pinta nada hasta conocer la sesión, así que no se nota). Medido el JS inicial de `/` (chunk principal y sus imports estáticos, gzip): 123,7 KB en el último commit, 128,7 KB con la cabecera en el chunk principal y 125,5 KB con `lazy`. El número «chunk principal» solo engaña: antes TanStack Query ya se cargaba al inicio desde otro fichero (`preload-helper`).
+- **Tests:** `stubApi` responde por defecto «sin sesión» a `/api/me` y «sin estados» a `/api/backlog/*`, fuera de las llamadas registradas salvo que el test las conteste. `backlog-editing.test.tsx` cubre visitante, dueño (PUT, error y vuelta atrás) y demo.
+- **Hallazgo:** `vercel dev` aplica la CSP de `vercel.json`, que bloquea el script en línea de React Refresh que inyecta Vite en desarrollo (y los `<style>` que inyecta su cliente): **la página sale en blanco en local desde que se puso la CSP** (consola: «@vitejs/plugin-react can't detect preamble»). La API sí funciona. En producción no pasa (el build no lleva nada en línea). Para mirar la interfaz: Vite solo con un proxy de `/api` al `vercel dev` (lo que se hizo aquí con una configuración temporal). Pendiente de decidir (`TODO.md`).
+
+### 19.12 Implementado en 4d (2026-10-09)
+
+- **Desarrollo local con la CSP:** `vite.config.ts` manda `/api` a `vercel dev` (`HOARDEX_API_URL`, por defecto `http://localhost:3000`) con `xfwd: true`. Sin `xfwd` el proxy entrega `Host: localhost:3000` y el login mandaba a Steam con `realm` de :3000, cuya página sale en blanco; con `X-Forwarded-Host` Hono ve :5173 y Steam vuelve ahí (comprobado: `realm=http://localhost:5173`). La cookie vale para los dos puertos (las cookies no distinguen puerto). La CSP sigue entera en producción; solo cambia cómo se mira la interfaz en local.
+- **Tablero** (`?view=board`, `library-view/board.tsx` y `board-card.tsx`): una columna por estado (`groupByState`, puro, en `core/browse`), en una rejilla que salta de línea (`minmax(min(15rem, 100%), 1fr)`, sin scroll horizontal). La búsqueda y el orden se aplican dentro de cada columna; el filtro de estado no (cada estado es una columna, así que sus chips se ocultan). 12 tarjetas por columna y 24 más por «Mostrar más»; se reinicia al cambiar búsqueda u orden. Tarjetas compactas sin portada (nombre, horas, el mismo selector y la nota «Puesto a mano»). Para quien edita salen las siete columnas (todas son destino); para un visitante, *Completado* y *Abandonado* solo si tienen juegos, y nada se arrastra.
+- **Arrastre nativo (HTML5), sin librería:** el tablero solo mueve una tarjeta a otra columna (no reordena), la alternativa accesible ya existe (el selector de cada tarjeta, también para deshacer) y así no suma peso (el chunk diferido crece ~1 KB gzip, todo del tablero). La tarjeta lleva el appid en un tipo propio (`application/x-hoardex-appid`); la columna solo acepta mientras arrastra una tarjeta suya y comprueba que el appid está en la biblioteca, así que un texto u otra cosa soltada encima se ignora. La columna de destino se marca con un contorno discontinuo; la tarjeta arrastrada baja su opacidad (transición solo sin movimiento reducido). **Coste:** el arrastre táctil depende del navegador (Chrome en Android y Safari en iOS 15+ lo dan con pulsación larga, *sin verificar*); donde no exista queda el selector. Descartados: dnd-kit (eventos de puntero, táctil fiable, pero más peso) y Pragmatic drag and drop (sobre el mismo arrastre nativo, aporta autoscroll y vistas previas).
+- **Comprobado:** tests en jsdom con `dataTransfer` simulado (mover, ignorar lo ajeno, «Mostrar más», solo lectura) y en Chrome por el proxy: columnas, contadores y selectores a ~945 px. **El arrastre real no se pudo probar en el navegador:** los eventos de ratón sintéticos de la extensión no inician el arrastre nativo. Tampoco el móvil.
+
+### 19.13 Orden
+
+0. **Spike 4.0:** OpenID desde `localhost` y desde un preview protegido; latencia de Neon en frío y en caliente desde `iad1`; HIT del CDN con cookie en la petición.
+1. **4a** Login, sesión, `/api/me` y UI de cabecera.
+2. **4b** Neon, migraciones, repositorio, overrides y la caché `bl:`.
+3. **4c** `resolveState`, *Abandonado*, menú por tarjeta y demo editable.
+4. **4d** Vista tablero con arrastre.
+5. **4e** Snapshots (cron y oportunista), `/account` y la política de privacidad.

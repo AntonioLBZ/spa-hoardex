@@ -25,6 +25,7 @@ export function ProfilePage({ source }: { source: ProfileSource }) {
 
 function ProfileContent({ source }: { source: ProfileSource }) {
     const t = useTranslations('profile');
+    const tLibrary = useTranslations('library');
     const profile = useQuery(profileQueryFor(source));
     // Started together with the profile: the library takes the same input, so it does not wait to learn the id
     const library = useQuery(libraryQueryFor(source));
@@ -37,13 +38,13 @@ function ProfileContent({ source }: { source: ProfileSource }) {
     if (profile.data.kind !== 'ok')
         return <Problem kind={profile.data.kind} onRetry={() => void profile.refetch()} source={source} />;
 
-    const { displayName, avatarUrl } = profile.data.data;
+    const { id, displayName, avatarUrl } = profile.data.data;
 
     return (
         <article className="profile-page">
             {source.kind === 'demo' ? (
                 <p className="profile-page__notice" role="note">
-                    {t('demoNotice')}
+                    {t('demoNotice')} {tLibrary('demoEditing')}
                 </p>
             ) : null}
             <header className="profile-page__header rise-in" style={riseStyle(0)}>
@@ -60,7 +61,7 @@ function ProfileContent({ source }: { source: ProfileSource }) {
                     <RefreshControl input={source.input} library={library.data.data} />
                 ) : null}
             </header>
-            <LibrarySection library={library} source={source} />
+            <LibrarySection library={library} profileId={id.externalId} source={source} />
         </article>
     );
 }
