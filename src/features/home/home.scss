@@ -90,6 +90,39 @@
     font-size: 0.875rem;
 }
 
+.home__owner {
+    border-inline-start: 3px solid var(--color-accent);
+    display: grid;
+    gap: var(--size-25);
+    max-width: 36rem;
+    padding-inline-start: var(--size-100);
+}
+
+.home__owner-title {
+    font-weight: 700;
+}
+
+.home__owner-text {
+    color: var(--color-content-muted);
+    font-size: 0.9375rem;
+}
+
+.home__owner-action {
+    font-weight: 600;
+    justify-self: start;
+    text-decoration: none;
+}
+
+.home__owner-action:hover {
+    text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .home__owner {
+        animation: rise-in var(--motion-reveal) var(--ease-settle) backwards;
+    }
+}
+
 .home__features {
     display: grid;
     gap: var(--size-150);

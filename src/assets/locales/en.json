@@ -1,14 +1,16 @@
 {
     "app": {
         "name": "Hoardex",
-        "tagline": "Your Steam library, <mark>at a glance</mark>.",
-        "language": "Language"
+        "tagline": "Your Steam library, <mark>at a glance</mark>."
     },
     "account": {
-        "signIn": "Sign in with Steam",
-        "myProfile": "My profile",
+        "signIn": "Sign in",
+        "myProfile": "My library",
         "signOut": "Sign out",
-        "account": "Account"
+        "account": "Account settings",
+        "withSteam": "with Steam",
+        "menu": "Account menu",
+        "signedIn": "Signed in"
     },
     "accountPage": {
         "title": "Your account",
@@ -44,10 +46,10 @@
     },
     "entry": {
         "label": "Your Steam profile",
-        "placeholder": "Profile URL, custom name or SteamID64",
+        "placeholder": "Profile URL, username or SteamID64",
         "submit": "View library",
         "invalid": "That does not look like a Steam profile. Try a profile URL, a custom name or a SteamID64.",
-        "hint": "Enter your own profile. It and its game details must be public.",
+        "hint": "Enter your own profile: the username is the one in steamcommunity.com/id/username. The profile and its game details must be public.",
         "loginFailed": "Signing in with Steam did not work. Try again."
     },
     "home": {
@@ -73,6 +75,11 @@
                 "title": "Playtime history, if you want it",
                 "text": "Turn on a daily record of your hours from your account. Turning it off deletes it."
             }
+        },
+        "owner": {
+            "title": "Is it your library?",
+            "text": "Sign in with your Steam account to move games to Completed or Abandoned and keep a playtime history. Steam only tells us your SteamID, never your password.",
+            "action": "Continue with Steam"
         }
     },
     "profile": {
@@ -135,7 +142,8 @@
     "footer": {
         "disclaimer": "Hoardex is an independent project. It is not affiliated with or endorsed by Valve Corporation.",
         "trademark": "©{year} Valve Corporation. Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the U.S. and/or other countries.",
-        "privacy": "Privacy policy"
+        "privacy": "Privacy policy",
+        "language": "Language"
     },
     "dashboard": {
         "kpi": {

@@ -1,12 +1,12 @@
 .header {
     align-items: center;
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--size-50);
+    gap: var(--size-100);
     justify-content: space-between;
     margin-inline: auto;
     max-width: var(--size-page-width);
-    padding: var(--size-100);
+    min-block-size: 4rem;
+    padding: var(--size-75) var(--size-100);
     width: 100%;
 }
 
@@ -15,8 +15,9 @@
     color: var(--color-content);
     display: inline-flex;
     font-size: 1.25rem;
-    font-weight: 700;
+    font-weight: 800;
     gap: var(--size-50);
+    letter-spacing: -0.01em;
     text-decoration: none;
 }
 
@@ -25,30 +26,129 @@
     width: 1.5rem;
 }
 
-.header__language {
+.account-control {
+    position: relative;
+}
+
+.account-control__icon {
+    block-size: 1.125rem;
+    fill: none;
+    inline-size: 1.125rem;
+    stroke: currentcolor;
+    stroke-linecap: round;
+    stroke-width: 2;
+}
+
+.account-control__sign-in {
+    align-items: center;
+    border-radius: 999px;
+    color: var(--color-content-muted);
+    display: inline-flex;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    gap: var(--size-50);
+    padding: var(--size-50) var(--size-75);
+    text-decoration: none;
+}
+
+.account-control__sign-in:hover {
+    background-color: color-mix(in srgb, var(--color-content) 8%, transparent);
+    color: var(--color-content);
+}
+
+.account-control__trigger {
+    align-items: center;
+    background-color: var(--color-bg-raised);
+    block-size: 2.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    color: var(--color-content-muted);
+    cursor: pointer;
+    display: inline-flex;
+    inline-size: 2.5rem;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0;
+}
+
+.account-control__trigger:hover {
+    border-color: var(--color-content-muted);
+}
+
+.account-control__avatar {
+    block-size: 100%;
+    display: block;
+    inline-size: 100%;
+    object-fit: cover;
+}
+
+.account-control__menu {
     background-color: var(--color-bg-raised);
     border: 1px solid var(--color-border);
+    border-radius: calc(var(--size-border-radius) * 1.5);
+    box-shadow: 0 16px 40px -12px rgb(0 0 0 / 35%);
+    inset: calc(100% + var(--size-50)) 0 auto auto;
+    min-inline-size: 13rem;
+    padding: var(--size-50);
+    position: absolute;
+    z-index: 10;
+}
+
+.account-control__menu[hidden] {
+    display: none;
+}
+
+.account-control__name {
+    border-block-end: 1px solid var(--color-border);
+    font-weight: 700;
+    margin-block-end: var(--size-50);
+    overflow: hidden;
+    padding: var(--size-50) var(--size-75) var(--size-75);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.account-control__items {
+    display: grid;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.account-control__item {
+    background: none;
+    border: none;
     border-radius: var(--size-border-radius);
-    color: var(--color-content);
+    color: inherit;
+    cursor: pointer;
+    display: block;
     font: inherit;
-    padding: var(--size-25) var(--size-50);
+    inline-size: 100%;
+    padding: var(--size-50) var(--size-75);
+    text-align: start;
+    text-decoration: none;
 }
 
-.header__actions {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--size-50);
-    justify-content: flex-end;
+.account-control__item:hover {
+    background-color: color-mix(in srgb, var(--color-content) 8%, transparent);
 }
 
-.account-control {
-    align-items: center;
-    display: inline-flex;
-    gap: var(--size-50);
+.account-control__item[aria-disabled='true'] {
+    color: var(--color-content-muted);
+    cursor: not-allowed;
 }
 
-.account-control__profile {
-    color: var(--color-content);
-    font-weight: 600;
+@media (prefers-reduced-motion: no-preference) {
+    .account-control__menu {
+        transition:
+            opacity var(--motion-swift) var(--ease-standard),
+            transform var(--motion-swift) var(--ease-standard);
+    }
+
+    @starting-style {
+        .account-control__menu {
+            opacity: 0;
+            transform: translateY(-0.25rem);
+        }
+    }
 }

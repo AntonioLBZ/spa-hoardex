@@ -342,11 +342,14 @@ describe('demo', () => {
 describe('app shell', () => {
     it('switches language and remembers it', async () => {
         const { user } = renderApp('/');
-        await user.selectOptions(await screen.findByLabelText('Language'), 'es');
+        const languages = await screen.findByRole('list', { name: 'Language' });
+        expect(within(languages).getByRole('button', { name: 'English' }).getAttribute('aria-pressed')).toBe('true');
+        await user.click(within(languages).getByRole('button', { name: 'Español' }));
 
         expect(await screen.findByLabelText('Tu perfil de Steam')).toBeTruthy();
         expect(document.documentElement.lang).toBe('es');
         expect(localStorage.getItem('hoardex:locale')).toBe('es');
+        expect(screen.getByRole('button', { name: 'Español' }).getAttribute('aria-pressed')).toBe('true');
     });
 
     it('starts in the stored language', async () => {
@@ -380,6 +383,23 @@ describe('app shell', () => {
         renderApp('/');
 
         expect((await screen.findByText(/Enter your own profile/)).textContent).toMatch(/must be public/);
+    });
+
+    it('invites a signed-out visitor to sign in to edit their own library', async () => {
+        stubApi({});
+        renderApp('/');
+
+        const link = await screen.findByRole('link', { name: 'Continue with Steam' });
+        expect(link.getAttribute('href')).toBe(`/api/auth/steam/login?returnTo=${encodeURIComponent('/')}`);
+        expect(screen.getByText('Is it your library?')).toBeTruthy();
+    });
+
+    it('does not invite a signed-in visitor to sign in', async () => {
+        stubApi({ '/api/me': { body: { user: { steamId: STEAM_ID } } } });
+        renderApp('/');
+
+        await screen.findByRole('button', { name: 'Account menu' });
+        expect(screen.queryByText('Is it your library?')).toBeNull();
     });
 
     it('answers an unknown route with a not-found page', async () => {

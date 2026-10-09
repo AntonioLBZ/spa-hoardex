@@ -1,14 +1,16 @@
 {
     "app": {
         "name": "Hoardex",
-        "tagline": "Tu biblioteca de Steam, <mark>de un vistazo</mark>.",
-        "language": "Idioma"
+        "tagline": "Tu biblioteca de Steam, <mark>de un vistazo</mark>."
     },
     "account": {
-        "signIn": "Entrar con Steam",
-        "myProfile": "Mi perfil",
+        "signIn": "Iniciar sesión",
+        "myProfile": "Mi biblioteca",
         "signOut": "Cerrar sesión",
-        "account": "Cuenta"
+        "account": "Ajustes de la cuenta",
+        "withSteam": "con Steam",
+        "menu": "Menú de la cuenta",
+        "signedIn": "Sesión iniciada"
     },
     "accountPage": {
         "title": "Tu cuenta",
@@ -44,10 +46,10 @@
     },
     "entry": {
         "label": "Tu perfil de Steam",
-        "placeholder": "URL del perfil, nombre personalizado o SteamID64",
+        "placeholder": "URL del perfil, usuario o SteamID64",
         "submit": "Ver biblioteca",
         "invalid": "Eso no parece un perfil de Steam. Prueba con la URL del perfil, un nombre personalizado o un SteamID64.",
-        "hint": "Introduce tu propio perfil. El perfil y los detalles de sus juegos tienen que ser públicos.",
+        "hint": "Introduce tu propio perfil: el usuario es el de steamcommunity.com/id/usuario. El perfil y los detalles de sus juegos tienen que ser públicos.",
         "loginFailed": "No se pudo iniciar sesión con Steam. Inténtalo de nuevo."
     },
     "home": {
@@ -73,6 +75,11 @@
                 "title": "Historial de horas, si lo quieres",
                 "text": "Activa desde tu cuenta un registro diario de tus horas. Al desactivarlo se borra."
             }
+        },
+        "owner": {
+            "title": "¿Es tu biblioteca?",
+            "text": "Entra con tu cuenta de Steam para mover juegos a Completado o Abandonado y guardar un historial de horas. Steam solo nos dice tu SteamID, nunca tu contraseña.",
+            "action": "Continuar con Steam"
         }
     },
     "profile": {
@@ -135,7 +142,8 @@
     "footer": {
         "disclaimer": "Hoardex es un proyecto independiente. No está afiliado ni respaldado por Valve Corporation.",
         "trademark": "©{year} Valve Corporation. Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the U.S. and/or other countries.",
-        "privacy": "Política de privacidad"
+        "privacy": "Política de privacidad",
+        "language": "Idioma"
     },
     "dashboard": {
         "kpi": {

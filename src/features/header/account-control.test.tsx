@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderApp, stubApi } from '@/lib/test/render-app';
@@ -17,18 +17,45 @@ describe('account control', () => {
         expect(link.getAttribute('href')).toBe(`/api/auth/steam/login?returnTo=${encodeURIComponent('/privacy')}`);
     });
 
-    it('links to the visitor’s own profile once signed in, and signs out', async () => {
+    it('keeps the signed-in links in a menu behind the avatar, and signs out', async () => {
         const fetchMock = stubApi({
             '/api/me': { body: { user: { steamId: ID } } },
+            [`/api/profile/${ID}`]: {
+                body: {
+                    kind: 'ok',
+                    data: {
+                        id: { source: 'steam', externalId: ID },
+                        displayName: 'Menu Person',
+                        avatarUrl: 'https://example.invalid/avatar.jpg',
+                        profileUrl: 'https://example.invalid/profile',
+                        visibility: 'public',
+                        createdAt: null,
+                    },
+                },
+            },
             '/api/auth/logout': { body: { user: null } },
         });
         const { user } = renderApp('/privacy');
 
-        const profile = await screen.findByRole('link', { name: 'My profile' });
-        expect(profile.getAttribute('href')).toBe(`/p/${ID}`);
+        const trigger = await screen.findByRole('button', { name: 'Account menu' });
+        await waitFor(() =>
+            expect(trigger.querySelector('img')?.getAttribute('src')).toBe('https://example.invalid/avatar.jpg')
+        );
+        const menu = document.getElementById(trigger.getAttribute('aria-controls') ?? '');
+        expect(menu?.hidden).toBe(true);
+        await user.click(trigger);
+        expect(trigger.getAttribute('aria-expanded')).toBe('true');
+        expect(menu?.hidden).toBe(false);
+        expect(within(menu!).getByText('Menu Person')).toBeTruthy();
+        expect(within(menu!).getByRole('link', { name: 'My library' }).getAttribute('href')).toBe(`/p/${ID}`);
+        expect(within(menu!).getByRole('link', { name: 'Account settings' }).getAttribute('href')).toBe('/account');
         expect(screen.queryByRole('link', { name: 'Sign in with Steam' })).toBeNull();
 
-        await user.click(screen.getByRole('button', { name: 'Sign out' }));
+        await user.keyboard('{Escape}');
+        expect(menu?.hidden).toBe(true);
+        expect(document.activeElement).toBe(trigger);
+        await user.click(trigger);
+        await user.click(within(menu!).getByRole('button', { name: 'Sign out' }));
         expect(await screen.findByRole('link', { name: 'Sign in with Steam' })).toBeTruthy();
         expect(fetchMock).toHaveBeenCalledWith('/api/auth/logout', { method: 'POST' });
     });

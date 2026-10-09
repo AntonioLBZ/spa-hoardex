@@ -1,11 +1,14 @@
 import { Link } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
+import { Suspense, lazy, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 
 import { EntryForm } from '@/features/entry-form';
 import { riseStyle } from '@/lib/motion';
 import { STATE_COLOR } from '@/lib/state-colors';
 import { HomePreview } from './home-preview';
+
+// With the header's account control: the session query keeps TanStack Query out of this route's chunk
+const OwnerPrompt = lazy(() => import('./owner-prompt').then((module) => ({ default: module.OwnerPrompt })));
 
 import './home.scss';
 
@@ -42,6 +45,9 @@ export function Home({ loginFailed }: { loginFailed: boolean }) {
                         </p>
                     )}
                     <EntryForm />
+                    <Suspense fallback={null}>
+                        <OwnerPrompt />
+                    </Suspense>
                     <p className="home__demo rise-in" style={riseStyle(4)}>
                         <Link className="button button--secondary" to="/demo">
                             {t('demo')}
