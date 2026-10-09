@@ -61,7 +61,6 @@ function minutesByYear(games: readonly Game[]): YearMinutes[] {
     return [...byYear].map(([year, minutes]) => ({ year, minutes })).sort((a, b) => a.year - b.year);
 }
 
-// No achievements yet: only an owner's manual state can make a game "completed"
 export function summarizeLibrary(games: readonly Game[], now: Date, options: SummaryOptions = {}): LibrarySummary {
     const stateCounts = countByState(games, now, { overrides: options.overrides, thresholds: options.thresholds });
 

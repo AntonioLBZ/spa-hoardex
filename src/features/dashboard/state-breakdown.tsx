@@ -36,7 +36,7 @@ export function StateBreakdown({ summary }: { summary: LibrarySummary }) {
     const slices = useMemo(() => rows.filter((row) => row.value > 0), [rows]);
 
     return (
-        <Panel index={STEP.states} title={t('title')}>
+        <Panel className="dashboard__panel dashboard__panel--states" index={STEP.states} title={t('title')}>
             <div className="state-breakdown">
                 <div aria-hidden="true" className="state-breakdown__chart">
                     {ready ? (

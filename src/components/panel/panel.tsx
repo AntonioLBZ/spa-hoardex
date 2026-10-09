@@ -9,15 +9,16 @@ interface PanelProps {
     children: ReactNode;
     // Step in the page-load sequence; without it the panel appears at once
     index?: number;
+    className?: string;
 }
 
-export function Panel({ title, children, index }: PanelProps) {
+export function Panel({ title, children, index, className }: PanelProps) {
     const titleId = useId();
 
     return (
         <section
             aria-labelledby={titleId}
-            className={index === undefined ? 'panel' : 'panel rise-in'}
+            className={['panel', index === undefined ? null : 'rise-in', className].filter(Boolean).join(' ')}
             style={index === undefined ? undefined : riseStyle(index)}
         >
             <h2 className="panel__title" id={titleId}>

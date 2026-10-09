@@ -72,7 +72,7 @@ describe('manual states for a visitor', () => {
         const two = await card('Game Two');
         await waitFor(() => expect(within(two).getByText('Abandoned')).toBeTruthy());
         expect(within(two).getByText('Set by hand · Played since')).toBeTruthy();
-        expect(screen.queryByRole('combobox', { name: /^State of/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: /^State of/ })).toBeNull();
 
         const legend = (await screen.findByRole('heading', { name: 'Backlog states' })).closest('section');
         expect(within(legend as HTMLElement).getByText('Abandoned')).toBeTruthy();
@@ -99,21 +99,24 @@ describe('manual states for the owner', () => {
     }
 
     it('can be changed from the card, and the server’s answer is kept', async () => {
-        const fetchMock = stubOwner({ body: overrides({ '1': { state: 'completed', minutesAtSet: 0 } }) });
+        const fetchMock = stubOwner({ body: overrides({ '1': { state: 'finished', minutesAtSet: 0 } }) });
         const { user } = renderApp('/p/someone');
 
-        const select = await screen.findByRole('combobox', { name: 'State of Game One' });
-        expect(select).toHaveProperty('value', '');
-        expect(within(select).getByRole('option', { name: 'Untouched · auto' })).toBeTruthy();
+        const button = await screen.findByRole('button', { name: 'State of Game One: Untouched' });
+        await user.click(button);
+        expect(screen.getByRole('menuitemradio', { name: 'Automatic (Untouched)' }).getAttribute('aria-checked')).toBe(
+            'true'
+        );
 
-        await user.selectOptions(select, 'completed');
+        await user.click(screen.getByRole('menuitemradio', { name: 'Finished' }));
         expect(fetchMock).toHaveBeenCalledWith('/api/me/backlog/1', {
             method: 'PUT',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ state: 'completed' }),
+            body: JSON.stringify({ state: 'finished' }),
         });
-        await waitFor(() => expect(within(select.closest('li') as HTMLElement).getByText('Set by hand')).toBeTruthy());
-        expect(select).toHaveProperty('value', 'completed');
+        await waitFor(() => expect(within(button.closest('li') as HTMLElement).getByText('Set by hand')).toBeTruthy());
+        expect(button.getAttribute('aria-expanded')).toBe('false');
+        expect(screen.getByRole('button', { name: 'State of Game One: Finished · Set by hand' })).toBe(button);
         expect(screen.queryByRole('alert')).toBeNull();
     });
 
@@ -121,11 +124,11 @@ describe('manual states for the owner', () => {
         stubOwner({ status: 503, body: { error: 'database' } });
         const { user } = renderApp('/p/someone');
 
-        const select = await screen.findByRole('combobox', { name: 'State of Game One' });
-        await user.selectOptions(select, 'abandoned');
+        await user.click(await screen.findByRole('button', { name: 'State of Game One: Untouched' }));
+        await user.click(screen.getByRole('menuitemradio', { name: 'Abandoned' }));
 
         expect((await screen.findByRole('alert')).textContent).toBe('That change could not be saved. Try again.');
-        expect(select).toHaveProperty('value', '');
+        expect(screen.getByRole('button', { name: 'State of Game One: Untouched' })).toBeTruthy();
     });
 });
 
@@ -138,12 +141,28 @@ describe('manual states in the demo', () => {
         const { user } = renderApp('/demo');
 
         expect((await screen.findByRole('note')).textContent).toContain('changes stay in this browser only');
-        await user.selectOptions(await screen.findByRole('combobox', { name: 'State of Game Two' }), 'abandoned');
+        await user.click(await screen.findByRole('button', { name: /^State of Game Two:/ }));
+        await user.click(screen.getByRole('menuitemradio', { name: 'Abandoned' }));
 
         const stored = JSON.parse(localStorage.getItem('hoardex:demo-backlog') ?? '{}') as Record<string, unknown>;
         expect(stored['2']).toMatchObject({ state: 'abandoned', minutesAtSet: 600 });
 
-        await user.selectOptions(screen.getByRole('combobox', { name: 'State of Game Two' }), '');
+        await user.click(screen.getByRole('button', { name: /^State of Game Two:/ }));
+        await user.click(screen.getByRole('menuitemradio', { name: 'Automatic (In progress)' }));
         expect(JSON.parse(localStorage.getItem('hoardex:demo-backlog') ?? '{}')).toEqual({});
+    });
+
+    it('reads a stored completed state as finished', async () => {
+        localStorage.setItem(
+            'hoardex:demo-backlog',
+            JSON.stringify({ '2': { state: 'completed', minutesAtSet: 600, setAt: '2026-10-01T00:00:00.000Z' } })
+        );
+        stubApi({
+            '/api/demo/profile': { body: { kind: 'ok', data: PROFILE } },
+            '/api/demo/library': { body: { kind: 'ok', data: LIBRARY } },
+        });
+        renderApp('/demo');
+
+        expect(await screen.findByRole('button', { name: 'State of Game Two: Finished · Set by hand' })).toBeTruthy();
     });
 });

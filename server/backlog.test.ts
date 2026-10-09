@@ -87,11 +87,21 @@ describe('PUT /api/me/backlog/:appid', () => {
         expect(visitor.body).toEqual({ kind: 'ok', data: { overrides } });
     });
 
+    it('stores the retired completed state as finished', async () => {
+        const { call, session } = setup();
+        const put = await call('PUT', `/api/me/backlog/${OWNED}`, {
+            cookie: await session(),
+            body: { state: 'completed' },
+        });
+        expect(put.response.status).toBe(200);
+        expect(put.body).toMatchObject({ data: { overrides: { [OWNED]: { state: 'finished' } } } });
+    });
+
     it('refuses a game outside the owner’s library', async () => {
         const { call, session } = setup();
         const put = await call('PUT', '/api/me/backlog/999999', {
             cookie: await session(),
-            body: { state: 'completed' },
+            body: { state: 'finished' },
         });
         expect(put.response.status).toBe(404);
         expect(put.body).toEqual({ error: 'notOwned' });
@@ -100,7 +110,7 @@ describe('PUT /api/me/backlog/:appid', () => {
     it.each([
         ['an unknown state', '220', { state: 'wishlisted' }],
         ['no body', '220', undefined],
-        ['an appid that is not a number', 'abc', { state: 'completed' }],
+        ['an appid that is not a number', 'abc', { state: 'finished' }],
     ])('refuses %s', async (_case, appid, body) => {
         const { call, session } = setup();
         const put = await call('PUT', `/api/me/backlog/${appid}`, { cookie: await session(), body });
@@ -109,7 +119,7 @@ describe('PUT /api/me/backlog/:appid', () => {
 
     it('refuses a request without a session, from another site, or with an ended session', async () => {
         const { call, session } = setup();
-        const body = { state: 'completed' };
+        const body = { state: 'finished' };
         expect((await call('PUT', `/api/me/backlog/${OWNED}`, { body })).response.status).toBe(401);
         const cookie = await session();
         const foreign = await call('PUT', `/api/me/backlog/${OWNED}`, { cookie, body, origin: 'https://evil.example' });
@@ -123,7 +133,7 @@ describe('DELETE /api/me/backlog/:appid', () => {
     it('goes back to the computed state', async () => {
         const { call, session } = setup();
         const cookie = await session();
-        await call('PUT', `/api/me/backlog/${OWNED}`, { cookie, body: { state: 'completed' } });
+        await call('PUT', `/api/me/backlog/${OWNED}`, { cookie, body: { state: 'finished' } });
 
         const removed = await call('DELETE', `/api/me/backlog/${OWNED}`, { cookie });
         expect(removed.body).toEqual({ kind: 'ok', data: { overrides: {} } });

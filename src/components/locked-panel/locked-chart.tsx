@@ -11,13 +11,14 @@ interface LockedChartProps {
     body: string;
     // Step in the page-load sequence, as in `Panel`
     index?: number;
+    className?: string;
     children?: ReactNode;
 }
 
 // A chart's place when Steam does not share the data behind it
-export function LockedChart({ title, body, index, children }: LockedChartProps) {
+export function LockedChart({ title, body, index, className, children }: LockedChartProps) {
     return (
-        <Panel index={index} title={title}>
+        <Panel className={className} index={index} title={title}>
             <div aria-hidden="true" className="locked-chart__ghost">
                 <ChartSkeleton shape="bars" />
             </div>

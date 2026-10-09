@@ -35,8 +35,8 @@ export const Dashboard = memo(function Dashboard({
             <div className="dashboard__panels">
                 <StateBreakdown summary={summary} />
                 <TopGames summary={summary} />
+                <HoursByYear settingsUrl={settingsUrl} summary={summary} />
             </div>
-            <HoursByYear settingsUrl={settingsUrl} summary={summary} />
         </div>
     );
 });

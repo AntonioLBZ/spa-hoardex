@@ -7,7 +7,7 @@ import {
     countByState,
     isBacklog,
     resolveState,
-    type AchievementProgress,
+    upgradeState,
     type BacklogState,
     type BacklogThresholds,
 } from './index.js';
@@ -31,15 +31,7 @@ function makeGame(totalMinutes: number, lastPlayedAt: string | null, appid = '1'
 
 describe('constants', () => {
     it('lists the computed states in evaluation order, then the manual-only one', () => {
-        expect(BACKLOG_STATES).toEqual([
-            'completed',
-            'untouched',
-            'tried',
-            'inProgress',
-            'paused',
-            'finished',
-            'abandoned',
-        ]);
+        expect(BACKLOG_STATES).toEqual(['untouched', 'tried', 'inProgress', 'paused', 'finished', 'abandoned']);
     });
 
     it('has the agreed default thresholds', () => {
@@ -53,10 +45,6 @@ describe('constants', () => {
 
 describe('classifyGame', () => {
     describe('every state', () => {
-        it('completed: all achievements unlocked', () => {
-            expect(classifyGame(makeGame(600, daysAgo(10)), NOW, { unlocked: 50, total: 50 })).toBe('completed');
-        });
-
         it('untouched: no playtime', () => {
             expect(classifyGame(makeGame(0, null), NOW)).toBe('untouched');
         });
@@ -75,42 +63,6 @@ describe('classifyGame', () => {
 
         it('finished: an hour or more, last played over a year ago', () => {
             expect(classifyGame(makeGame(600, daysAgo(800)), NOW)).toBe('finished');
-        });
-    });
-
-    describe('priority (first match wins)', () => {
-        it('completed beats untouched', () => {
-            expect(classifyGame(makeGame(0, null), NOW, { unlocked: 10, total: 10 })).toBe('completed');
-        });
-
-        it('completed beats tried', () => {
-            expect(classifyGame(makeGame(30, daysAgo(1)), NOW, { unlocked: 10, total: 10 })).toBe('completed');
-        });
-
-        it('completed beats inProgress, paused and finished', () => {
-            const progress: AchievementProgress = { unlocked: 10, total: 10 };
-            expect(classifyGame(makeGame(600, daysAgo(10)), NOW, progress)).toBe('completed');
-            expect(classifyGame(makeGame(600, daysAgo(200)), NOW, progress)).toBe('completed');
-            expect(classifyGame(makeGame(600, daysAgo(800)), NOW, progress)).toBe('completed');
-            expect(classifyGame(makeGame(600, null), NOW, progress)).toBe('completed');
-        });
-
-        it('treats more unlocked than total as complete', () => {
-            expect(classifyGame(makeGame(600, daysAgo(10)), NOW, { unlocked: 12, total: 10 })).toBe('completed');
-        });
-
-        it('never completes with total 0, whatever unlocked says', () => {
-            expect(classifyGame(makeGame(0, null), NOW, { unlocked: 0, total: 0 })).toBe('untouched');
-            expect(classifyGame(makeGame(600, daysAgo(10)), NOW, { unlocked: 0, total: 0 })).toBe('inProgress');
-            expect(classifyGame(makeGame(600, daysAgo(10)), NOW, { unlocked: 5, total: 0 })).toBe('inProgress');
-        });
-
-        it('does not complete a partially unlocked game', () => {
-            expect(classifyGame(makeGame(600, daysAgo(10)), NOW, { unlocked: 9, total: 10 })).toBe('inProgress');
-        });
-
-        it('keeps the library-only state when progress has not loaded', () => {
-            expect(classifyGame(makeGame(600, daysAgo(10)), NOW, undefined)).toBe('inProgress');
         });
     });
 
@@ -178,7 +130,7 @@ describe('classifyGame', () => {
         it('a future date is inProgress even with a zero-day threshold', () => {
             const tomorrow = new Date(NOW.getTime() + DAY_MS).toISOString();
             const thresholds: BacklogThresholds = { ...DEFAULT_BACKLOG_THRESHOLDS, inProgressWithinDays: 0 };
-            expect(classifyGame(makeGame(120, tomorrow), NOW, undefined, thresholds)).toBe('inProgress');
+            expect(classifyGame(makeGame(120, tomorrow), NOW, thresholds)).toBe('inProgress');
         });
     });
 
@@ -206,36 +158,31 @@ describe('classifyGame', () => {
         };
 
         it('moves the tried boundary', () => {
-            expect(classifyGame(makeGame(119, daysAgo(1)), NOW, undefined, thresholds)).toBe('tried');
-            expect(classifyGame(makeGame(120, daysAgo(1)), NOW, undefined, thresholds)).toBe('inProgress');
+            expect(classifyGame(makeGame(119, daysAgo(1)), NOW, thresholds)).toBe('tried');
+            expect(classifyGame(makeGame(120, daysAgo(1)), NOW, thresholds)).toBe('inProgress');
             expect(classifyGame(makeGame(90, daysAgo(1)), NOW)).toBe('inProgress');
         });
 
         it('moves the inProgress boundary', () => {
-            expect(classifyGame(makeGame(300, daysAgo(30)), NOW, undefined, thresholds)).toBe('inProgress');
-            expect(classifyGame(makeGame(300, daysAgo(31)), NOW, undefined, thresholds)).toBe('paused');
+            expect(classifyGame(makeGame(300, daysAgo(30)), NOW, thresholds)).toBe('inProgress');
+            expect(classifyGame(makeGame(300, daysAgo(31)), NOW, thresholds)).toBe('paused');
         });
 
         it('moves the paused boundary', () => {
-            expect(classifyGame(makeGame(300, daysAgo(180)), NOW, undefined, thresholds)).toBe('paused');
-            expect(classifyGame(makeGame(300, daysAgo(181)), NOW, undefined, thresholds)).toBe('finished');
+            expect(classifyGame(makeGame(300, daysAgo(180)), NOW, thresholds)).toBe('paused');
+            expect(classifyGame(makeGame(300, daysAgo(181)), NOW, thresholds)).toBe('finished');
         });
 
         it('lets equal day thresholds collapse the paused band', () => {
             const collapsed: BacklogThresholds = { ...DEFAULT_BACKLOG_THRESHOLDS, pausedWithinDays: 90 };
-            expect(classifyGame(makeGame(300, daysAgo(90)), NOW, undefined, collapsed)).toBe('inProgress');
-            expect(classifyGame(makeGame(300, daysAgo(91)), NOW, undefined, collapsed)).toBe('finished');
-        });
-
-        it('does not affect completed', () => {
-            expect(classifyGame(makeGame(1, daysAgo(1)), NOW, { unlocked: 3, total: 3 }, thresholds)).toBe('completed');
+            expect(classifyGame(makeGame(300, daysAgo(90)), NOW, collapsed)).toBe('inProgress');
+            expect(classifyGame(makeGame(300, daysAgo(91)), NOW, collapsed)).toBe('finished');
         });
     });
 });
 
 describe('isBacklog', () => {
     const expected: Record<BacklogState, boolean> = {
-        completed: false,
         untouched: true,
         tried: true,
         inProgress: false,
@@ -252,7 +199,6 @@ describe('isBacklog', () => {
 describe('countByState', () => {
     it('returns every key at zero for an empty library', () => {
         expect(countByState([], NOW)).toEqual({
-            completed: 0,
             untouched: 0,
             tried: 0,
             inProgress: 0,
@@ -281,7 +227,6 @@ describe('countByState', () => {
         ];
         const counts = countByState(games, NOW);
         expect(counts).toEqual({
-            completed: 0,
             untouched: 3,
             tried: 2,
             inProgress: 1,
@@ -292,30 +237,6 @@ describe('countByState', () => {
         expect(Object.values(counts).reduce((sum, n) => sum + n, 0)).toBe(games.length);
     });
 
-    it('looks progress up by game.id.externalId', () => {
-        const games = [makeGame(0, null, '10'), makeGame(600, daysAgo(10), '20'), makeGame(600, daysAgo(10), '30')];
-        const progress = new Map<string, AchievementProgress>([
-            ['10', { unlocked: 5, total: 5 }],
-            ['20', { unlocked: 4, total: 5 }],
-            ['999', { unlocked: 1, total: 1 }],
-        ]);
-        expect(countByState(games, NOW, { progressByAppId: progress })).toEqual({
-            completed: 1,
-            untouched: 0,
-            tried: 0,
-            inProgress: 2,
-            paused: 0,
-            finished: 0,
-            abandoned: 0,
-        });
-    });
-
-    it('does not complete games whose progress has total 0', () => {
-        const games = [makeGame(600, daysAgo(10), '1')];
-        const progress = new Map<string, AchievementProgress>([['1', { unlocked: 0, total: 0 }]]);
-        expect(countByState(games, NOW, { progressByAppId: progress }).completed).toBe(0);
-    });
-
     it('passes custom thresholds through', () => {
         const games = [makeGame(90, daysAgo(1), '1'), makeGame(300, daysAgo(40), '2')];
         const thresholds: BacklogThresholds = {
@@ -324,7 +245,6 @@ describe('countByState', () => {
             pausedWithinDays: 180,
         };
         expect(countByState(games, NOW, { thresholds })).toEqual({
-            completed: 0,
             untouched: 0,
             tried: 1,
             inProgress: 0,
@@ -345,22 +265,35 @@ describe('countByState', () => {
 describe('manual states', () => {
     const override = (state: BacklogState) => ({ state, setAt: '2026-10-01T00:00:00Z', minutesAtSet: 0 });
 
-    it('win over the computed state, achievements included', () => {
+    it('win over the computed state', () => {
         const game = makeGame(600, daysAgo(10), '1');
-        expect(resolveState(game, NOW, override('abandoned'), { unlocked: 5, total: 5 })).toBe('abandoned');
+        expect(resolveState(game, NOW, override('abandoned'))).toBe('abandoned');
         expect(resolveState(game, NOW)).toBe('inProgress');
     });
 
     it('are counted by game.id.externalId, and abandoned is never computed', () => {
         const games = [makeGame(0, null, '1'), makeGame(600, daysAgo(10), '2'), makeGame(600, daysAgo(900), '3')];
         const counts = countByState(games, NOW, {
-            overrides: { '1': override('completed'), '3': override('abandoned') },
+            overrides: { '1': override('finished'), '3': override('abandoned') },
         });
-        expect(counts).toMatchObject({ completed: 1, untouched: 0, inProgress: 1, finished: 0, abandoned: 1 });
+        expect(counts).toMatchObject({ untouched: 0, inProgress: 1, finished: 1, abandoned: 1 });
         expect(countByState(games, NOW).abandoned).toBe(0);
     });
 
     it('do not make abandoned a backlog state', () => {
         expect(isBacklog('abandoned')).toBe(false);
+    });
+});
+
+describe('upgradeState', () => {
+    it('reads the retired completed state as finished', () => {
+        expect(upgradeState('completed')).toBe('finished');
+    });
+
+    it('passes every other value through', () => {
+        for (const state of BACKLOG_STATES) expect(upgradeState(state)).toBe(state);
+        expect(upgradeState('nope')).toBe('nope');
+        expect(upgradeState('toString')).toBe('toString');
+        expect(upgradeState(7)).toBe(7);
     });
 });

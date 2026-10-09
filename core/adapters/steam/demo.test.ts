@@ -64,12 +64,9 @@ describe('createDemoData', () => {
     it('fills every chart the dashboard draws', async () => {
         const summary = summarizeLibrary((await libraryAt(NOW)).games, NOW);
 
-        for (const state of BACKLOG_STATES.filter(
-            (candidate) => candidate !== 'completed' && candidate !== 'abandoned'
-        )) {
+        for (const state of BACKLOG_STATES.filter((candidate) => candidate !== 'abandoned')) {
             expect(summary.stateCounts[state]).toBeGreaterThan(0);
         }
-        expect(summary.stateCounts.completed).toBe(0);
         expect(summary.stateCounts.abandoned).toBe(0);
         expect(summary.minutesByYear.length).toBeGreaterThanOrEqual(5);
         expect(summary.topGames).toHaveLength(10);

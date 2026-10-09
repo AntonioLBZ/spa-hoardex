@@ -1,6 +1,6 @@
 import { Hono, type Context } from 'hono';
 import { z } from 'zod';
-import { MANUAL_STATES } from '../core/backlog/index.js';
+import { storedStateSchema } from '../core/accounts/schemas.js';
 import type { CachedAdapter } from '../core/cache/cached-adapter.js';
 import type { EntityId } from '../core/domain/index.js';
 import type { AuthDeps } from './auth.js';
@@ -16,7 +16,8 @@ export interface BacklogRouteDeps {
 }
 
 const APPID_PATTERN = /^\d{1,10}$/;
-const stateBodySchema = z.object({ state: z.enum(MANUAL_STATES) });
+// A tab still on the previous build may send a retired state
+const stateBodySchema = z.object({ state: storedStateSchema });
 
 function steamIdentity(session: Session): EntityId {
     return { source: 'steam', externalId: session.steamId };

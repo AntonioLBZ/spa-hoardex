@@ -6,9 +6,9 @@ export {
     countByState,
     isBacklog,
     resolveState,
+    upgradeState,
 } from './classify.js';
 export type {
-    AchievementProgress,
     BacklogOverride,
     BacklogState,
     BacklogThresholds,

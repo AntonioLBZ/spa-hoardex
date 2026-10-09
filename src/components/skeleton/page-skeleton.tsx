@@ -13,14 +13,17 @@ export function PageSkeleton({ header = false }: { header?: boolean }) {
             {header ? (
                 <div className="page-skeleton__header">
                     <span className="skeleton-block skeleton-block--avatar" />
-                    <span className="skeleton-block skeleton-block--name" />
+                    <span className="page-skeleton__identity">
+                        <span className="skeleton-block skeleton-block--eyebrow" />
+                        <span className="skeleton-block skeleton-block--name" />
+                    </span>
                 </div>
             ) : null}
             <div className="page-skeleton__kpis">
                 <Blocks count={4} kind="kpi" />
             </div>
             <div className="page-skeleton__panels">
-                <Blocks count={2} kind="panel" />
+                <Blocks count={3} kind="panel" />
             </div>
             <div className="page-skeleton__covers">
                 <Blocks count={12} kind="cover" />

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 
 import type { LibrarySummary } from '@core/stats';
@@ -17,6 +18,7 @@ export function KpiGrid({ summary }: { summary: LibrarySummary }) {
     const items = [
         {
             key: 'games',
+            tint: 'var(--color-accent)',
             label: t('games'),
             value: summary.gameCount,
             text: integer,
@@ -24,6 +26,7 @@ export function KpiGrid({ summary }: { summary: LibrarySummary }) {
         },
         {
             key: 'hours',
+            tint: 'var(--color-state-paused)',
             label: t('hours'),
             value: summary.totalMinutes,
             // The decimals follow the final figure, so the number does not change width while it counts
@@ -32,6 +35,7 @@ export function KpiGrid({ summary }: { summary: LibrarySummary }) {
         },
         {
             key: 'backlog',
+            tint: 'var(--color-state-tried)',
             label: t('backlog'),
             value: summary.backlogCount,
             text: integer,
@@ -41,6 +45,7 @@ export function KpiGrid({ summary }: { summary: LibrarySummary }) {
         },
         {
             key: 'recent',
+            tint: 'var(--color-state-finished)',
             label: t('recent'),
             value: summary.recentMinutes,
             text: (minutes: number) => hours(minutes, 1),
@@ -51,7 +56,11 @@ export function KpiGrid({ summary }: { summary: LibrarySummary }) {
     return (
         <dl className="kpi-grid">
             {items.map((item, index) => (
-                <div className="kpi-grid__item rise-in" key={item.key} style={riseStyle(index)}>
+                <div
+                    className="kpi-grid__item rise-in"
+                    key={item.key}
+                    style={{ ...riseStyle(index), '--tint': item.tint } as CSSProperties}
+                >
                     <dt className="kpi-grid__label">{item.label}</dt>
                     <dd className="kpi-grid__value">
                         <CountUp delay={stepDelay(index)} format={item.text} value={item.value} />

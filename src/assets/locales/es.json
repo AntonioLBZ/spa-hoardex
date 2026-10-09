@@ -65,7 +65,7 @@
             },
             "backlog": {
                 "title": "Un backlog que se ordena solo",
-                "text": "Cada juego cae en Sin tocar, Probado, En curso, Pausado o Acabado según sus horas y su última sesión."
+                "text": "Cada juego cae en Sin tocar, Probado, En curso, Pausado o Completado según sus horas y su última sesión."
             },
             "board": {
                 "title": "Tuyo para editar",
@@ -79,7 +79,8 @@
         "owner": {
             "title": "¿Es tu biblioteca?",
             "text": "Entra con tu cuenta de Steam para mover juegos a Completado o Abandonado y guardar un historial de horas. Steam solo nos dice tu SteamID, nunca tu contraseña.",
-            "action": "Continuar con Steam"
+            "action": "Continuar con Steam",
+            "dismiss": "Cerrar"
         }
     },
     "profile": {
@@ -88,7 +89,9 @@
         "back": "Buscar otro perfil",
         "retry": "Reintentar",
         "emptyLibrary": "Esta biblioteca no tiene juegos.",
-        "demoNotice": "Esto es una demo con una biblioteca ficticia. No interviene ninguna cuenta real de Steam."
+        "demoNotice": "Esto es una demo con una biblioteca ficticia. No interviene ninguna cuenta real de Steam.",
+        "eyebrow": "Biblioteca de Steam",
+        "demoEyebrow": "Biblioteca de demostración"
     },
     "refresh": {
         "action": "Actualizar",
@@ -160,12 +163,11 @@
         "states": {
             "title": "Estados del backlog",
             "total": "juegos",
-            "completed": "Completado",
             "untouched": "Sin tocar",
             "tried": "Probado",
             "inProgress": "En curso",
             "paused": "Pausado",
-            "finished": "Acabado",
+            "finished": "Completado",
             "abandoned": "Abandonado"
         },
         "top": {
@@ -196,7 +198,7 @@
         "shownOf": "{shown, number} de {matching, number} mostrados",
         "showMore": "Mostrar {next, number} más",
         "stateOf": "Estado de {name}",
-        "automatic": "{state} · auto",
+        "automaticOption": "Automático ({state})",
         "manual": "Puesto a mano",
         "playedSince": "Jugado desde entonces",
         "saveFailed": "No se pudo guardar ese cambio. Inténtalo de nuevo.",

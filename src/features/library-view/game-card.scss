@@ -1,66 +1,112 @@
 .game-card {
-    align-content: start;
-    contain-intrinsic-size: auto 19rem;
+    contain-intrinsic-size: auto 10rem auto 15rem;
     content-visibility: auto;
+}
+
+/* The cover is the card: no transform anywhere, the hover only fades a ring in */
+.game-card__frame {
+    border-radius: 0.75rem;
+    isolation: isolate;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Inset only: `content-visibility` contains paint, so anything outside the card would be cut */
+.game-card__frame::before,
+.game-card__frame::after {
+    border-radius: inherit;
+    content: '';
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 1;
+}
+
+.game-card__frame::before {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-content) 12%, transparent);
+}
+
+.game-card__frame::after {
+    box-shadow:
+        inset 0 0 0 2px var(--state-color),
+        inset 0 0 1.75rem color-mix(in srgb, var(--state-color) 45%, transparent);
+    opacity: 0;
+}
+
+.game-card__frame:hover::after,
+.game-card__frame:focus-within::after {
+    opacity: 1;
+}
+
+.game-card__frame .cover {
+    border-radius: 0;
+}
+
+/* A dark scrim of its own, so the text reads the same on any cover and in either theme */
+.game-card__caption {
+    background-image: linear-gradient(
+        to top,
+        rgb(6 8 12 / 92%),
+        rgb(6 8 12 / 78%) 45%,
+        rgb(6 8 12 / 40%) 75%,
+        rgb(6 8 12 / 0%)
+    );
+    color: #fff;
     display: grid;
-    gap: var(--size-25);
+    gap: 0.125rem;
+    inset: auto 0 0;
+    padding: var(--size-200) var(--size-75) var(--size-75);
+    position: absolute;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 60%);
 }
 
 .game-card__name {
     -webkit-box-orient: vertical;
     display: -webkit-box;
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 650;
     -webkit-line-clamp: 2;
-    line-height: 1.3;
+    line-height: 1.25;
     overflow: hidden;
-}
-
-.game-card__meta {
-    color: var(--color-content-muted);
-    display: flex;
-    flex-wrap: wrap;
-    font-size: 0.8125rem;
-    gap: 0 var(--size-50);
-    justify-content: space-between;
-}
-
-.game-card__state {
-    align-items: center;
-    display: inline-flex;
-    gap: var(--size-25);
-}
-
-.game-card__state--editable {
-    flex: 1 1 100%;
-    min-inline-size: 0;
-}
-
-.game-card__swatch {
-    block-size: 0.5rem;
-    border-radius: 50%;
-    flex: none;
-    inline-size: 0.5rem;
+    overflow-wrap: anywhere;
 }
 
 .game-card__hours {
+    color: rgb(255 255 255 / 80%);
+    font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
 }
 
-.game-card__select {
-    background-color: var(--color-bg-raised);
-    border: 1px solid var(--color-border);
-    border-radius: var(--size-border-radius);
-    color: var(--color-content);
-    font: inherit;
-    inline-size: 100%;
-    min-block-size: 2rem;
-    min-inline-size: 0;
-    padding: 0 var(--size-25);
+.game-card__state {
+    display: flex;
+    inset: var(--size-50) var(--size-50) auto;
+    position: absolute;
+    z-index: 2;
 }
 
-.game-card__note {
-    color: var(--color-content-muted);
-    font-size: 0.75rem;
-    font-style: italic;
+@media (prefers-reduced-motion: no-preference) {
+    .game-card__frame::after {
+        transition: opacity var(--motion-swift) var(--ease-standard);
+    }
+}
+
+@media (forced-colors: active) {
+    .game-card__frame {
+        border: 1px solid CanvasText;
+    }
+
+    .game-card__frame::after {
+        box-shadow: inset 0 0 0 3px Highlight;
+    }
+
+    .game-card__caption {
+        background-color: Canvas;
+        background-image: none;
+        color: CanvasText;
+        text-shadow: none;
+    }
+
+    .game-card__hours {
+        color: CanvasText;
+    }
 }

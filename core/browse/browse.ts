@@ -40,14 +40,13 @@ export interface ClassifyOptions {
     thresholds?: BacklogThresholds;
 }
 
-// Achievements can move a game to "completed" later
 export function classifyLibrary(
     games: readonly Game[],
     now: Date,
     { overrides, thresholds }: ClassifyOptions = {}
 ): BrowseEntry[] {
     return games.map((game) => {
-        const computed = classifyGame(game, now, undefined, thresholds);
+        const computed = classifyGame(game, now, thresholds);
         const manual = overrides?.[game.id.externalId] ?? null;
         return { game, state: manual?.state ?? computed, computed, manual };
     });

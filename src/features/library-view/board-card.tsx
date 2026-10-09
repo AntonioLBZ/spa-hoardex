@@ -1,9 +1,10 @@
-import { memo, type DragEvent } from 'react';
+import { memo, type CSSProperties, type DragEvent } from 'react';
 
 import type { BrowseEntry } from '@core/browse';
+import { STATE_COLOR } from '@/lib/state-colors';
 import { useHours } from '@/lib/use-hours';
 import type { StateEditor } from './state-editor';
-import { ManualNote, StateSelect } from './state-select';
+import { StateChip } from './state-chip';
 
 import './board-card.scss';
 
@@ -40,17 +41,17 @@ export const BoardCard = memo(function BoardCard({
         <li
             className={dragging ? 'board-card board-card--dragging' : 'board-card'}
             draggable={editable}
+            style={{ '--state-color': STATE_COLOR[entry.state] } as CSSProperties}
             onDragEnd={editable ? onDragEnd : undefined}
             onDragStart={editable ? startDrag : undefined}
         >
             <p className="board-card__name" title={game.name}>
                 {game.name}
             </p>
-            <p className="board-card__hours">{hours(game.playtime.totalMinutes)}</p>
-            {onChange === null ? null : (
-                <StateSelect className="board-card__select" entry={entry} onChange={onChange} />
-            )}
-            <ManualNote className="board-card__note" entry={entry} />
+            <div className="board-card__meta">
+                <StateChip entry={entry} onChange={onChange} variant="plain" />
+                <span className="board-card__hours">{hours(game.playtime.totalMinutes)}</span>
+            </div>
         </li>
     );
 });

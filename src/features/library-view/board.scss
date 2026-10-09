@@ -18,7 +18,7 @@
 .board__column {
     background-color: var(--color-bg-raised);
     border: 1px solid var(--color-border);
-    border-radius: var(--size-border-radius);
+    border-radius: 0.75rem;
     display: grid;
     gap: var(--size-50);
     padding: var(--size-75);
@@ -39,7 +39,9 @@
 .board__swatch {
     block-size: 0.625rem;
     border-radius: 50%;
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentcolor 12%, transparent);
     flex: none;
+    forced-color-adjust: none;
     inline-size: 0.625rem;
 }
 

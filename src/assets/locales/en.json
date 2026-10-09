@@ -69,7 +69,7 @@
             },
             "board": {
                 "title": "Yours to edit",
-                "text": "Sign in with Steam to drag games to Completed or Abandoned on a board. Visitors see it, read only."
+                "text": "Sign in with Steam to drag games to Finished or Abandoned on a board. Visitors see it, read only."
             },
             "history": {
                 "title": "Playtime history, if you want it",
@@ -78,8 +78,9 @@
         },
         "owner": {
             "title": "Is it your library?",
-            "text": "Sign in with your Steam account to move games to Completed or Abandoned and keep a playtime history. Steam only tells us your SteamID, never your password.",
-            "action": "Continue with Steam"
+            "text": "Sign in with your Steam account to move games to Finished or Abandoned and keep a playtime history. Steam only tells us your SteamID, never your password.",
+            "action": "Continue with Steam",
+            "dismiss": "Dismiss"
         }
     },
     "profile": {
@@ -88,7 +89,9 @@
         "back": "Look up another profile",
         "retry": "Try again",
         "emptyLibrary": "This library has no games.",
-        "demoNotice": "This is a demo with a fictional library. No real Steam account is involved."
+        "demoNotice": "This is a demo with a fictional library. No real Steam account is involved.",
+        "eyebrow": "Steam library",
+        "demoEyebrow": "Demo library"
     },
     "refresh": {
         "action": "Refresh",
@@ -160,7 +163,6 @@
         "states": {
             "title": "Backlog states",
             "total": "games",
-            "completed": "Completed",
             "untouched": "Untouched",
             "tried": "Tried",
             "inProgress": "In progress",
@@ -196,7 +198,7 @@
         "shownOf": "{shown, number} of {matching, number} shown",
         "showMore": "Show {next, number} more",
         "stateOf": "State of {name}",
-        "automatic": "{state} · auto",
+        "automaticOption": "Automatic ({state})",
         "manual": "Set by hand",
         "playedSince": "Played since",
         "saveFailed": "That change could not be saved. Try again.",

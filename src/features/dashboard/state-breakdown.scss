@@ -21,8 +21,11 @@
 }
 
 .state-breakdown__total-value {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
 }
 
 .state-breakdown__total-label {

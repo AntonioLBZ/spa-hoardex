@@ -61,7 +61,6 @@ describe('countByFilter', () => {
     it('counts every state and the backlog', () => {
         expect(countByFilter(entries)).toEqual({
             backlog: 2,
-            completed: 0,
             untouched: 1,
             tried: 1,
             inProgress: 1,
@@ -83,7 +82,7 @@ describe('browseLibrary filters', () => {
 
     it('filters by one state', () => {
         expect(names({ sort: 'name', state: 'paused' })).toEqual(['Crimson Orbit']);
-        expect(names({ sort: 'name', state: 'completed' })).toEqual([]);
+        expect(names({ sort: 'name', state: 'abandoned' })).toEqual([]);
     });
 
     it('treats the backlog as untouched plus tried', () => {

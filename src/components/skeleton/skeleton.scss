@@ -6,19 +6,57 @@
 .page-skeleton__header {
     align-items: center;
     display: flex;
-    gap: var(--size-100);
+    gap: var(--size-150);
+    padding-block: var(--size-100);
 }
 
+.page-skeleton__identity {
+    display: grid;
+    gap: var(--size-50);
+}
+
+/* The KPI and panel grids of the dashboard, in outline */
 .page-skeleton__kpis {
     display: grid;
     gap: var(--size-100);
-    grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
 }
 
 .page-skeleton__panels {
     display: grid;
     gap: var(--size-100);
     grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
+}
+
+.page-skeleton__panels > :last-child {
+    grid-column: 1 / -1;
+}
+
+@media (width >= 26rem) {
+    .page-skeleton__kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (width >= 60rem) {
+    .page-skeleton__kpis {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (width >= 72rem) {
+    .page-skeleton__panels {
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    }
+
+    .page-skeleton__panels > :nth-child(2) {
+        block-size: auto;
+        grid-column: 2;
+        grid-row: 1 / span 2;
+    }
+
+    .page-skeleton__panels > :last-child {
+        grid-column: 1;
+    }
 }
 
 .page-skeleton__covers {
@@ -30,21 +68,28 @@
 .skeleton-block {
     background-color: color-mix(in srgb, var(--color-content) 6%, var(--color-bg-raised));
     border: 1px solid var(--color-border);
-    border-radius: var(--size-border-radius);
+    border-radius: var(--size-border-radius-large);
 }
 
 .skeleton-block--avatar {
-    block-size: 4rem;
-    inline-size: 4rem;
+    block-size: 4.5rem;
+    inline-size: 4.5rem;
+}
+
+.skeleton-block--eyebrow {
+    block-size: 0.75rem;
+    border-radius: var(--size-border-radius);
+    inline-size: 7rem;
 }
 
 .skeleton-block--name {
-    block-size: 1.5rem;
-    inline-size: 10rem;
+    block-size: 2.25rem;
+    border-radius: var(--size-border-radius);
+    inline-size: min(16rem, 50vw);
 }
 
 .skeleton-block--kpi {
-    block-size: 5rem;
+    block-size: 6.5rem;
 }
 
 .skeleton-block--panel {
@@ -53,6 +98,7 @@
 
 .skeleton-block--cover {
     aspect-ratio: 2 / 3;
+    border-radius: var(--size-border-radius);
 }
 
 .chart-skeleton {

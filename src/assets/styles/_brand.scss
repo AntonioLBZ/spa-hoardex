@@ -1,0 +1,40 @@
+/* The look shared by the home and the profile page */
+
+.eyebrow {
+    color: var(--color-accent);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.gradient-text {
+    background-clip: text;
+    background-image: linear-gradient(100deg, var(--color-accent), var(--color-state-paused));
+    color: transparent;
+}
+
+@media (forced-colors: active) {
+    .gradient-text {
+        background-image: none;
+        color: inherit;
+    }
+}
+
+/* A soft glow behind a block, part of the frame: it never moves. --glow-inset places it */
+.glow {
+    isolation: isolate;
+    position: relative;
+}
+
+.glow::before {
+    background:
+        radial-gradient(closest-side, color-mix(in srgb, var(--color-accent) 22%, transparent), transparent),
+        radial-gradient(closest-side, color-mix(in srgb, var(--color-state-paused) 16%, transparent), transparent) 60%
+            70% / 70% 80% no-repeat;
+    content: '';
+    inset: var(--glow-inset, -10% 0 40%);
+    pointer-events: none;
+    position: absolute;
+    z-index: -1;
+}

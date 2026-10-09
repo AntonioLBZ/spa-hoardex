@@ -53,6 +53,14 @@ describe('createBacklogService', () => {
         expect(listOverrides).toHaveBeenCalledOnce();
     });
 
+    it('reads a completed state in the copy as finished', async () => {
+        const { listOverrides, store, service } = setup();
+        const stored = { state: 'completed', minutesAtSet: 42, setAt: NOW.toISOString() };
+        await store.set('bl:steam:76561198000000001', { overrides: { '620': stored } }, 60);
+        expect(await service.read(ME)).toEqual({ '620': { ...stored, state: 'finished' } });
+        expect(listOverrides).not.toHaveBeenCalled();
+    });
+
     it('still answers from the database when Redis fails', async () => {
         const { repository } = setup();
         const broken = {

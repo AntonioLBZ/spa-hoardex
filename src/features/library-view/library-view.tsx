@@ -62,7 +62,7 @@ export function LibraryView({
     );
 
     const resetKey = `${settled.state ?? ''}|${settled.sort ?? ''}|${settled.q ?? ''}`;
-    const { count, hasMore, showMore, sentinelRef } = useRevealedCount(visible.length, resetKey);
+    const { count, hasMore, showMore } = useRevealedCount(visible.length, resetKey);
     // Typing in the search box does not fade the list on every keystroke
     const grid = useRef<HTMLUListElement>(null);
     useGridReveal(grid, `${settled.state ?? ''}|${settled.sort ?? ''}`);
@@ -102,7 +102,6 @@ export function LibraryView({
             )}
             {!board && hasMore ? (
                 <div className="library-view__more">
-                    <div aria-hidden="true" ref={sentinelRef} />
                     <p className="library-view__shown">{t('shownOf', { shown: count, matching: visible.length })}</p>
                     <Button onClick={showMore}>
                         {t('showMore', { next: Math.min(NEXT_BATCH, visible.length - count) })}

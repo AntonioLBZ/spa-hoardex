@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
 
+import { OwnerBubble } from '@/components/owner-prompt';
 import { riseStyle } from '@/lib/motion';
 import { LibrarySection } from './library-section';
 import { Pending } from './pending';
@@ -19,6 +20,7 @@ export function ProfilePage({ source }: { source: ProfileSource }) {
         <>
             <ProfileTitle source={source} />
             <ProfileContent source={source} />
+            {source.kind === 'steam' ? <OwnerBubble /> : null}
         </>
     );
 }
@@ -47,16 +49,19 @@ function ProfileContent({ source }: { source: ProfileSource }) {
                     {t('demoNotice')} {tLibrary('demoEditing')}
                 </p>
             ) : null}
-            <header className="profile-page__header rise-in" style={riseStyle(0)}>
+            <header className="profile-page__header glow rise-in" style={riseStyle(0)}>
                 <img
                     alt=""
                     className="profile-page__avatar"
-                    height={64}
+                    height={72}
                     referrerPolicy="no-referrer"
                     src={avatarUrl}
-                    width={64}
+                    width={72}
                 />
-                <h1 className="profile-page__name">{displayName}</h1>
+                <div className="profile-page__identity">
+                    <p className="eyebrow">{t(source.kind === 'demo' ? 'demoEyebrow' : 'eyebrow')}</p>
+                    <h1 className="profile-page__name gradient-text">{displayName}</h1>
+                </div>
                 {source.kind === 'steam' && library.data?.kind === 'ok' ? (
                     <RefreshControl input={source.input} library={library.data.data} />
                 ) : null}

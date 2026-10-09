@@ -19,6 +19,8 @@ const TOOLTIP_STYLE = {
     color: 'var(--color-content)',
 };
 
+const PANEL_CLASS = 'dashboard__panel dashboard__panel--years';
+
 interface HoursByYearProps {
     summary: LibrarySummary;
     // Where the owner can review privacy; null when there is none to point to
@@ -41,14 +43,14 @@ export function HoursByYear({ summary, settingsUrl }: HoursByYearProps) {
         // Played games but no last-played date at all: Steam did not send them
         if (summary.playedCount === 0) return null;
         return (
-            <LockedChart body={t('locked')} index={STEP.years} title={t('title')}>
+            <LockedChart body={t('locked')} className={PANEL_CLASS} index={STEP.years} title={t('title')}>
                 {settingsUrl === null ? null : <PrivacySettingsLink href={settingsUrl} />}
             </LockedChart>
         );
     }
 
     return (
-        <Panel index={STEP.years} title={t('title')}>
+        <Panel className={PANEL_CLASS} index={STEP.years} title={t('title')}>
             <div aria-hidden="true" className="hours-by-year__chart">
                 {ready ? (
                     <ResponsiveContainer height={220} width="100%">

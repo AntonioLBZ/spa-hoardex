@@ -1,4 +1,5 @@
 .library-view {
+    container-type: inline-size;
     display: grid;
     gap: var(--size-100);
 }
@@ -17,13 +18,33 @@
     font-size: 0.875rem;
 }
 
+/* 2, 3, 4 or 6 columns: every batch (use-revealed-count.ts) ends on a full row */
 .library-view__grid {
     display: grid;
-    gap: var(--size-150) var(--size-100);
-    grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr));
+    gap: var(--size-75);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     list-style: none;
     margin: 0;
     padding: 0;
+}
+
+@container (width >= 30rem) {
+    .library-view__grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@container (width >= 42rem) {
+    .library-view__grid {
+        gap: var(--size-100);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@container (width >= 60rem) {
+    .library-view__grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
 }
 
 .library-view__more {

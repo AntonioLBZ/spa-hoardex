@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { readMigrations } from './migrations.js';
 import { createSqlRepository } from './repository.js';
 import { createTestDatabase } from './test-db.js';
 import { DatabaseError } from './types.js';
@@ -36,9 +37,9 @@ describe('createSqlRepository', () => {
         const { userId } = await repository.recordLogin(ME, NOW);
 
         await repository.setOverride(userId, GAME, { state: 'abandoned', minutesAtSet: 90, setAt: NOW.toISOString() });
-        await repository.setOverride(userId, GAME, { state: 'completed', minutesAtSet: 95, setAt: NOW.toISOString() });
+        await repository.setOverride(userId, GAME, { state: 'finished', minutesAtSet: 95, setAt: NOW.toISOString() });
         expect(await repository.listOverrides(ME)).toEqual({
-            '620': { state: 'completed', minutesAtSet: 95, setAt: '2026-10-09T16:00:00.000Z' },
+            '620': { state: 'finished', minutesAtSet: 95, setAt: '2026-10-09T16:00:00.000Z' },
         });
 
         await repository.clearOverride(userId, GAME);
@@ -52,6 +53,22 @@ describe('createSqlRepository', () => {
 
         expect(await repository.listOverrides(OTHER)).toEqual({});
         expect(Object.keys(await repository.listOverrides(ME))).toEqual(['620']);
+    });
+
+    it('reads a stored completed state as finished, and the migration rewrites it', async () => {
+        const repository = createSqlRepository(database.query);
+        const { userId } = await repository.recordLogin(ME, NOW);
+        await database.db.query(
+            `insert into backlog_overrides (user_id, game_source, game_id, state, minutes_at_set, set_at)
+             values ($1, 'steam', '620', 'completed', 10, $2)`,
+            [userId, NOW.toISOString()]
+        );
+        expect((await repository.listOverrides(ME))['620']?.state).toBe('finished');
+
+        const migration = (await readMigrations()).find(({ name }) => name === '003_retire_completed_state.sql');
+        await database.db.exec(migration?.sql ?? '');
+        const { rows } = await database.db.query<{ state: string }>('select state from backlog_overrides');
+        expect(rows).toEqual([{ state: 'finished' }]);
     });
 
     it('refuses a state the schema does not know', async () => {

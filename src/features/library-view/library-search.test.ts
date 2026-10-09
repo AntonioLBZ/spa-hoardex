@@ -21,8 +21,11 @@ describe('parseLibrarySearch', () => {
     });
 
     it('accepts the states only a manual choice gives', () => {
-        expect(parseLibrarySearch({ state: 'completed' })).toEqual({ state: 'completed' });
         expect(parseLibrarySearch({ state: 'abandoned' })).toEqual({ state: 'abandoned' });
+    });
+
+    it('reads the retired completed state as finished', () => {
+        expect(parseLibrarySearch({ state: 'completed' })).toEqual({ state: 'finished' });
     });
 
     it('trims the query, drops it when blank and caps its length', () => {

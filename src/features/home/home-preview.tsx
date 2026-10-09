@@ -15,8 +15,7 @@ const SHARES: [BacklogState, number][] = [
     ['tried', 14],
     ['inProgress', 12],
     ['paused', 16],
-    ['finished', 18],
-    ['completed', 6],
+    ['finished', 24],
 ];
 
 const YEARS = [0.35, 0.5, 0.82, 0.6, 0.96, 0.7, 0.44];
@@ -25,7 +24,7 @@ const COVERS: [BacklogState, BacklogState][] = [
     ['inProgress', 'paused'],
     ['finished', 'inProgress'],
     ['tried', 'abandoned'],
-    ['completed', 'finished'],
+    ['untouched', 'finished'],
 ];
 
 function vars(values: Record<string, string | number>) {

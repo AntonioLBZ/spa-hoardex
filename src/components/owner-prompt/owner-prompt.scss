@@ -1,0 +1,85 @@
+.owner-prompt {
+    border-inline-start: 3px solid var(--color-accent);
+    display: grid;
+    gap: var(--size-25);
+    max-width: 36rem;
+    padding-inline-start: var(--size-100);
+}
+
+.owner-prompt__title {
+    font-weight: 700;
+}
+
+.owner-prompt__text {
+    color: var(--color-content-muted);
+    font-size: 0.9375rem;
+}
+
+.owner-prompt__action {
+    font-weight: 600;
+    justify-self: start;
+    text-decoration: none;
+}
+
+.owner-prompt__action:hover {
+    text-decoration: underline;
+}
+
+/* Sticky at the end of the page: it floats while scrolling and stops above the footer */
+.owner-prompt--bubble {
+    background-color: var(--color-bg-raised);
+    border: 1px solid var(--color-border);
+    border-inline-start: 3px solid var(--color-accent);
+    border-radius: var(--size-border-radius-large);
+    bottom: var(--size-100);
+    box-shadow:
+        0 1px 2px rgb(0 0 0 / 6%),
+        0 24px 48px -16px color-mix(in srgb, var(--color-accent) 30%, rgb(0 0 0 / 30%));
+    inline-size: min(22rem, 100%);
+    margin-block-start: var(--size-150);
+    margin-inline-start: auto;
+    padding: var(--size-100) var(--size-300) var(--size-100) var(--size-100);
+    position: sticky;
+    z-index: 5;
+}
+
+.owner-prompt__close {
+    align-items: center;
+    background: none;
+    block-size: 2rem;
+    border: none;
+    border-radius: 50%;
+    color: var(--color-content-muted);
+    cursor: pointer;
+    display: inline-flex;
+    inline-size: 2rem;
+    inset: var(--size-50) var(--size-50) auto auto;
+    justify-content: center;
+    padding: 0;
+    position: absolute;
+}
+
+.owner-prompt__close:hover {
+    background-color: color-mix(in srgb, var(--color-content) 8%, transparent);
+    color: var(--color-content);
+}
+
+.owner-prompt__close-icon {
+    block-size: 1rem;
+    fill: none;
+    inline-size: 1rem;
+    stroke: currentcolor;
+    stroke-linecap: round;
+    stroke-width: 2;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .owner-prompt {
+        animation: rise-in var(--motion-reveal) var(--ease-settle) backwards;
+    }
+
+    /* After the page-load sequence, so it never competes with the data */
+    .owner-prompt--bubble {
+        animation-delay: 1s;
+    }
+}

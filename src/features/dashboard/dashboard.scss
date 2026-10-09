@@ -8,3 +8,29 @@
     gap: var(--size-100);
     grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
 }
+
+.dashboard__panel--years {
+    grid-column: 1 / -1;
+}
+
+/* Wide: the long top-games list runs beside the donut and the years */
+@media (width >= 72rem) {
+    .dashboard__panels {
+        grid-template-areas:
+            'states top'
+            'years top';
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    }
+
+    .dashboard__panel--states {
+        grid-area: states;
+    }
+
+    .dashboard__panel--top {
+        grid-area: top;
+    }
+
+    .dashboard__panel--years {
+        grid-area: years;
+    }
+}

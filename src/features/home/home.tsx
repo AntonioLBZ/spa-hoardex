@@ -8,14 +8,14 @@ import { STATE_COLOR } from '@/lib/state-colors';
 import { HomePreview } from './home-preview';
 
 // With the header's account control: the session query keeps TanStack Query out of this route's chunk
-const OwnerPrompt = lazy(() => import('./owner-prompt').then((module) => ({ default: module.OwnerPrompt })));
+const OwnerPrompt = lazy(() => import('@/components/owner-prompt').then((module) => ({ default: module.OwnerPrompt })));
 
 import './home.scss';
 
 const FEATURES = [
     { key: 'dashboard', color: STATE_COLOR.inProgress, icon: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /> },
     { key: 'backlog', color: STATE_COLOR.tried, icon: <path d="M4 6h16M4 12h10M4 18h6" /> },
-    { key: 'board', color: STATE_COLOR.completed, icon: <path d="M3 4h5v16H3zM10 4h5v10h-5zM17 4h4v6h-4z" /> },
+    { key: 'board', color: STATE_COLOR.finished, icon: <path d="M3 4h5v16H3zM10 4h5v10h-5zM17 4h4v6h-4z" /> },
     { key: 'history', color: STATE_COLOR.paused, icon: <path d="M12 7v5l3 2M3 12a9 9 0 1 0 3-6.7M3 4v4h4" /> },
 ] as const;
 
@@ -26,14 +26,16 @@ export function Home({ loginFailed }: { loginFailed: boolean }) {
 
     return (
         <div className="home">
-            <section className="home__hero">
+            <section className="home__hero glow">
                 <div className="home__intro">
-                    <p className="home__eyebrow rise-in" style={riseStyle(0)}>
+                    <p className="eyebrow rise-in" style={riseStyle(0)}>
                         {t('eyebrow')}
                     </p>
                     <h1 className="home__title rise-in" style={riseStyle(1)}>
                         {tApp.rich('tagline', {
-                            mark: (chunks: ReactNode) => <span className="home__highlight">{chunks}</span>,
+                            mark: (chunks: ReactNode) => (
+                                <span className="home__highlight gradient-text">{chunks}</span>
+                            ),
                         })}
                     </h1>
                     <p className="home__lead rise-in" style={riseStyle(2)}>
@@ -46,7 +48,7 @@ export function Home({ loginFailed }: { loginFailed: boolean }) {
                     )}
                     <EntryForm />
                     <Suspense fallback={null}>
-                        <OwnerPrompt />
+                        <OwnerPrompt returnTo="/" />
                     </Suspense>
                     <p className="home__demo rise-in" style={riseStyle(4)}>
                         <Link className="button button--secondary" to="/demo">

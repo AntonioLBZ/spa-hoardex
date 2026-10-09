@@ -136,7 +136,7 @@ describe('board view', () => {
         const untouched = await screen.findByRole('region', { name: 'Untouched' });
         expect(cardIn(untouched, 'Alpha Quest').getAttribute('draggable')).toBe('false');
         expect(screen.queryByRole('region', { name: 'Abandoned' })).toBeNull();
-        expect(screen.queryByRole('combobox', { name: /^State of/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: /^State of/ })).toBeNull();
         expect(screen.queryByText(/^Drag a game/)).toBeNull();
     });
 });

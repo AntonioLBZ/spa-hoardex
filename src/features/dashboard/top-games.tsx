@@ -14,7 +14,7 @@ export function TopGames({ summary }: { summary: LibrarySummary }) {
     const longest = summary.topGames[0]?.minutes ?? 0;
 
     return (
-        <Panel index={STEP.top} title={t('title')}>
+        <Panel className="dashboard__panel dashboard__panel--top" index={STEP.top} title={t('title')}>
             <ol className="top-games">
                 {summary.topGames.map((game, rank) => (
                     <li className="top-games__item" key={game.id.externalId}>

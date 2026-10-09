@@ -21,28 +21,34 @@
 
 .footer__languages {
     display: flex;
-    gap: var(--size-25);
+    flex-wrap: wrap;
+    gap: var(--size-25) var(--size-150);
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
+/* Underlined: selectable, like a link; the active one is plain and bold */
 .footer__language {
     background: none;
     border: none;
-    border-radius: var(--size-border-radius);
     color: inherit;
     cursor: pointer;
     font: inherit;
-    padding: var(--size-25) var(--size-50);
+    padding: var(--size-25) 0;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
 }
 
 .footer__language:hover {
     color: var(--color-content);
+    text-decoration-thickness: 2px;
 }
 
 .footer__language[aria-pressed='true'] {
-    background-color: color-mix(in srgb, var(--color-content) 8%, transparent);
     color: var(--color-content);
+    cursor: default;
     font-weight: 600;
+    text-decoration: none;
 }

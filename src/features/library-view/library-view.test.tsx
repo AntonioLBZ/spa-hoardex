@@ -94,7 +94,7 @@ describe('library view', () => {
         expect(within(region).getByRole('radio', { name: 'All 5' })).toBeTruthy();
         expect(within(region).getByRole('radio', { name: 'Backlog 2' })).toBeTruthy();
         expect(within(region).getByRole('radio', { name: 'Paused 1' })).toBeTruthy();
-        expect(within(region).queryByRole('radio', { name: /^Completed/ })).toBeNull();
+        expect(within(region).queryByRole('radio', { name: /^Abandoned/ })).toBeNull();
     });
 
     it('searches by name ignoring case and accents, and keeps a typed space', async () => {
@@ -204,19 +204,21 @@ describe('batches', () => {
     it('renders a first batch and says how much is still hidden', async () => {
         const { region } = await openBig(200);
 
-        expect(cards(region)).toBe(48);
-        expect(within(region).getByText('48 of 200 shown')).toBeTruthy();
-        expect(within(region).getByRole('button', { name: 'Show 96 more' })).toBeTruthy();
+        expect(cards(region)).toBe(24);
+        expect(within(region).getByText('24 of 200 shown')).toBeTruthy();
+        expect(within(region).getByRole('button', { name: 'Show 48 more' })).toBeTruthy();
         expect(within(region).getByRole('status').textContent).toBe('Showing 200 of 200 games');
     });
 
     it('shows more on request until everything is there', async () => {
         const { region, user } = await openBig(200);
 
-        await user.click(within(region).getByRole('button', { name: 'Show 96 more' }));
-        expect(cards(region)).toBe(144);
+        for (const expected of [72, 120, 168]) {
+            await user.click(within(region).getByRole('button', { name: 'Show 48 more' }));
+            expect(cards(region)).toBe(expected);
+        }
 
-        await user.click(within(region).getByRole('button', { name: 'Show 56 more' }));
+        await user.click(within(region).getByRole('button', { name: 'Show 32 more' }));
         expect(cards(region)).toBe(200);
         expect(within(region).queryByRole('button', { name: /^Show \d+ more/ })).toBeNull();
         expect(within(region).queryByText(/shown$/)).toBeNull();
@@ -224,11 +226,11 @@ describe('batches', () => {
 
     it('starts again from the first batch when the order or the filter changes', async () => {
         const { region, user } = await openBig(200);
-        await user.click(within(region).getByRole('button', { name: 'Show 96 more' }));
-        expect(cards(region)).toBe(144);
+        await user.click(within(region).getByRole('button', { name: 'Show 48 more' }));
+        expect(cards(region)).toBe(72);
 
         await user.selectOptions(within(region).getByRole('combobox', { name: 'Sort by' }), 'name');
-        await waitFor(() => expect(cards(region)).toBe(48));
+        await waitFor(() => expect(cards(region)).toBe(24));
     });
 
     it('has no button when the matches fit in the first batch', async () => {
@@ -238,56 +240,31 @@ describe('batches', () => {
         expect(within(region).queryByRole('button', { name: /^Show \d+ more/ })).toBeNull();
     });
 
-    describe('with an IntersectionObserver', () => {
-        class FakeObserver {
-            static instances: FakeObserver[] = [];
-            disconnected = false;
-            constructor(private readonly callback: IntersectionObserverCallback) {
-                FakeObserver.instances.push(this);
+    it('never loads more on its own when the end of the list comes into view', async () => {
+        const observers: IntersectionObserverCallback[] = [];
+        vi.stubGlobal(
+            'IntersectionObserver',
+            class {
+                constructor(callback: IntersectionObserverCallback) {
+                    observers.push(callback);
+                }
+                observe() {}
+                unobserve() {}
+                disconnect() {}
+                takeRecords() {
+                    return [];
+                }
             }
-            observe() {}
-            unobserve() {}
-            takeRecords() {
-                return [];
-            }
-            disconnect() {
-                this.disconnected = true;
-            }
-            reachEnd() {
-                this.callback(
-                    [{ isIntersecting: true } as IntersectionObserverEntry],
-                    this as unknown as IntersectionObserver
-                );
-            }
-        }
-        const active = () => FakeObserver.instances.filter((observer) => !observer.disconnected).at(-1);
+        );
+        const { region } = await openBig(200);
 
-        beforeEach(() => {
-            FakeObserver.instances = [];
-            vi.stubGlobal('IntersectionObserver', FakeObserver);
-        });
+        act(() =>
+            observers.forEach((callback) =>
+                callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+            )
+        );
 
-        it('loads the next batch each time the end of the list comes near, up to the limit', async () => {
-            const { region } = await openBig(639);
-            expect(cards(region)).toBe(48);
-
-            for (const expected of [144, 240, 336]) {
-                act(() => active()?.reachEnd());
-                await waitFor(() => expect(cards(region)).toBe(expected));
-            }
-
-            expect(active()).toBeUndefined();
-            expect(within(region).getByRole('button', { name: 'Show 96 more' })).toBeTruthy();
-        });
-
-        it('stops watching once everything is shown', async () => {
-            const { region } = await openBig(100);
-
-            act(() => active()?.reachEnd());
-            await waitFor(() => expect(cards(region)).toBe(100));
-
-            expect(active()).toBeUndefined();
-        });
+        expect(cards(region)).toBe(24);
     });
 });
 

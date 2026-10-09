@@ -74,7 +74,7 @@ describe('Dashboard', () => {
         expect(kpi('Last two weeks').textContent).toContain('2.5 h');
     });
 
-    it('lists every shown state with its count and share, leaving out Completed', () => {
+    it('lists every shown state with its count and share, leaving out Abandoned', () => {
         renderDashboard();
 
         for (const name of ['Untouched', 'Tried', 'In progress', 'Paused', 'Finished']) {
@@ -82,7 +82,7 @@ describe('Dashboard', () => {
             expect(row?.textContent).toContain('1');
             expect(row?.textContent).toContain('20%');
         }
-        expect(screen.queryByText('Completed')).toBeNull();
+        expect(screen.queryByText('Abandoned')).toBeNull();
     });
 
     it('ranks the most played games with their hours', () => {

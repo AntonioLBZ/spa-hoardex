@@ -1,8 +1,11 @@
 import { z } from 'zod';
-import { MANUAL_STATES } from '../backlog/index.js';
+import { MANUAL_STATES, upgradeState } from '../backlog/index.js';
+
+// A retired state read from storage counts as its replacement
+export const storedStateSchema = z.preprocess(upgradeState, z.enum(MANUAL_STATES));
 
 export const overrideSchema = z.object({
-    state: z.enum(MANUAL_STATES),
+    state: storedStateSchema,
     setAt: z.string(),
     minutesAtSet: z.number().int().nonnegative(),
 });
@@ -13,7 +16,7 @@ export const cachedOverridesSchema = z.object({ overrides: overridesSchema });
 
 export const overrideRowSchema = z.object({
     game_id: z.string(),
-    state: z.enum(MANUAL_STATES),
+    state: storedStateSchema,
     minutes_at_set: z.number().int(),
     set_at: z.union([z.date(), z.string()]),
 });

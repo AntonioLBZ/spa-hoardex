@@ -1,3 +1,4 @@
+import { upgradeState } from '@core/backlog';
 import { SORTS, STATE_FILTERS, type Sort, type StateFilter } from '@core/browse';
 
 export const DEFAULT_SORT: Sort = 'hours';
@@ -19,7 +20,7 @@ export interface LibrarySearch {
 
 // Anything that is not valid is dropped, so a hand-edited URL never breaks the page
 export function parseLibrarySearch(raw: Record<string, unknown>): LibrarySearch {
-    const state = STATE_FILTERS.find((filter) => filter === raw.state);
+    const state = STATE_FILTERS.find((filter) => filter === upgradeState(raw.state));
     const sort = SORTS.find((candidate) => candidate === raw.sort);
     // A numeric query such as "2077" arrives as a number
     const text = typeof raw.q === 'string' || typeof raw.q === 'number' ? String(raw.q).trim() : '';

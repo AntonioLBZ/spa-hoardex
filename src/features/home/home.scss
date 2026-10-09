@@ -15,34 +15,11 @@
     align-items: center;
     display: grid;
     gap: var(--size-300);
-    isolation: isolate;
-    position: relative;
-}
-
-/* A soft glow behind the hero, part of the frame: it never moves */
-.home__hero::before {
-    background:
-        radial-gradient(closest-side, color-mix(in srgb, var(--color-accent) 22%, transparent), transparent),
-        radial-gradient(closest-side, color-mix(in srgb, var(--color-state-paused) 16%, transparent), transparent) 60%
-            70% / 70% 80% no-repeat;
-    content: '';
-    inset: -10% 0 40%;
-    pointer-events: none;
-    position: absolute;
-    z-index: -1;
 }
 
 .home__intro {
     display: grid;
     gap: var(--size-150);
-}
-
-.home__eyebrow {
-    color: var(--color-accent);
-    font-size: 0.8125rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
 }
 
 .home__title {
@@ -54,17 +31,7 @@
 }
 
 .home__highlight {
-    background-clip: text;
-    background-image: linear-gradient(100deg, var(--color-accent), var(--color-state-paused));
-    color: transparent;
     white-space: nowrap;
-}
-
-@media (forced-colors: active) {
-    .home__highlight {
-        background-image: none;
-        color: inherit;
-    }
 }
 
 .home__lead {
@@ -90,39 +57,6 @@
     font-size: 0.875rem;
 }
 
-.home__owner {
-    border-inline-start: 3px solid var(--color-accent);
-    display: grid;
-    gap: var(--size-25);
-    max-width: 36rem;
-    padding-inline-start: var(--size-100);
-}
-
-.home__owner-title {
-    font-weight: 700;
-}
-
-.home__owner-text {
-    color: var(--color-content-muted);
-    font-size: 0.9375rem;
-}
-
-.home__owner-action {
-    font-weight: 600;
-    justify-self: start;
-    text-decoration: none;
-}
-
-.home__owner-action:hover {
-    text-decoration: underline;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-    .home__owner {
-        animation: rise-in var(--motion-reveal) var(--ease-settle) backwards;
-    }
-}
-
 .home__features {
     display: grid;
     gap: var(--size-150);
@@ -145,7 +79,7 @@
     align-content: start;
     background-color: var(--color-bg-raised);
     border: 1px solid var(--color-border);
-    border-radius: calc(var(--size-border-radius) * 1.5);
+    border-radius: var(--size-border-radius-large);
     display: grid;
     gap: var(--size-50);
     padding: var(--size-150);
@@ -184,12 +118,10 @@
 
 @media (width >= 56rem) {
     .home__hero {
+        --glow-inset: -15% 0 -10% 25%;
+
         grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
         min-block-size: min(32rem, 70dvh);
-    }
-
-    .home__hero::before {
-        inset: -15% 0 -10% 25%;
     }
 }
 

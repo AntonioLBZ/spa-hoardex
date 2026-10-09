@@ -1,6 +1,6 @@
 import { useCallback, useSyncExternalStore } from 'react';
 
-import { BACKLOG_STATES, type BacklogOverride, type Overrides } from '@core/backlog';
+import { BACKLOG_STATES, upgradeState, type BacklogOverride, type Overrides } from '@core/backlog';
 
 const STORAGE_KEY = 'hoardex:demo-backlog';
 const EMPTY: Overrides = Object.freeze({});
@@ -9,19 +9,24 @@ const EMPTY: Overrides = Object.freeze({});
 let current: Overrides | null = null;
 const listeners = new Set<() => void>();
 
-function isOverride(value: unknown): value is BacklogOverride {
-    if (typeof value !== 'object' || value === null) return false;
-    const { state, setAt, minutesAtSet } = value as Record<string, unknown>;
-    return (
-        BACKLOG_STATES.some((known) => known === state) && typeof setAt === 'string' && typeof minutesAtSet === 'number'
-    );
+function readOverride(value: unknown): BacklogOverride | null {
+    if (typeof value !== 'object' || value === null) return null;
+    const { state: stored, setAt, minutesAtSet } = value as Record<string, unknown>;
+    const state = BACKLOG_STATES.find((known) => known === upgradeState(stored));
+    if (state === undefined || typeof setAt !== 'string' || typeof minutesAtSet !== 'number') return null;
+    return { state, setAt, minutesAtSet };
 }
 
 function readStored(): Overrides {
     try {
         const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
         if (typeof parsed !== 'object' || parsed === null) return EMPTY;
-        return Object.fromEntries(Object.entries(parsed).filter(([, value]) => isOverride(value)));
+        return Object.fromEntries(
+            Object.entries(parsed).flatMap(([appid, value]) => {
+                const override = readOverride(value);
+                return override === null ? [] : [[appid, override]];
+            })
+        );
     } catch {
         return EMPTY;
     }

@@ -14,16 +14,26 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 - A modest phone (owner, evening of 2026-10-09): "Show more", plus the count-up, the donut and the card fade-in. On a vivo X300 Pro (high end) the animations run smoothly. In headless Chromium at CPU x4 to x6 every "Show more" batch keeps the main thread busy for a second or two while its covers arrive, and the cost grows with the cards already on screen (none at x1). If it shows, trace the paint cost and consider unmounting the first cards or smaller later batches (§10); if the cards stutter, `ARCHITECTURE.md` §14 lists the cuts in order.
 - `libraryPrivate` and `wishlistPrivate` (needs another account).
 
+### UI (owner, 2026-10-09)
+
+- Bug: on desktop the board view leaves one column out of view.
+- Edit the filters and the sort order (the library toolbar).
+- One set of corner radii across the app: the redesign mixed `--size-border-radius`, `--size-border-radius-large` and literal values.
+- Better copy and look for the "Is this your library?" bubble on profiles.
+- Extract styled, parametrizable components into `src/components/`: buttons (primary, secondary…), switch, radio button, form fields, cards. Then replace the ad hoc styles with them.
+- Check whether Steam exposes how many times a game was launched (or sessions). `GetOwnedGames` only gives playtime and the last-played date; if nothing else gives it, drop the idea.
+
 ### Later phases
 
-- 2: achievements, rarity, the *Completado* state. Review the WAF rate limit (60 requests per minute per IP) when the achievement batches arrive (`ARCHITECTURE.md` §11).
+- 2: achievements and rarity. Review the WAF rate limit (60 requests per minute per IP) when the achievement batches arrive (`ARCHITECTURE.md` §11).
 - 3: wishlist and unplayed value.
 - 4: Steam login, Neon, editable backlog, opt-in snapshots (design in `ARCHITECTURE.md` §19, in this order):
     - Finish one sign-in on `localhost`: `vercel dev` plus `pnpm dev`, opened on :5173 (only the preview was tried).
     - Measure a cold Neon read from `iad1` (only warm reads were seen, `ARCHITECTURE.md` §19.10).
-    - By hand: drag a card on the board with a real mouse and on a phone (synthetic events cannot start a native drag), the card select on a phone, and an owner edit in a preview.
+    - By hand: drag a card on the board with a real mouse and on a phone (synthetic events cannot start a native drag), the card state menu on a phone (and its flip above near the bottom edge), and an owner edit in a preview.
     - After the next production deploy: the first cron run in the Vercel logs (`[cron] snapshots`), `/account` in the browser (history on and off, sign out everywhere, delete), and a sign-in started on the deployment URL landing on `hoardex.vercel.app`.
     - Charts from the playtime history (data is saved since 4e).
+    - Bulk move: select several cards (grid and board) and set one state for all of them in a single request.
 - 5: other adapters, RetroAchievements first.
 
 ### At the very end (owner, 2026-10-09)
