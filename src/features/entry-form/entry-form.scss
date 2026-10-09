@@ -1,31 +1,60 @@
 .entry-form {
     display: grid;
     gap: var(--size-50);
+    max-width: 36rem;
 }
 
 .entry-form__label {
+    font-size: 0.875rem;
     font-weight: 600;
 }
 
+/* Input and button in one raised bar; on a narrow screen the button drops below */
 .entry-form__row {
-    display: flex;
-    flex-wrap: wrap;
+    align-items: center;
+    background-color: var(--color-bg-raised);
+    border: 1px solid var(--color-border);
+    border-radius: calc(var(--size-border-radius) * 1.5);
+    box-shadow: 0 8px 24px -12px rgb(0 0 0 / 25%);
+    display: grid;
     gap: var(--size-50);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 0.3125rem 0.3125rem 0.3125rem var(--size-75);
+}
+
+.entry-form__row:has(.entry-form__input:focus-visible) {
+    border-color: var(--color-accent);
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+.entry-form__row:has(.entry-form__input[aria-invalid='true']) {
+    border-color: var(--color-danger);
+}
+
+.entry-form__icon {
+    block-size: 1.25rem;
+    color: var(--color-content-muted);
+    inline-size: 1.25rem;
 }
 
 .entry-form__input {
-    background-color: var(--color-bg-raised);
-    border: 1px solid var(--color-border);
-    border-radius: var(--size-border-radius);
+    background-color: transparent;
+    border: none;
     color: var(--color-content);
-    flex: 1 1 16rem;
     font: inherit;
-    min-height: 2.75rem;
-    padding-inline: var(--size-75);
+    min-block-size: 2.75rem;
+    min-inline-size: 0;
+    padding: 0;
 }
 
-.entry-form__input[aria-invalid='true'] {
-    border-color: var(--color-danger);
+.entry-form__input:focus-visible {
+    outline: none;
+}
+
+.entry-form__input::placeholder {
+    color: var(--color-content-muted);
+    opacity: 1;
 }
 
 .entry-form__message {
@@ -35,4 +64,16 @@
 
 .entry-form__message--error {
     color: var(--color-danger);
+}
+
+@media (width < 30rem) {
+    .entry-form__row {
+        grid-template-columns: auto minmax(0, 1fr);
+        padding: 0.3125rem;
+        padding-inline-start: var(--size-75);
+    }
+
+    .entry-form__row .button {
+        grid-column: 1 / -1;
+    }
 }

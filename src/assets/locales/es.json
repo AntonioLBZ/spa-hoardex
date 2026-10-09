@@ -1,7 +1,7 @@
 {
     "app": {
         "name": "Hoardex",
-        "tagline": "Tu biblioteca de Steam, de un vistazo.",
+        "tagline": "Tu biblioteca de Steam, <mark>de un vistazo</mark>.",
         "language": "Idioma"
     },
     "account": {
@@ -48,8 +48,32 @@
         "submit": "Ver biblioteca",
         "invalid": "Eso no parece un perfil de Steam. Prueba con la URL del perfil, un nombre personalizado o un SteamID64.",
         "hint": "Introduce tu propio perfil. El perfil y los detalles de sus juegos tienen que ser públicos.",
-        "demo": "O explora una biblioteca de demostración con datos ficticios.",
         "loginFailed": "No se pudo iniciar sesión con Steam. Inténtalo de nuevo."
+    },
+    "home": {
+        "eyebrow": "Para bibliotecas de Steam",
+        "lead": "Horas jugadas, tu backlog y tus juegos más jugados en un panel animado. Sin registro: pega un perfil público.",
+        "demo": "Ver la demo",
+        "demoNote": "Datos ficticios, sin cuenta de Steam.",
+        "featuresTitle": "Qué hace",
+        "features": {
+            "dashboard": {
+                "title": "Las cifras de un vistazo",
+                "text": "Horas totales, juegos sin empezar, horas por año y tus juegos más jugados."
+            },
+            "backlog": {
+                "title": "Un backlog que se ordena solo",
+                "text": "Cada juego cae en Sin tocar, Probado, En curso, Pausado o Acabado según sus horas y su última sesión."
+            },
+            "board": {
+                "title": "Tuyo para editar",
+                "text": "Entra con Steam y arrastra juegos a Completado o Abandonado en un tablero. Las visitas lo ven, sin poder cambiarlo."
+            },
+            "history": {
+                "title": "Historial de horas, si lo quieres",
+                "text": "Activa desde tu cuenta un registro diario de tus horas. Al desactivarlo se borra."
+            }
+        }
     },
     "profile": {
         "loadingProfile": "Cargando perfil…",

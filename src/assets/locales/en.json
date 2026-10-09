@@ -1,7 +1,7 @@
 {
     "app": {
         "name": "Hoardex",
-        "tagline": "Your Steam library, at a glance.",
+        "tagline": "Your Steam library, <mark>at a glance</mark>.",
         "language": "Language"
     },
     "account": {
@@ -48,8 +48,32 @@
         "submit": "View library",
         "invalid": "That does not look like a Steam profile. Try a profile URL, a custom name or a SteamID64.",
         "hint": "Enter your own profile. It and its game details must be public.",
-        "demo": "Or explore a demo library with fictional data.",
         "loginFailed": "Signing in with Steam did not work. Try again."
+    },
+    "home": {
+        "eyebrow": "For Steam libraries",
+        "lead": "Hours played, your backlog and your most played games on one animated dashboard. No sign-up: paste a public profile.",
+        "demo": "Explore the demo",
+        "demoNote": "Fictional data, no Steam account needed.",
+        "featuresTitle": "What it does",
+        "features": {
+            "dashboard": {
+                "title": "The numbers at a glance",
+                "text": "Total hours, games never started, hours by year and your most played games."
+            },
+            "backlog": {
+                "title": "A backlog that sorts itself",
+                "text": "Each game lands in Untouched, Tried, In progress, Paused or Finished from its hours and last session."
+            },
+            "board": {
+                "title": "Yours to edit",
+                "text": "Sign in with Steam to drag games to Completed or Abandoned on a board. Visitors see it, read only."
+            },
+            "history": {
+                "title": "Playtime history, if you want it",
+                "text": "Turn on a daily record of your hours from your account. Turning it off deletes it."
+            }
+        }
     },
     "profile": {
         "loadingProfile": "Loading profile…",

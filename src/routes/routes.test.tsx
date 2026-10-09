@@ -308,7 +308,7 @@ describe('demo', () => {
     it('is reachable from the entry screen', async () => {
         stubApi(DEMO_ANSWERS);
         const { router, user } = renderApp('/');
-        await user.click(await screen.findByRole('link', { name: /explore a demo library/ }));
+        await user.click(await screen.findByRole('link', { name: 'Explore the demo' }));
 
         await screen.findByRole('note');
         expect(router.state.location.pathname).toBe('/demo');

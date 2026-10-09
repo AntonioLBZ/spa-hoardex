@@ -32,11 +32,23 @@ export function EntryForm() {
     }
 
     return (
-        <form className="entry-form rise-in" noValidate onSubmit={onSubmit} style={riseStyle(1)}>
+        <form className="entry-form rise-in" noValidate onSubmit={onSubmit} style={riseStyle(3)}>
             <label className="entry-form__label" htmlFor={inputId}>
                 {t('label')}
             </label>
             <div className="entry-form__row">
+                <svg
+                    aria-hidden="true"
+                    className="entry-form__icon"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                >
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m20 20-3.5-3.5" />
+                </svg>
                 <input
                     aria-describedby={messageId}
                     aria-invalid={invalid}
