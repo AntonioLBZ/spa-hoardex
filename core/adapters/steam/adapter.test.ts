@@ -446,7 +446,6 @@ describe('integration with the backlog classifier', () => {
     const SECONDS_PER_DAY = 86_400;
     const nowSeconds = FIXTURE_NOW.getTime() / 1000;
 
-    // Expected counts from the fixture's raw data
     function expectedCounts(games: Record<string, unknown>[]) {
         const counts = { completed: 0, untouched: 0, tried: 0, inProgress: 0, paused: 0, finished: 0 };
         for (const game of games) {
@@ -470,7 +469,6 @@ describe('integration with the backlog classifier', () => {
         const counts = countByState(result.data.games, FIXTURE_NOW);
         expect(counts).toEqual(expectedCounts(LIBRARY_FIXTURE.games));
         expect(Object.values(counts).reduce((total, count) => total + count, 0)).toBe(LIBRARY_FIXTURE.game_count);
-        // "completed" needs achievements (phase 2)
         expect(counts.completed).toBe(0);
         for (const state of ['untouched', 'tried', 'inProgress', 'paused', 'finished'] as const) {
             expect(counts[state]).toBeGreaterThan(0);

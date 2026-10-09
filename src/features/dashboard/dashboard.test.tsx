@@ -7,7 +7,6 @@ import { Dashboard } from './dashboard';
 
 const stateBreakdownRenders = vi.hoisted(() => vi.fn());
 
-// Counts renders of the donut panel without replacing it
 vi.mock('./state-breakdown', async (importOriginal) => {
     const actual = await importOriginal<typeof import('./state-breakdown')>();
     return {

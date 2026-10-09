@@ -13,7 +13,6 @@ const GAME_COUNT = (loadFixture('GetOwnedGames.library').body as { response: { g
 
 type Table = Parameters<typeof routes>[0];
 
-// Real adapter and cache; only Steam's responses are fake
 function setup(table: Table) {
     const fake = createFakeFetch(routes(table));
     const adapter = createSteamAdapter({ apiKey: TEST_KEY, fetch: fake.fetch, onDrift: () => {} });
@@ -119,7 +118,6 @@ describe('GET /api/library/:input', () => {
         const { get, steamCalls } = setup({ vanity: 'ResolveVanityURL.found', ownedGames: 'GetOwnedGames.library' });
         const first = await get('/api/library/Some_Name');
         expect(first.body).toMatchObject({ kind: 'ok', data: { owner: { externalId: ID } } });
-        // ResolveVanityURL and GetOwnedGames; no GetPlayerSummaries
         expect(steamCalls()).toBe(2);
 
         await get('/api/library/SOME_NAME');
@@ -166,7 +164,6 @@ describe('POST /api/refresh/:input', () => {
             library: { kind: 'ok', data: { owner: { externalId: ID } } },
         });
         expect((body.library as { data: { games: unknown[] } }).data.games).toHaveLength(GAME_COUNT);
-        // GetPlayerSummaries and GetOwnedGames, whatever was cached
         expect(steamCalls()).toBe(3);
 
         await get(`/api/library/${ID}`);
@@ -304,7 +301,6 @@ describe('GET /api/health', () => {
 });
 
 describe('GET /api/demo/*', () => {
-    // A config error from getData would fail every other route
     function demoApp() {
         const app = createApp(() => {
             throw new ConfigError('STEAM_API_KEY is not set');

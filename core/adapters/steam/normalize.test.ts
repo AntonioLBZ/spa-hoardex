@@ -16,7 +16,6 @@ function fixtureGames(): unknown[] {
     return body.response.games;
 }
 
-// A game with every field Steam sends
 function rawGame(overrides: Record<string, unknown> = {}): RawGame {
     return rawGameSchema.parse({
         appid: 10,

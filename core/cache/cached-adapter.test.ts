@@ -39,7 +39,6 @@ interface Script {
     library?: () => ProfileAccess<Library>;
 }
 
-// StoreAdapter answering from a script, counting calls
 function fakeAdapter(script: Script = {}) {
     const calls: string[] = [];
     const adapter: StoreAdapter = {

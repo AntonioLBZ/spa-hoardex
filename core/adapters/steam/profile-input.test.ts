@@ -26,14 +26,14 @@ describe('isSteamId64 and the patterns', () => {
 
     it.each([
         '',
-        '7656119800640953', // 16 digits
-        '765611980000012340', // 18 digits
-        '66561198006409530', // wrong prefix
+        '7656119800640953',
+        '765611980000012340',
+        '66561198006409530',
         '76561098006409530',
         '7656119800640953a',
         ' 76561198000001234',
         '76561198000001234\n',
-        '\uff17\uff16\uff15\uff16\uff11\uff11\uff19\uff18\uff10\uff10\uff16\uff14\uff10\uff19\uff15\uff13\uff10', // fullwidth digits
+        '\uff17\uff16\uff15\uff16\uff11\uff11\uff19\uff18\uff10\uff10\uff16\uff14\uff10\uff19\uff15\uff13\uff10',
     ])('rejects %j', (v) => {
         expect(isSteamId64(v)).toBe(false);
     });
@@ -169,20 +169,20 @@ describe('parseProfileInput: SteamID2', () => {
     });
 
     it.each([
-        'STEAM_6:0:1', // universe out of range
-        'STEAM_0:2:1', // parity bit must be 0 or 1
-        'STEAM_0:0:', // missing account
-        'STEAM_0:0:-1', // negative
+        'STEAM_6:0:1',
+        'STEAM_0:2:1',
+        'STEAM_0:0:',
+        'STEAM_0:0:-1',
         'STEAM_0:0:1.5',
         'STEAM_0:0:abc',
         'STEAM_0:0',
         'STEAM_0:0:1:1',
         'STEAM__0:0:1',
-        'STEAM_0:0:12345678901', // 11 digits
-        'STEAM_0:0:1019867136', // converts above the SteamID64 range
+        'STEAM_0:0:12345678901',
+        'STEAM_0:0:1019867136',
         'STEAM_0:1:4294967295',
         'STEAM_0:0:99999999999999999999999999',
-        'STEAM_0:0:\u0663', // Arabic-Indic digit
+        'STEAM_0:0:\u0663',
         '[STEAM_0:0:1]',
         'xSTEAM_0:0:1',
     ])('rejects %j', (input) => {
@@ -221,24 +221,24 @@ describe('parseProfileInput: SteamID3', () => {
     });
 
     it.each([
-        '[U:1:39735506', // unbalanced
+        '[U:1:39735506',
         'U:1:39735506]',
         '[[U:1:39735506]]',
-        '[U:2:46143802]', // other universe
+        '[U:2:46143802]',
         '[U:0:46143802]',
-        '[G:1:46143802]', // other account type
+        '[G:1:46143802]',
         '[U:1:]',
         '[U:1:-5]',
         '[U:1:1.5]',
         '[U:1:abc]',
-        '[U:1:2039734272]', // converts above the SteamID64 range
+        '[U:1:2039734272]',
         '[U:1:4294967295]',
-        '[U:1:12345678901]', // 11 digits
-        '[U:1:39735506:1]', // instance suffix
+        '[U:1:12345678901]',
+        '[U:1:39735506:1]',
         '[U:1]',
         '[U:1:39735506] extra',
-        '[U:1:\u0664\u0666\u0661\u0664\u0663\u0668\u0660\u0662]', // Arabic-Indic digits
-        '[U:1:\uff14\uff16\uff11\uff14\uff13\uff18\uff10\uff12]', // fullwidth digits
+        '[U:1:\u0664\u0666\u0661\u0664\u0663\u0668\u0660\u0662]',
+        '[U:1:\uff14\uff16\uff11\uff14\uff13\uff18\uff10\uff12]',
     ])('rejects %j', (input) => {
         expect(parseProfileInput(input)).toEqual(INVALID);
     });
@@ -294,7 +294,7 @@ describe('parseProfileInput: profile URLs', () => {
     });
 
     it.each([
-        '//steamcommunity.com/id/foo', // protocol-relative
+        '//steamcommunity.com/id/foo',
         'https://steamcommunity.com',
         'https://steamcommunity.com/',
         'https://steamcommunity.com/id',
@@ -304,8 +304,8 @@ describe('parseProfileInput: profile URLs', () => {
         'https://steamcommunity.com/profiles',
         'https://steamcommunity.com/profiles/',
         'https://steamcommunity.com/profiles/foo',
-        'https://steamcommunity.com/profiles/7656119800640953', // 16 digits
-        'https://steamcommunity.com/profiles/765611980000012340', // 18 digits
+        'https://steamcommunity.com/profiles/7656119800640953',
+        'https://steamcommunity.com/profiles/765611980000012340',
         'https://steamcommunity.com/profiles/66561198006409530',
         'https://steamcommunity.com/groups/foo',
         'https://steamcommunity.com/app/730',
@@ -315,7 +315,7 @@ describe('parseProfileInput: profile URLs', () => {
         'https://steamcommunity.com/#/id/foo',
         'https://steamcommunity.com/id/foo bar',
         'https://steamcommunity.com/id/foo%20bar',
-        'https://steamcommunity.com/id/%66oo', // percent-encoded names are not decoded
+        'https://steamcommunity.com/id/%66oo',
         'https://steamcommunity.com/id/foo%2Fbar',
         'https://steamcommunity.com/id/foo.bar',
         'https://steamcommunity.com/id/%E3%81%82%E3%81%82',
@@ -326,7 +326,6 @@ describe('parseProfileInput: profile URLs', () => {
 
 describe('parseProfileInput: hostile and look-alike URLs', () => {
     it.each([
-        // foreign hosts and the usual suffix/prefix tricks
         'https://evil.com/id/foo',
         'evil.com/id/foo',
         'https://steamcommunity.com.evil.com/id/foo',
@@ -339,28 +338,23 @@ describe('parseProfileInput: hostile and look-alike URLs', () => {
         'https://sub.steamcommunity.com/id/foo',
         'https://store.steampowered.com/id/foo',
         'https://steampowered.com/id/foo',
-        'https://steamcommunity.com./id/foo', // trailing dot
-        // the target hidden in other URL parts
+        'https://steamcommunity.com./id/foo',
         'https://evil.com/?steamcommunity.com/id/foo',
         'https://evil.com/#steamcommunity.com/id/foo',
         'https://evil.com/steamcommunity.com/id/foo',
         'https://evil.com/https://steamcommunity.com/id/foo',
         'https://evil.com?u=https://steamcommunity.com/id/foo',
-        // userinfo tricks
         'https://steamcommunity.com@evil.com/id/foo',
         'https://steamcommunity.com:pass@evil.com/id/foo',
         'https://evil.com@steamcommunity.com/id/foo',
         'https://user:pass@steamcommunity.com/id/foo',
         'steamcommunity.com@evil.com/id/foo',
-        // backslash confusion (WHATWG treats it as a slash)
         'https://evil.com\\@steamcommunity.com/id/foo',
         'https://steamcommunity.com\\@evil.com/id/foo',
         'https://steamcommunity.com\\.evil.com/id/foo',
         'https:\\\\steamcommunity.com\\id\\foo',
-        // ports
         'https://steamcommunity.com:8080/id/foo',
         'steamcommunity.com:443/id/foo',
-        // schemes
         'javascript:alert(1)',
         'javascript://steamcommunity.com/id/foo',
         'javascript:steamcommunity.com/id/foo',
@@ -375,14 +369,12 @@ describe('parseProfileInput: hostile and look-alike URLs', () => {
         'view-source:https://steamcommunity.com/id/foo',
         'blob:https://steamcommunity.com/id/foo',
         'mailto:steamcommunity.com/id/foo',
-        // malformed
         'https://',
         'https:///id/foo',
         'http:steamcommunity.com/id/foo',
         'https://steamcommunity.com id/foo',
         ' https : //steamcommunity.com/id/foo',
         'https://steamcommunity.com/id/foo\u0000',
-        // IP and number hosts
         'https://127.0.0.1/id/foo',
         'https://[::1]/id/foo',
         'http://2130706433/id/foo',
@@ -454,7 +446,6 @@ describe('parseProfileInput: other junk', () => {
 });
 
 describe('parseProfileInput: account id 0 and protocol-relative URLs', () => {
-    // Account id 0 fits the pattern but is not a real account
     it.each([
         '76561197960265728',
         'STEAM_0:0:0',

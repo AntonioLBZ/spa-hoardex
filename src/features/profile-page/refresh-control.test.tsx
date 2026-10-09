@@ -9,7 +9,6 @@ const LIBRARY_PATH = '/api/library/someone';
 const REFRESH_PATH = '/api/refresh/someone';
 const COOLDOWNS_KEY = 'hoardex:refresh-cooldowns';
 
-// The cooldown lives in memory for the whole test file, so each test gets its own account
 let sequence = 0;
 
 function account(gameCount: number, ageMinutes = 5) {
@@ -45,7 +44,10 @@ function refreshed(profile: Profile, library: Library) {
     };
 }
 
-function stubProfilePage(initial: ReturnType<typeof account>, refresh?: { status?: number; body: unknown }) {
+function stubProfilePage(
+    initial: ReturnType<typeof account>,
+    refresh?: { status?: number; body?: unknown; text?: string }
+) {
     return stubApi({
         [PROFILE_PATH]: { body: { kind: 'ok', data: initial.profile } },
         [LIBRARY_PATH]: { body: { kind: 'ok', data: initial.initial } },
@@ -220,6 +222,29 @@ describe('refresh control', () => {
         expect(button.getAttribute('aria-disabled')).toBe('false');
         await user.click(button);
         await waitFor(() => expect(posts(fetchMock)).toHaveLength(2));
+    });
+
+    it('asks to wait a minute when the firewall rate limit answers, and lets the visitor try again', async () => {
+        const fetchMock = stubProfilePage(account(2), { status: 429, text: 'Too Many Requests' });
+        const { user } = renderApp('/p/someone');
+
+        await user.click(await refreshButton());
+
+        expect(await screen.findByText('Too many requests. Try again in a minute.')).toBeTruthy();
+        const button = screen.getByRole('button', { name: 'Refresh' });
+        expect(button.getAttribute('aria-disabled')).toBe('false');
+        await user.click(button);
+        await waitFor(() => expect(posts(fetchMock)).toHaveLength(2));
+    });
+
+    it('says so in Spanish too when the firewall rate limit answers', async () => {
+        localStorage.setItem('hoardex:locale', 'es');
+        stubProfilePage(account(2), { status: 429, text: 'Too Many Requests' });
+        const { user } = renderApp('/p/someone');
+
+        await user.click(await refreshButton('Actualizar'));
+
+        expect(await screen.findByText('Demasiadas peticiones. Inténtalo de nuevo en un minuto.')).toBeTruthy();
     });
 
     it('is translated', async () => {

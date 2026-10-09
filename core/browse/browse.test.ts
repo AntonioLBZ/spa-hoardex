@@ -14,7 +14,6 @@ function makeGame(appid: string, name: string, totalMinutes: number, lastPlayedA
     };
 }
 
-// One game per state, in a deliberately scrambled order
 const GAMES = [
     makeGame('5', 'Echo Harbor', 4000, '2022-01-01T00:00:00Z'),
     makeGame('2', 'Álamo Run', 0, null),

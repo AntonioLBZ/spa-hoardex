@@ -128,6 +128,23 @@ describe('profile page', () => {
         expect(await screen.findByText('Profile not found')).toBeTruthy();
     });
 
+    it('asks the visitor to wait when the firewall rate limit answers', async () => {
+        stubApi({ [PROFILE_PATH]: { status: 429, text: 'Too Many Requests' } });
+        renderApp('/p/someone');
+
+        expect(await screen.findByText('Too many requests')).toBeTruthy();
+        expect(screen.getByText(/Wait a minute and try again/)).toBeTruthy();
+        expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+    });
+
+    it('says so in Spanish too', async () => {
+        localStorage.setItem('hoardex:locale', 'es');
+        stubApi({ [PROFILE_PATH]: { status: 429, text: 'Too Many Requests' } });
+        renderApp('/p/someone');
+
+        expect(await screen.findByText('Demasiadas peticiones')).toBeTruthy();
+    });
+
     it('offers a retry after a server failure and recovers', async () => {
         const fetchMock = stubApi({ [PROFILE_PATH]: { status: 502, body: { error: 'upstream' } } });
         const { user } = renderApp('/p/someone');

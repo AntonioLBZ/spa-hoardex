@@ -22,15 +22,20 @@ export function renderApp(path: string) {
 
 interface StubbedAnswer {
     status?: number;
-    body: unknown;
+    body?: unknown;
+    text?: string;
 }
 
-// Answers by exact request path, whatever the method (the calls keep it); anything else is a failed test
 export function stubApi(answers: Record<string, StubbedAnswer>) {
     const fetchMock = vi.fn((input: string | URL | Request, _init?: RequestInit) => {
         const answer = answers[String(input)];
         if (answer === undefined) return Promise.reject(new Error(`Unexpected request: ${String(input)}`));
-        return Promise.resolve(Response.json(answer.body, { status: answer.status ?? 200 }));
+        const status = answer.status ?? 200;
+        return Promise.resolve(
+            answer.text === undefined
+                ? Response.json(answer.body, { status })
+                : new Response(answer.text, { status, headers: { 'content-type': 'text/plain' } })
+        );
     });
     vi.stubGlobal('fetch', fetchMock);
     return fetchMock;

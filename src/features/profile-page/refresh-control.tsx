@@ -4,12 +4,17 @@ import { useFormatter, useTranslations } from 'use-intl';
 
 import type { Library } from '@core/domain';
 import { Button } from '@/components/button';
-import { libraryQuery, postRefresh, profileQuery } from '@/lib/api';
+import { ApiError, libraryQuery, postRefresh, profileQuery } from '@/lib/api';
 import { startCooldown, useCooldownEnd } from './refresh-cooldowns';
 
 import './refresh-control.scss';
 
-type Notice = { kind: 'done' } | { kind: 'cooldown'; minutes: number } | { kind: 'rateLimited' } | { kind: 'failed' };
+type Notice =
+    | { kind: 'done' }
+    | { kind: 'cooldown'; minutes: number }
+    | { kind: 'rateLimited' }
+    | { kind: 'tooManyRequests' }
+    | { kind: 'failed' };
 
 // How often the countdown and the "updated" age catch up
 const TICK_MS = 10_000;
@@ -56,13 +61,18 @@ export function RefreshControl({ input, library }: RefreshControlProps) {
                     : { kind: 'rateLimited' }
             );
         },
-        onError: () => setNotice({ kind: 'failed' }),
+        // No wait time: the firewall, not our cooldown
+        onError: (error) =>
+            setNotice(
+                error instanceof ApiError && error.status === 429 ? { kind: 'tooManyRequests' } : { kind: 'failed' }
+            ),
     });
 
     const coolingDown = until > now;
     const blocked = refresh.isPending || coolingDown;
     // Gone with the cooldown it explained; a failure stays until the next try
-    const shown = notice !== null && (coolingDown || notice.kind === 'failed') ? notice : null;
+    const failure = notice?.kind === 'failed' || notice?.kind === 'tooManyRequests';
+    const shown = notice !== null && (coolingDown || failure) ? notice : null;
     const fetchedAt = Math.min(Date.parse(library.fetchedAt), now);
     const parts = [
         Number.isNaN(fetchedAt) ? null : t('updatedAgo', { ago: format.relativeTime(fetchedAt, now) }),

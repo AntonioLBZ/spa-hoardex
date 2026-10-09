@@ -10,14 +10,16 @@ import { ApiError } from '@/lib/api';
 import type { ProfileSource } from './profile-page';
 import { settingsUrlFor } from './settings-url';
 
-export type ProblemKind = Exclude<ProfileAccessKind, 'ok'> | 'upstream';
+export type ProblemKind = Exclude<ProfileAccessKind, 'ok'> | 'upstream' | 'tooManyRequests';
 
 // Privacy states: the owner can fix them in Steam
 const LOCKED_KINDS: readonly ProblemKind[] = ['profilePrivate', 'libraryPrivate', 'wishlistPrivate'];
 
-// An input our API rejects reads as "not found" to the visitor
+// A GET 429 can only be the firewall: our API answers 429 to the refresh POST alone
 export function problemFromError(error: unknown): ProblemKind {
-    return error instanceof ApiError && error.code === 'invalidInput' ? 'notFound' : 'upstream';
+    if (!(error instanceof ApiError)) return 'upstream';
+    if (error.code === 'invalidInput') return 'notFound';
+    return error.status === 429 ? 'tooManyRequests' : 'upstream';
 }
 
 interface ProblemProps {
@@ -31,7 +33,7 @@ export function Problem({ kind, source, onRetry }: ProblemProps) {
     const tProfile = useTranslations('profile');
     const locked = LOCKED_KINDS.includes(kind);
     // After changing the setting in Steam, try again
-    const retryable = locked || kind === 'upstream' || kind === 'rateLimited';
+    const retryable = locked || kind === 'upstream' || kind === 'rateLimited' || kind === 'tooManyRequests';
     const settingsUrl = locked ? settingsUrlFor(source) : null;
 
     const actions = (

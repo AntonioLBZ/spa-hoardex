@@ -29,7 +29,6 @@ class FakeObserver {
         this.observed = [];
     }
 
-    // Cards laid out two to a row
     enter(...targets: Element[]) {
         this.callback(
             targets.map((target, index) => ({

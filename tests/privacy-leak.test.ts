@@ -1,5 +1,3 @@
-// Fails when a repo file carries a real SteamID or a term from fixtures/full/private-terms.json
-// Failures name the file and the kind of leak, never the value
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +8,6 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const TERMS_FILE = `${ROOT}fixtures/full/private-terms.json`;
 const MAX_BYTES = 2 * 1024 * 1024;
 
-// Public ids allowed in docs and code: the docs example, account 0, the first account ids and the pattern limits
 const PUBLIC_STEAMIDS = new Set([
     '76561197960287930',
     '76561197960265728',
@@ -20,7 +17,6 @@ const PUBLIC_STEAMIDS = new Set([
     '76561100000000000',
 ]);
 const STEAMID = /(?<!\d)765611\d{11}(?!\d)/g;
-// Publish the owner's contact address on purpose, and it holds a private string: only strings are exempt there
 const CONTACT_FILES = new Set(['src/features/policy-page/mail-link.tsx']);
 
 interface PrivateTerms {
@@ -42,7 +38,6 @@ function listRepoFiles(): string[] {
     return [...new Set(output.split('\0').filter(Boolean))].sort();
 }
 
-// Null for missing, large or binary files
 function readText(path: string): string | null {
     try {
         const file = `${ROOT}${path}`;
@@ -63,12 +58,10 @@ function readTerms(): PrivateTerms {
     return { steamids: clean(raw.steamids), strings: clean(raw.strings) };
 }
 
-// SteamID64s outside the fake window and the allowlist
 function findStraySteamIds(text: string): string[] {
     return (text.match(STEAMID) ?? []).filter((id) => !isFakeSteamId(id) && !PUBLIC_STEAMIDS.has(id));
 }
 
-// Labels of the private terms found: ids exact, strings case-insensitive
 function findPrivateTerms(text: string, terms: PrivateTerms): string[] {
     const lower = text.toLowerCase();
     return [
@@ -77,7 +70,6 @@ function findPrivateTerms(text: string, terms: PrivateTerms): string[] {
     ];
 }
 
-// Null when .env.local or the variable is missing
 function readApiKey(): string | null {
     try {
         const line = readFileSync(`${ROOT}.env.local`, 'utf8')
@@ -145,7 +137,6 @@ describe('secrets in repo files', () => {
 });
 
 describe('leak detectors', () => {
-    // Built at runtime so this file holds no id-shaped literal
     const accountBase = 76561197960265728n;
     const real = String(accountBase + 123_456n);
     const fake = String(76561198000000000n + 5n);

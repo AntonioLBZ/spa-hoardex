@@ -32,7 +32,6 @@ function makeGame(appid: string, name: string, totalMinutes: number, daysAgo: nu
     };
 }
 
-// One game per library-only state
 const LIBRARY: Library = {
     owner: PROFILE.id,
     fetchedAt: '2026-01-01T00:00:00.000Z',
@@ -329,7 +328,6 @@ describe('covers', () => {
         fireEvent.error(coverFor(region, 'Délta Siege')!.querySelector('img')!);
         await waitFor(() => expect(coverFor(region, 'Délta Siege')?.querySelector('img')).toBeNull());
         expect(coverFor(region, 'Délta Siege')?.textContent).toBe('DS');
-        // The other covers are untouched
         expect(coverFor(region, 'Beta Run')?.querySelector('img')).not.toBeNull();
     });
 
