@@ -3,9 +3,10 @@ import { z } from 'zod';
 import { MANUAL_STATES } from '../core/backlog/index.js';
 import type { CachedAdapter } from '../core/cache/cached-adapter.js';
 import type { EntityId } from '../core/domain/index.js';
-import { isSameOrigin, type AuthDeps } from './auth.js';
+import type { AuthDeps } from './auth.js';
 import type { Accounts } from './deps.js';
 import { NO_STORE, access, failure } from './http.js';
+import { requireOwner } from './owner.js';
 import { readSession, type Session } from './session.js';
 
 export interface BacklogRouteDeps {
@@ -47,21 +48,14 @@ export function createBacklogRoutes({ getData, getAuth, getAccounts }: BacklogRo
         return ok(c, await getAccounts().backlog.read(steamIdentity(session)));
     });
 
-    // The checks every write shares: our origin, a live session, a valid appid
+    // The checks every write shares: the owner, a valid appid
     async function writer(c: Context) {
-        const auth = getAuth();
-        if (!isSameOrigin(c, auth)) return { error: failure(c, 'origin', 403) };
-        const session = await readSession(c, auth.secret);
-        if (session === null) return { error: failure(c, 'signedOut', 401) };
+        const owner = await requireOwner(c, getAuth, getAccounts, { mutation: true });
+        if ('error' in owner) return owner;
         const appid = c.req.param('appid') ?? '';
         if (!APPID_PATTERN.test(appid)) return { error: failure(c, 'invalidInput', 400) };
-
-        const accounts = getAccounts();
-        const identity = steamIdentity(session);
-        const account = await accounts.repository.findAccount(identity);
-        if (account === null || account.sessionEpoch !== session.epoch) return { error: failure(c, 'signedOut', 401) };
         const game: EntityId = { source: 'steam', externalId: appid };
-        return { accounts, account, identity, game };
+        return { ...owner, game };
     }
 
     // Only games of the owner's own library, with their playtime at that moment

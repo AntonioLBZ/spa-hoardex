@@ -18,6 +18,8 @@ export interface BacklogService {
     read(identity: EntityId): Promise<Overrides>;
     set(account: Account, identity: EntityId, game: EntityId, state: ManualState, minutes: number): Promise<Overrides>;
     clear(account: Account, identity: EntityId, game: EntityId): Promise<Overrides>;
+    // After the account is deleted: its copy becomes empty at once
+    forget(identity: EntityId): Promise<void>;
 }
 
 // Neon is the truth; `bl:{source}:{id}` is a write-through copy of an account's overrides
@@ -67,6 +69,10 @@ export function createBacklogService({
         async clear(account, identity, game) {
             await repository.clearOverride(account.userId, game);
             return reload(identity);
+        },
+
+        async forget(identity) {
+            await reload(identity);
         },
     };
 }

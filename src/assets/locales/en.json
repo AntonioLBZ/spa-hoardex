@@ -7,7 +7,40 @@
     "account": {
         "signIn": "Sign in with Steam",
         "myProfile": "My profile",
-        "signOut": "Sign out"
+        "signOut": "Sign out",
+        "account": "Account"
+    },
+    "accountPage": {
+        "title": "Your account",
+        "loading": "Loading your account…",
+        "failed": "Your account could not be loaded. Try again later.",
+        "signedOut": "You are not signed in",
+        "signedOutBody": "Sign in with Steam to see and change your account.",
+        "signIn": "Sign in with Steam",
+        "myProfile": "Go to my profile",
+        "snapshots": {
+            "heading": "Playtime history",
+            "body": "Steam only gives total hours. With this on, Hoardex saves once a day the hours of every game you have played, so later it can show how your playtime changes over time. It only keeps games whose hours changed, and stops while you have not signed in for {days} days.",
+            "label": "Save my playtime every day",
+            "on": "On since {since}. {days, plural, =0 {No day saved yet.} one {# day saved.} other {# days saved.}}",
+            "off": "Off. Turning it off deletes the saved history.",
+            "failed": "That change could not be saved. Try again."
+        },
+        "sessions": {
+            "heading": "Sessions",
+            "body": "Sign out on every device where you signed in, this one included.",
+            "action": "Sign out everywhere",
+            "failed": "It did not work. Try again."
+        },
+        "delete": {
+            "heading": "Delete my account",
+            "body": "Deletes your account, your manual states and your playtime history from Hoardex for good. Your Steam account is not touched.",
+            "action": "Delete my account…",
+            "confirm": "This cannot be undone. Delete everything?",
+            "confirmAction": "Delete for good",
+            "cancel": "Cancel",
+            "failed": "Your account could not be deleted. Try again."
+        }
     },
     "entry": {
         "label": "Your Steam profile",
@@ -177,7 +210,11 @@
         },
         "manual": {
             "heading": "Your manual states",
-            "body": "If you sign in, Hoardex keeps an account in its database (Neon Postgres, on AWS in North Virginia, USA): your SteamID and when you first and last signed in. When you set a game’s state by hand, it also keeps the state, when you set it and your playtime for that game at that moment. These states are public: anyone who opens your profile sees them, signed in or not. A copy is kept in Upstash Redis for up to {backlog}, renewed with every change. They stay until you return each game to its automatic state; to delete your account and everything in it, write to the address at the end of this page."
+            "body": "If you sign in, Hoardex keeps an account in its database (Neon Postgres, on AWS in North Virginia, USA): your SteamID and when you first and last signed in. When you set a game’s state by hand, it also keeps the state, when you set it and your playtime for that game at that moment. These states are public: anyone who opens your profile sees them, signed in or not. A copy is kept in Upstash Redis for up to {backlog}, renewed with every change. They stay until you return each game to its automatic state or delete your account from your account page, which removes everything at once."
+        },
+        "snapshots": {
+            "heading": "Playtime history (optional)",
+            "body": "Only if you turn it on in your account page: once a day, Hoardex asks Steam for your library and saves, for each game whose hours changed since the last time, its total hours and the date. It stops while you have not signed in for {days} days, and resumes when you sign in again. Turning it off deletes the whole history."
         },
         "analytics": {
             "heading": "Analytics",

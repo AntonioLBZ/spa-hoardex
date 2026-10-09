@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 
+import { SNAPSHOT_ACTIVE_DAYS } from '@core/accounts/snapshots';
 import { AUTH_TTL } from '@core/auth/ttl';
 import { CACHE_TTL } from '@core/cache/ttl';
 import { PageTitle } from '@/components/page-title';
@@ -71,6 +72,9 @@ export function PolicyPage() {
             </PolicySection>
             <PolicySection heading={t('manual.heading')}>
                 <p>{t('manual.body', { backlog: duration(CACHE_TTL.backlog) })}</p>
+            </PolicySection>
+            <PolicySection heading={t('snapshots.heading')}>
+                <p>{t('snapshots.body', { days: SNAPSHOT_ACTIVE_DAYS })}</p>
             </PolicySection>
             <PolicySection heading={t('analytics.heading')}>
                 <p>{t('analytics.body')}</p>

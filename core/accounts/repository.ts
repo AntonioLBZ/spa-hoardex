@@ -1,5 +1,11 @@
 import type { EntityId } from '../domain/index.js';
-import { accountRowSchema, overrideRowSchema } from './schemas.js';
+import {
+    accountRowSchema,
+    overrideRowSchema,
+    settingsRowSchema,
+    snapshotAccountRowSchema,
+    snapshotResultSchema,
+} from './schemas.js';
 import { DatabaseError, type Account, type AccountRepository, type BacklogOverride } from './types.js';
 
 // One parameterized statement; returns its rows
@@ -39,6 +45,56 @@ on conflict (user_id, game_source, game_id)
 do update set state = excluded.state, minutes_at_set = excluded.minutes_at_set, set_at = excluded.set_at`;
 
 const CLEAR_OVERRIDE = 'delete from backlog_overrides where user_id = $1 and game_source = $2 and game_id = $3';
+
+const GET_SETTINGS = `
+select u.snapshots_opt_in_at, count(d.taken_on)::int as snapshot_days, max(d.taken_on)::text as last_snapshot_on
+from users u left join snapshot_days d on d.user_id = u.id
+where u.id = $1
+group by u.id`;
+
+const SNAPSHOTS_ON = 'update users set snapshots_opt_in_at = coalesce(snapshots_opt_in_at, $2) where id = $1';
+
+// Data-modifying CTEs all run, referenced or not
+const SNAPSHOTS_OFF = `
+with stopped as (update users set snapshots_opt_in_at = null where id = $1),
+history as (delete from playtime_snapshots where user_id = $1),
+days as (delete from snapshot_days where user_id = $1)
+select 1`;
+
+const RECORD_SNAPSHOT = `
+with day as (
+    insert into snapshot_days (user_id, taken_on) values ($1, $3)
+    on conflict do nothing
+    returning taken_on
+), changed as (
+    insert into playtime_snapshots (user_id, game_source, game_id, taken_on, total_minutes)
+    select $1, $2, g.game_id, $3, g.minutes
+    from unnest($4::text[], $5::int[]) as g (game_id, minutes)
+    left join lateral (
+        select s.total_minutes from playtime_snapshots s
+        where s.user_id = $1 and s.game_source = $2 and s.game_id = g.game_id
+        order by s.taken_on desc
+        limit 1
+    ) previous on true
+    where exists (select 1 from day) and g.minutes > 0 and previous.total_minutes is distinct from g.minutes
+    on conflict do nothing
+    returning 1
+)
+select (select count(*) from day)::int as taken, (select count(*) from changed)::int as changed`;
+
+const LIST_SNAPSHOT_ACCOUNTS = `
+select u.id as user_id, i.source, i.external_id from users u
+join identities i on i.user_id = u.id
+where u.snapshots_opt_in_at is not null and u.last_login_at >= $1 and u.id > $2
+order by u.id
+limit $3`;
+
+const END_SESSIONS = 'update users set session_epoch = session_epoch + 1 where id = $1 returning session_epoch';
+
+const DELETE_ACCOUNT = 'delete from users where id = $1';
+
+// Below every uuid, for the first page
+const FIRST_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 function toAccount(row: unknown): Account {
     const parsed = accountRowSchema.safeParse(row);
@@ -89,6 +145,57 @@ export function createSqlRepository(query: Query): AccountRepository {
 
         async clearOverride(userId, game: EntityId) {
             await run(CLEAR_OVERRIDE, [userId, game.source, game.externalId]);
+        },
+
+        async getSettings(userId) {
+            const parsed = settingsRowSchema.safeParse((await run(GET_SETTINGS, [userId]))[0]);
+            if (!parsed.success) throw new DatabaseError('Unexpected settings row');
+            const { snapshots_opt_in_at, snapshot_days, last_snapshot_on } = parsed.data;
+            return {
+                snapshotsSince: snapshots_opt_in_at === null ? null : new Date(snapshots_opt_in_at).toISOString(),
+                snapshotDays: snapshot_days,
+                lastSnapshotOn: last_snapshot_on,
+            };
+        },
+
+        async setSnapshots(userId, on, now) {
+            await (on ? run(SNAPSHOTS_ON, [userId, now.toISOString()]) : run(SNAPSHOTS_OFF, [userId]));
+        },
+
+        async recordSnapshot(userId, gameSource, games, takenOn) {
+            const ids = games.map((game) => game.gameId);
+            const minutes = games.map((game) => game.minutes);
+            const parsed = snapshotResultSchema.safeParse(
+                (await run(RECORD_SNAPSHOT, [userId, gameSource, takenOn, ids, minutes]))[0]
+            );
+            if (!parsed.success) throw new DatabaseError('Unexpected snapshot result');
+            return parsed.data.taken > 0;
+        },
+
+        async listSnapshotAccounts(activeSince, afterUserId, limit) {
+            const rows = await run(LIST_SNAPSHOT_ACCOUNTS, [
+                activeSince.toISOString(),
+                afterUserId ?? FIRST_USER_ID,
+                limit,
+            ]);
+            return rows.map((row) => {
+                const parsed = snapshotAccountRowSchema.safeParse(row);
+                if (!parsed.success) throw new DatabaseError('Unexpected snapshot account row');
+                const { user_id, source, external_id } = parsed.data;
+                return { userId: user_id, identity: { source, externalId: external_id } };
+            });
+        },
+
+        async endSessions(userId) {
+            const parsed = accountRowSchema
+                .pick({ session_epoch: true })
+                .safeParse((await run(END_SESSIONS, [userId]))[0]);
+            if (!parsed.success) throw new DatabaseError('Unexpected session epoch');
+            return parsed.data.session_epoch;
+        },
+
+        async deleteAccount(userId) {
+            await run(DELETE_ACCOUNT, [userId]);
         },
     };
 }

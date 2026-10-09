@@ -22,7 +22,8 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
     - Finish one sign-in on `localhost`: `vercel dev` plus `pnpm dev`, opened on :5173 (only the preview was tried).
     - Measure a cold Neon read from `iad1` (only warm reads were seen, `ARCHITECTURE.md` §19.10).
     - By hand: drag a card on the board with a real mouse and on a phone (synthetic events cannot start a native drag), the card select on a phone, and an owner edit in a preview.
-    - 4e opt-in snapshots (daily cron + on own visit), `/account` (snapshots, sign out everywhere, delete my data), privacy policy.
+    - After the next production deploy: the first cron run in the Vercel logs (`[cron] snapshots`), `/account` in the browser (history on and off, sign out everywhere, delete), and a sign-in started on the deployment URL landing on `hoardex.vercel.app`.
+    - Charts from the playtime history (data is saved since 4e).
 - 5: other adapters, RetroAchievements first.
 
 ### At the very end (owner, 2026-10-09)

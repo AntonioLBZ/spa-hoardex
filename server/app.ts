@@ -3,7 +3,9 @@ import { createDemoData, type DemoData } from '../core/adapters/steam/index.js';
 import { UpstreamError } from '../core/adapters/types.js';
 import type { CachedAdapter } from '../core/cache/cached-adapter.js';
 import { createAuthRoutes, type AuthDeps } from './auth.js';
+import { createAccountRoutes } from './account.js';
 import { createBacklogRoutes } from './backlog.js';
+import { createCronRoutes } from './cron.js';
 import { ConfigError, type Accounts } from './deps.js';
 import { CACHE_CONTROL, NO_STORE, access, failure } from './http.js';
 import { DatabaseError } from '../core/accounts/index.js';
@@ -22,17 +24,23 @@ export interface AppOptions {
     // Without them the sign-in and backlog routes answer 404
     getAuth?: () => AuthDeps;
     getAccounts?: () => Accounts;
+    // Without it the cron route answers 404
+    getCronSecret?: () => string;
 }
 
 // `getData` and `getAuth` run per request: a config error is a 500. The demo never touches them
 export function createApp(
     getData: () => CachedAdapter,
-    { demo = createDemoData(), getAuth, getAccounts }: AppOptions = {}
+    { demo = createDemoData(), getAuth, getAccounts, getCronSecret }: AppOptions = {}
 ) {
     const app = new Hono().basePath('/api');
     if (getAuth !== undefined) app.route('/', createAuthRoutes(getAuth));
     if (getAuth !== undefined && getAccounts !== undefined) {
         app.route('/', createBacklogRoutes({ getData, getAuth, getAccounts }));
+        app.route('/', createAccountRoutes({ getData, getAuth, getAccounts }));
+    }
+    if (getAccounts !== undefined && getCronSecret !== undefined) {
+        app.route('/', createCronRoutes({ getData, getAccounts, getCronSecret }));
     }
 
     app.get('/health', (c) => {

@@ -1,0 +1,60 @@
+.account-page {
+    display: grid;
+    gap: var(--size-150);
+    margin-inline: auto;
+    max-width: var(--size-content-width);
+}
+
+.account-page__header {
+    display: grid;
+    gap: var(--size-25);
+}
+
+.account-page__title {
+    font-size: 1.75rem;
+    line-height: 1.2;
+}
+
+.account-page__section {
+    display: grid;
+    gap: var(--size-75);
+}
+
+.account-page__heading {
+    font-size: 1.125rem;
+}
+
+.account-page__toggle {
+    align-items: center;
+    display: grid;
+    gap: var(--size-50) var(--size-75);
+    grid-template-columns: auto 1fr;
+}
+
+.account-page__checkbox {
+    block-size: 1.25rem;
+    inline-size: 1.25rem;
+}
+
+.account-page__status {
+    color: var(--color-content-muted);
+    font-size: 0.875rem;
+    grid-column: 1 / -1;
+}
+
+.account-page__confirm {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-75);
+}
+
+.account-page__warning {
+    color: var(--color-danger);
+    flex: 1 1 100%;
+    font-weight: 600;
+}
+
+.account-page__danger {
+    background-color: var(--color-danger);
+}

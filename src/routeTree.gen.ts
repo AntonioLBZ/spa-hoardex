@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as DemoRouteImport } from './routes/demo'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PProfileRouteImport } from './routes/p.$profile'
@@ -17,6 +18,11 @@ import { Route as PProfileRouteImport } from './routes/p.$profile'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DemoRoute = DemoRouteImport.update({
@@ -37,12 +43,14 @@ const PProfileRoute = PProfileRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/demo': typeof DemoRoute
   '/privacy': typeof PrivacyRoute
   '/p/$profile': typeof PProfileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/demo': typeof DemoRoute
   '/privacy': typeof PrivacyRoute
   '/p/$profile': typeof PProfileRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/demo': typeof DemoRoute
   '/privacy': typeof PrivacyRoute
   '/p/$profile': typeof PProfileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/demo' | '/privacy' | '/p/$profile'
+  fullPaths: '/' | '/account' | '/demo' | '/privacy' | '/p/$profile'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/demo' | '/privacy' | '/p/$profile'
-  id: '__root__' | '/' | '/demo' | '/privacy' | '/p/$profile'
+  to: '/' | '/account' | '/demo' | '/privacy' | '/p/$profile'
+  id: '__root__' | '/' | '/account' | '/demo' | '/privacy' | '/p/$profile'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
   DemoRoute: typeof DemoRoute
   PrivacyRoute: typeof PrivacyRoute
   PProfileRoute: typeof PProfileRoute
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/demo': {
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   DemoRoute: DemoRoute,
   PrivacyRoute: PrivacyRoute,
   PProfileRoute: PProfileRoute,

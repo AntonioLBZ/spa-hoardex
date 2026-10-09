@@ -126,6 +126,32 @@ describe('GET /api/auth/steam/login', () => {
     });
 });
 
+describe('GET /api/auth/steam/login on another production address', () => {
+    it('moves to the same login on the public domain, keeping a safe return path', async () => {
+        const app = createApp(
+            () => {
+                throw new Error('unused');
+            },
+            {
+                getAuth: () => ({
+                    secret: SECRET,
+                    isAllowedOrigin: (origin) => origin === ORIGIN,
+                    canonicalOrigin: ORIGIN,
+                    claimNonce: async () => true,
+                    recordLogin: async () => 0,
+                }),
+            }
+        );
+        const response = await app.request('https://deployment.example/api/auth/steam/login?returnTo=%2Fdemo');
+        expect(response.status).toBe(302);
+        expect(response.headers.get('location')).toBe(`${ORIGIN}/api/auth/steam/login?returnTo=%2Fdemo`);
+        expect(response.headers.getSetCookie()).toEqual([]);
+
+        const unsafe = await app.request('https://deployment.example/api/auth/steam/login?returnTo=%2F%2Fevil.example');
+        expect(unsafe.headers.get('location')).toBe(`${ORIGIN}/api/auth/steam/login`);
+    });
+});
+
 describe('GET /api/auth/steam/callback', () => {
     it('starts a session and goes to the visitor’s own profile', async () => {
         const { request, steam } = setup();

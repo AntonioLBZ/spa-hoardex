@@ -9,6 +9,25 @@ export interface Account {
     sessionEpoch: number;
 }
 
+export interface AccountSettings {
+    // ISO 8601; null when snapshots are off
+    snapshotsSince: string | null;
+    // Days a snapshot was taken, and the last one (YYYY-MM-DD)
+    snapshotDays: number;
+    lastSnapshotOn: string | null;
+}
+
+export interface SnapshotGame {
+    gameId: string;
+    minutes: number;
+}
+
+// An account whose daily snapshot the cron takes
+export interface SnapshotAccount {
+    userId: string;
+    identity: EntityId;
+}
+
 export interface AccountRepository {
     // Creates the user on first sign-in
     recordLogin(identity: EntityId, now: Date): Promise<Account>;
@@ -17,6 +36,22 @@ export interface AccountRepository {
     listOverrides(identity: EntityId): Promise<Overrides>;
     setOverride(userId: string, game: EntityId, override: BacklogOverride): Promise<void>;
     clearOverride(userId: string, game: EntityId): Promise<void>;
+    getSettings(userId: string): Promise<AccountSettings>;
+    // Turning them off deletes the history
+    setSnapshots(userId: string, on: boolean, now: Date): Promise<void>;
+    // Keeps only played games whose minutes changed; false when that day was already taken
+    recordSnapshot(
+        userId: string,
+        gameSource: string,
+        games: readonly SnapshotGame[],
+        takenOn: string
+    ): Promise<boolean>;
+    // Opted in and signed in since `activeSince`, by user id after `afterUserId`
+    listSnapshotAccounts(activeSince: Date, afterUserId: string | null, limit: number): Promise<SnapshotAccount[]>;
+    // Ends every session at once; returns the new epoch
+    endSessions(userId: string): Promise<number>;
+    // Everything of the account goes with it
+    deleteAccount(userId: string): Promise<void>;
 }
 
 // The database failed or answered something unexpected; never an access state

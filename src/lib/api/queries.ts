@@ -2,6 +2,7 @@ import { queryOptions } from '@tanstack/react-query';
 
 import type { Library, ProfileAccess } from '@core/domain';
 import {
+    fetchAccount,
     fetchBacklog,
     fetchDemoLibrary,
     fetchDemoProfile,
@@ -71,5 +72,12 @@ export function myBacklogQuery() {
         queryKey: ['me', 'backlog'],
         queryFn: ({ signal }) => fetchMyBacklog(signal),
         staleTime: Infinity,
+    });
+}
+
+export function accountQuery() {
+    return queryOptions({
+        queryKey: ['me', 'account'],
+        queryFn: ({ signal }) => fetchAccount(signal),
     });
 }

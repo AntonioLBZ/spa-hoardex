@@ -19,3 +19,17 @@ export const overrideRowSchema = z.object({
 });
 
 export const accountRowSchema = z.object({ user_id: z.string(), session_epoch: z.number().int() });
+
+export const settingsRowSchema = z.object({
+    snapshots_opt_in_at: z.union([z.date(), z.string()]).nullable(),
+    snapshot_days: z.number().int(),
+    last_snapshot_on: z.string().nullable(),
+});
+
+export const snapshotResultSchema = z.object({ taken: z.number().int(), changed: z.number().int() });
+
+export const snapshotAccountRowSchema = z.object({
+    user_id: z.string(),
+    source: z.literal('steam'),
+    external_id: z.string(),
+});

@@ -8,6 +8,8 @@ export interface AuthDeps {
     secret: string;
     // Origins allowed as OpenID realm and as the Origin of a mutation
     isAllowedOrigin(origin: string): boolean;
+    // Production's public domain: a sign-in started on another address of it (a deployment URL) moves there
+    canonicalOrigin?: string;
     // True the first time a nonce is seen
     claimNonce(nonce: string): Promise<boolean>;
     // Creates or touches the account; returns its session epoch
@@ -69,7 +71,13 @@ export function createAuthRoutes(getAuth: () => AuthDeps) {
         const auth = getAuth();
         noStore(c);
         const origin = originOf(c);
-        if (!auth.isAllowedOrigin(origin)) return c.json({ error: 'origin' }, 400);
+        if (!auth.isAllowedOrigin(origin)) {
+            if (auth.canonicalOrigin === undefined) return c.json({ error: 'origin' }, 400);
+            const moved = new URL('/api/auth/steam/login', auth.canonicalOrigin);
+            const returnTo = safeReturnTo(c.req.query('returnTo'));
+            if (returnTo !== null) moved.searchParams.set('returnTo', returnTo);
+            return c.redirect(moved.href);
+        }
 
         const state = randomState();
         const returnTo = safeReturnTo(c.req.query('returnTo')) ?? '';

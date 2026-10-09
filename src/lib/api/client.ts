@@ -146,3 +146,44 @@ export function putBacklogState(appid: string, state: BacklogState): Promise<Ove
 export function deleteBacklogState(appid: string): Promise<Overrides> {
     return writeBacklog(appid, { method: 'DELETE' });
 }
+
+export interface AccountSettings {
+    // ISO 8601; null when snapshots are off
+    snapshotsSince: string | null;
+    snapshotDays: number;
+    // YYYY-MM-DD
+    lastSnapshotOn: string | null;
+}
+
+function isSettings(body: unknown): body is AccountSettings {
+    return isRecord(body) && typeof body.snapshotDays === 'number' && 'snapshotsSince' in body;
+}
+
+async function accountCall<T>(path: string, init: RequestInit, check: (body: unknown) => body is T): Promise<T> {
+    const response = await fetch(path, init);
+    const body: unknown = await response.json().catch(() => null);
+    if (!response.ok) throw new ApiError(response.status, errorCode(body));
+    if (!check(body)) throw new ApiError(response.status, 'badResponse');
+    return body;
+}
+
+export function fetchAccount(signal?: AbortSignal) {
+    return accountCall('/api/me/account', { signal }, isSettings);
+}
+
+// Off deletes the recorded history
+export function putSnapshots(snapshots: boolean) {
+    return accountCall(
+        '/api/me/settings',
+        { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ snapshots }) },
+        isSettings
+    );
+}
+
+export function postEndSessions() {
+    return accountCall('/api/me/sessions/end', { method: 'POST' }, isMe);
+}
+
+export function deleteAccount() {
+    return accountCall('/api/me', { method: 'DELETE' }, isMe);
+}

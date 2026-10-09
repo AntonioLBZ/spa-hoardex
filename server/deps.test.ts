@@ -117,3 +117,17 @@ describe('buildAccounts', () => {
         ).not.toThrow();
     });
 });
+
+describe('buildAuth in production', () => {
+    it('names the public domain as the canonical origin', () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const env = {
+            SESSION_SECRET: 'a'.repeat(32),
+            VERCEL_ENV: 'production',
+            VERCEL_PROJECT_PRODUCTION_URL: 'hoardex.example',
+        };
+        const store = { UPSTASH_KV_REST_API_URL: 'https://redis.example', UPSTASH_KV_REST_API_TOKEN: 'token' };
+        expect(buildAuth({ ...env, ...store }).canonicalOrigin).toBe('https://hoardex.example');
+        expect(buildAuth({ SESSION_SECRET: 'a'.repeat(32) }).canonicalOrigin).toBeUndefined();
+    });
+});

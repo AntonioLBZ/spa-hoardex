@@ -1,6 +1,8 @@
 export {
     ApiError,
+    deleteAccount,
     deleteBacklogState,
+    fetchAccount,
     fetchBacklog,
     fetchDemoLibrary,
     fetchDemoProfile,
@@ -9,14 +11,18 @@ export {
     fetchMyBacklog,
     fetchProfile,
     loginHref,
+    postEndSessions,
     postLogout,
     postRefresh,
     putBacklogState,
+    putSnapshots,
+    type AccountSettings,
     type BacklogData,
     type Me,
     type RefreshOutcome,
 } from './client';
 export {
+    accountQuery,
     backlogQuery,
     demoLibraryQuery,
     demoProfileQuery,

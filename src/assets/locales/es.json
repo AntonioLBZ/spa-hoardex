@@ -7,7 +7,40 @@
     "account": {
         "signIn": "Entrar con Steam",
         "myProfile": "Mi perfil",
-        "signOut": "Cerrar sesión"
+        "signOut": "Cerrar sesión",
+        "account": "Cuenta"
+    },
+    "accountPage": {
+        "title": "Tu cuenta",
+        "loading": "Cargando tu cuenta…",
+        "failed": "No se pudo cargar tu cuenta. Inténtalo más tarde.",
+        "signedOut": "No has iniciado sesión",
+        "signedOutBody": "Entra con Steam para ver y cambiar tu cuenta.",
+        "signIn": "Entrar con Steam",
+        "myProfile": "Ir a mi perfil",
+        "snapshots": {
+            "heading": "Historial de tiempo de juego",
+            "body": "Steam solo da el total de horas. Con esto activado, Hoardex guarda una vez al día las horas de cada juego que has jugado, para poder enseñar más adelante cómo cambia tu tiempo de juego. Solo guarda los juegos cuyas horas cambiaron, y se detiene si llevas {days} días sin iniciar sesión.",
+            "label": "Guardar mi tiempo de juego cada día",
+            "on": "Activado desde el {since}. {days, plural, =0 {Aún no hay ningún día guardado.} one {# día guardado.} other {# días guardados.}}",
+            "off": "Desactivado. Al desactivarlo se borra el historial guardado.",
+            "failed": "No se pudo guardar ese cambio. Inténtalo de nuevo."
+        },
+        "sessions": {
+            "heading": "Sesiones",
+            "body": "Cierra la sesión en todos los dispositivos donde la iniciaste, también en este.",
+            "action": "Cerrar sesión en todas partes",
+            "failed": "No funcionó. Inténtalo de nuevo."
+        },
+        "delete": {
+            "heading": "Borrar mi cuenta",
+            "body": "Borra para siempre de Hoardex tu cuenta, tus estados manuales y tu historial de tiempo de juego. Tu cuenta de Steam no se toca.",
+            "action": "Borrar mi cuenta…",
+            "confirm": "No se puede deshacer. ¿Borrarlo todo?",
+            "confirmAction": "Borrar para siempre",
+            "cancel": "Cancelar",
+            "failed": "No se pudo borrar tu cuenta. Inténtalo de nuevo."
+        }
     },
     "entry": {
         "label": "Tu perfil de Steam",
@@ -177,7 +210,11 @@
         },
         "manual": {
             "heading": "Tus estados manuales",
-            "body": "Si inicias sesión, Hoardex guarda una cuenta en su base de datos (Neon Postgres, en AWS en Virginia del Norte, EE. UU.): tu SteamID y cuándo iniciaste sesión por primera y por última vez. Cuando pones a mano el estado de un juego, guarda también ese estado, cuándo lo pusiste y tu tiempo de juego en ese juego en ese momento. Estos estados son públicos: cualquiera que abra tu perfil los ve, haya iniciado sesión o no. Se guarda una copia en Upstash Redis durante {backlog} como mucho, que se renueva con cada cambio. Se mantienen hasta que devuelvas cada juego a su estado automático; para borrar tu cuenta y todo lo que contiene, escribe a la dirección del final de esta página."
+            "body": "Si inicias sesión, Hoardex guarda una cuenta en su base de datos (Neon Postgres, en AWS en Virginia del Norte, EE. UU.): tu SteamID y cuándo iniciaste sesión por primera y por última vez. Cuando pones a mano el estado de un juego, guarda también ese estado, cuándo lo pusiste y tu tiempo de juego en ese juego en ese momento. Estos estados son públicos: cualquiera que abra tu perfil los ve, haya iniciado sesión o no. Se guarda una copia en Upstash Redis durante {backlog} como mucho, que se renueva con cada cambio. Se mantienen hasta que devuelvas cada juego a su estado automático o borres tu cuenta desde la página de tu cuenta, que lo borra todo de una vez."
+        },
+        "snapshots": {
+            "heading": "Historial de tiempo de juego (opcional)",
+            "body": "Solo si lo activas en la página de tu cuenta: una vez al día, Hoardex pide a Steam tu biblioteca y guarda, de cada juego cuyas horas cambiaron desde la vez anterior, su total de horas y la fecha. Se detiene si llevas {days} días sin iniciar sesión y sigue cuando vuelves a entrar. Al desactivarlo se borra todo el historial."
         },
         "analytics": {
             "heading": "Analíticas",

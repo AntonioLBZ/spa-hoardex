@@ -32,6 +32,9 @@ export function AccountControl() {
             <Link className="account-control__profile" params={{ profile: user.steamId }} to="/p/$profile">
                 {t('myProfile')}
             </Link>
+            <Link className="account-control__profile" to="/account">
+                {t('account')}
+            </Link>
             <Button
                 aria-disabled={logout.isPending}
                 className="button--secondary"

@@ -103,9 +103,11 @@ export function buildAuth(env: Env, { fetch: baseFetch = fetch, getAccounts }: B
     const isAllowedOrigin = originPolicy(env);
     const { data: store } = createStores(env, env.VERCEL_ENV ?? 'development');
 
+    const production = env.VERCEL_ENV === 'production' && env.VERCEL_PROJECT_PRODUCTION_URL;
     return {
         secret,
         isAllowedOrigin,
+        ...(production ? { canonicalOrigin: `https://${env.VERCEL_PROJECT_PRODUCTION_URL}` } : {}),
         fetch: baseFetch,
         // A failing store lets the login through: Steam's check_authentication still runs
         async claimNonce(nonce) {
@@ -124,6 +126,15 @@ export function buildAuth(env: Env, { fetch: baseFetch = fetch, getAccounts }: B
             return account.sessionEpoch;
         },
     };
+}
+
+// Same rule as the session secret: guessable secrets would let anyone run the cron
+export function cronSecret(env: Env): string {
+    const secret = env.CRON_SECRET ?? '';
+    if (secret.length < MIN_SESSION_SECRET_LENGTH) {
+        throw new ConfigError(`CRON_SECRET must have at least ${MIN_SESSION_SECRET_LENGTH} characters`);
+    }
+    return secret;
 }
 
 // Builds the adapter, budget and cache from env; throws ConfigError
