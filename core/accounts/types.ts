@@ -1,4 +1,4 @@
-import type { BacklogOverride, Overrides } from '../backlog/index.js';
+import type { BacklogOverride, ManualState, Overrides } from '../backlog/index.js';
 import type { EntityId } from '../domain/index.js';
 
 export type { BacklogOverride, Overrides };
@@ -17,7 +17,7 @@ export interface AccountSettings {
     lastSnapshotOn: string | null;
 }
 
-export interface SnapshotGame {
+export interface GameMinutes {
     gameId: string;
     minutes: number;
 }
@@ -34,8 +34,15 @@ export interface AccountRepository {
     findAccount(identity: EntityId): Promise<Account | null>;
     // Empty for an identity without an account
     listOverrides(identity: EntityId): Promise<Overrides>;
-    setOverride(userId: string, game: EntityId, override: BacklogOverride): Promise<void>;
-    clearOverride(userId: string, game: EntityId): Promise<void>;
+    // Games already in that state keep when and at how many minutes it was set
+    setOverrides(
+        userId: string,
+        gameSource: string,
+        games: readonly GameMinutes[],
+        state: ManualState,
+        setAt: string
+    ): Promise<void>;
+    clearOverrides(userId: string, gameSource: string, gameIds: readonly string[]): Promise<void>;
     getSettings(userId: string): Promise<AccountSettings>;
     // Turning them off deletes the history
     setSnapshots(userId: string, on: boolean, now: Date): Promise<void>;
@@ -43,7 +50,7 @@ export interface AccountRepository {
     recordSnapshot(
         userId: string,
         gameSource: string,
-        games: readonly SnapshotGame[],
+        games: readonly GameMinutes[],
         takenOn: string
     ): Promise<boolean>;
     // Opted in and signed in since `activeSince`, by user id after `afterUserId`

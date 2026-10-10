@@ -1,4 +1,3 @@
-import type { EntityId } from '../domain/index.js';
 import {
     accountRowSchema,
     overrideRowSchema,
@@ -38,13 +37,16 @@ select o.game_id, o.state, o.minutes_at_set, o.set_at from backlog_overrides o
 join identities i on i.user_id = o.user_id
 where i.source = $1 and i.external_id = $2 and o.game_source = $1`;
 
-const SET_OVERRIDE = `
+const SET_OVERRIDES = `
 insert into backlog_overrides (user_id, game_source, game_id, state, minutes_at_set, set_at)
-values ($1, $2, $3, $4, $5, $6)
+select $1, $2, g.game_id, $3, g.minutes, $4
+from unnest($5::text[], $6::int[]) as g (game_id, minutes)
 on conflict (user_id, game_source, game_id)
-do update set state = excluded.state, minutes_at_set = excluded.minutes_at_set, set_at = excluded.set_at`;
+do update set state = excluded.state, minutes_at_set = excluded.minutes_at_set, set_at = excluded.set_at
+where backlog_overrides.state is distinct from excluded.state`;
 
-const CLEAR_OVERRIDE = 'delete from backlog_overrides where user_id = $1 and game_source = $2 and game_id = $3';
+const CLEAR_OVERRIDES =
+    'delete from backlog_overrides where user_id = $1 and game_source = $2 and game_id = any($3::text[])';
 
 const GET_SETTINGS = `
 select u.snapshots_opt_in_at, count(d.taken_on)::int as snapshot_days, max(d.taken_on)::text as last_snapshot_on
@@ -139,12 +141,14 @@ export function createSqlRepository(query: Query): AccountRepository {
             return overrides;
         },
 
-        async setOverride(userId, game: EntityId, { state, minutesAtSet, setAt }) {
-            await run(SET_OVERRIDE, [userId, game.source, game.externalId, state, minutesAtSet, setAt]);
+        async setOverrides(userId, gameSource, games, state, setAt) {
+            const ids = games.map((game) => game.gameId);
+            const minutes = games.map((game) => game.minutes);
+            await run(SET_OVERRIDES, [userId, gameSource, state, setAt, ids, minutes]);
         },
 
-        async clearOverride(userId, game: EntityId) {
-            await run(CLEAR_OVERRIDE, [userId, game.source, game.externalId]);
+        async clearOverrides(userId, gameSource, gameIds) {
+            await run(CLEAR_OVERRIDES, [userId, gameSource, gameIds]);
         },
 
         async getSettings(userId) {

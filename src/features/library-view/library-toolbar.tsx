@@ -18,13 +18,23 @@ interface LibraryToolbarProps {
     counts: Record<StateFilter, number>;
     total: number;
     onChange: (next: LibrarySearch) => void;
+    // Absent for readers: only an editor selects
+    selecting?: boolean;
+    onSelectingChange?: (selecting: boolean) => void;
 }
 
 function isSort(value: string): value is Sort {
     return SORTS.some((sort) => sort === value);
 }
 
-export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolbarProps) {
+export function LibraryToolbar({
+    search,
+    counts,
+    total,
+    onChange,
+    selecting = false,
+    onSelectingChange,
+}: LibraryToolbarProps) {
     const t = useTranslations('library');
     const states = useTranslations('dashboard.states');
     const format = useFormatter();
@@ -121,6 +131,14 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
                 }))}
                 value={view}
             />
+            {onSelectingChange === undefined ? null : (
+                <SegmentedTrack className="library-toolbar__selecting">
+                    <SegmentedButton aria-pressed={selecting} onClick={() => onSelectingChange(!selecting)}>
+                        <ToolbarIcon name="select" />
+                        <span className="segmented__text">{t('select.start')}</span>
+                    </SegmentedButton>
+                </SegmentedTrack>
+            )}
             {view === 'board' ? null : (
                 <fieldset className="library-toolbar__filters">
                     <legend className="visually-hidden">{t('stateLegend')}</legend>

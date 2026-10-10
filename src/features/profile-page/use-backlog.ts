@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import type { BacklogState, Overrides } from '@core/backlog';
+import { MAX_BULK_CHANGE, type BacklogOverride, type BacklogState, type Overrides } from '@core/backlog';
 import type { Game, ProfileAccess } from '@core/domain';
 import {
     backlogQuery,
@@ -9,6 +9,7 @@ import {
     meQuery,
     myBacklogQuery,
     putBacklogState,
+    putBacklogStates,
     type BacklogData,
 } from '@/lib/api';
 import type { StateEditor } from '@/features/library-view/state-editor';
@@ -26,7 +27,7 @@ interface Backlog {
 }
 
 interface Change {
-    game: Game;
+    games: readonly Game[];
     state: BacklogState | null;
 }
 
@@ -38,28 +39,55 @@ function okAccess(overrides: Overrides): ProfileAccess<BacklogData> {
     return { kind: 'ok', data: { overrides } };
 }
 
-function applied(overrides: Overrides, { game, state }: Change, now = new Date()): Overrides {
-    const { [game.id.externalId]: _previous, ...rest } = overrides;
-    if (state === null) return rest;
-    return {
-        ...rest,
-        [game.id.externalId]: { state, setAt: now.toISOString(), minutesAtSet: game.playtime.totalMinutes },
-    };
+// What each game's override becomes; a game already in that state keeps its own
+function changesOf(overrides: Overrides, { games, state }: Change, now = new Date()) {
+    const setAt = now.toISOString();
+    return Object.fromEntries(
+        games.map(({ id, playtime }) => {
+            const current = overrides[id.externalId];
+            const next =
+                state === null
+                    ? null
+                    : current?.state === state
+                      ? current
+                      : { state, setAt, minutesAtSet: playtime.totalMinutes };
+            return [id.externalId, next];
+        })
+    );
+}
+
+function applied(overrides: Overrides, change: Change): Overrides {
+    const next: Record<string, BacklogOverride> = { ...overrides };
+    for (const [appid, override] of Object.entries(changesOf(overrides, change))) {
+        if (override === null) delete next[appid];
+        else next[appid] = override;
+    }
+    return next;
+}
+
+// One request per MAX_BULK_CHANGE games; the last answer holds every state
+async function save({ games, state }: Change): Promise<Overrides> {
+    const [game] = games;
+    if (games.length === 1 && game !== undefined)
+        return state === null ? deleteBacklogState(game.id.externalId) : putBacklogState(game.id.externalId, state);
+    const appids = games.map((entry) => entry.id.externalId);
+    let overrides: Overrides = EMPTY;
+    for (let start = 0; start < appids.length; start += MAX_BULK_CHANGE)
+        overrides = await putBacklogStates(appids.slice(start, start + MAX_BULK_CHANGE), state);
+    return overrides;
 }
 
 // Manual states of the page's profile, and a way to change them for its owner (or anyone, in the demo)
 export function useBacklog(source: ProfileSource, profileId: string): Backlog {
     const demo = useDemoBacklog();
     const steam = useSteamBacklog(source.kind === 'steam' ? source.input : null, profileId);
-    const demoEditor = useMemo<BacklogEditor>(
-        () => ({
-            change: (game, state) =>
-                demo.set(game.id.externalId, applied({}, { game, state })[game.id.externalId] ?? null),
-            failed: false,
-        }),
-        [demo.set]
-    );
-    return source.kind === 'demo' ? { overrides: demo.overrides, editor: demoEditor } : steam;
+    const { overrides: demoOverrides, update } = demo;
+    const demoEditor = useMemo<BacklogEditor>(() => {
+        const changeMany = (games: readonly Game[], state: BacklogState | null) =>
+            update((current) => changesOf(current, { games, state }));
+        return { change: (game, state) => changeMany([game], state), changeMany, failed: false };
+    }, [update]);
+    return source.kind === 'demo' ? { overrides: demoOverrides, editor: demoEditor } : steam;
 }
 
 function useSteamBacklog(input: string | null, profileId: string): Backlog {
@@ -73,8 +101,7 @@ function useSteamBacklog(input: string | null, profileId: string): Backlog {
     // One change at a time: the server's copy of every state is rewritten after each one
     const mutation = useMutation({
         scope: { id: 'backlog' },
-        mutationFn: ({ game, state }: Change) =>
-            state === null ? deleteBacklogState(game.id.externalId) : putBacklogState(game.id.externalId, state),
+        mutationFn: save,
         onMutate: async (change: Change) => {
             await queryClient.cancelQueries({ queryKey: key });
             const previous = queryClient.getQueryData<ProfileAccess<BacklogData>>(key);
@@ -88,7 +115,14 @@ function useSteamBacklog(input: string | null, profileId: string): Backlog {
     const { mutate } = mutation;
     const failed = mutation.isError;
     const editor = useMemo<BacklogEditor | null>(
-        () => (isOwner ? { change: (game, state) => mutate({ game, state }), failed } : null),
+        () =>
+            isOwner
+                ? {
+                      change: (game, state) => mutate({ games: [game], state }),
+                      changeMany: (games, state) => mutate({ games, state }),
+                      failed,
+                  }
+                : null,
         [isOwner, mutate, failed]
     );
 

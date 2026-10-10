@@ -71,6 +71,15 @@
     color: var(--color-accent);
 }
 
+/* Pressed looks like a chosen segment */
+.library-toolbar__selecting [aria-pressed='true'] {
+    background-color: var(--color-bg);
+    box-shadow:
+        0 0 0 1px var(--color-border),
+        0 1px 2px rgb(0 0 0 / 12%);
+    color: var(--color-accent);
+}
+
 .library-toolbar__filters {
     border: none;
     display: flex;
@@ -84,6 +93,15 @@
 
 /* Phones: the chips scroll sideways instead of stacking three rows deep */
 @container (width < 42rem) {
+    /* Pressed looks like a chosen segment */
+    .library-toolbar__selecting [aria-pressed='true'] {
+        background-color: var(--color-bg);
+        box-shadow:
+            0 0 0 1px var(--color-border),
+            0 1px 2px rgb(0 0 0 / 12%);
+        color: var(--color-accent);
+    }
+
     .library-toolbar__filters {
         flex-wrap: nowrap;
         overflow-x: auto;
@@ -106,7 +124,8 @@
 
 @container (width < 26rem) {
     .library-toolbar__sort-label,
-    .library-toolbar__views .segmented__text {
+    .library-toolbar__views .segmented__text,
+    .library-toolbar__selecting .segmented__text {
         block-size: 1px;
         clip-path: inset(50%);
         inline-size: 1px;

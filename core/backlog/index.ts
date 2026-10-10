@@ -2,6 +2,7 @@ export {
     BACKLOG_STATES,
     DEFAULT_BACKLOG_THRESHOLDS,
     MANUAL_STATES,
+    MAX_BULK_CHANGE,
     classifyGame,
     countByState,
     isBacklog,

@@ -134,8 +134,8 @@ export function fetchMyBacklog(signal?: AbortSignal) {
     return getAccess<BacklogData>('/api/me/backlog', signal);
 }
 
-async function writeBacklog(appid: string, init: RequestInit): Promise<Overrides> {
-    const response = await fetch(`/api/me/backlog/${encodeURIComponent(appid)}`, init);
+async function writeBacklog(path: string, init: RequestInit): Promise<Overrides> {
+    const response = await fetch(path, init);
     const body: unknown = await response.json().catch(() => null);
     if (!response.ok) throw new ApiError(response.status, errorCode(body));
     if (!isAccess(body) || body.kind !== 'ok') throw new ApiError(response.status, 'badResponse');
@@ -144,7 +144,7 @@ async function writeBacklog(appid: string, init: RequestInit): Promise<Overrides
 
 // Answers with every manual state after the change
 export function putBacklogState(appid: string, state: BacklogState): Promise<Overrides> {
-    return writeBacklog(appid, {
+    return writeBacklog(`/api/me/backlog/${encodeURIComponent(appid)}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ state }),
@@ -152,7 +152,16 @@ export function putBacklogState(appid: string, state: BacklogState): Promise<Ove
 }
 
 export function deleteBacklogState(appid: string): Promise<Overrides> {
-    return writeBacklog(appid, { method: 'DELETE' });
+    return writeBacklog(`/api/me/backlog/${encodeURIComponent(appid)}`, { method: 'DELETE' });
+}
+
+// Up to MAX_BULK_CHANGE games; null sends them back to the computed state
+export function putBacklogStates(appids: readonly string[], state: BacklogState | null): Promise<Overrides> {
+    return writeBacklog('/api/me/backlog', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ appids, state }),
+    });
 }
 
 export interface AccountSettings {

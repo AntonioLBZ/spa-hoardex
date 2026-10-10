@@ -1,7 +1,7 @@
-import { useDeferredValue, useId, useMemo, useRef } from 'react';
+import { useCallback, useDeferredValue, useId, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
 
-import type { Overrides } from '@core/backlog';
+import type { BacklogState, Overrides } from '@core/backlog';
 import { browseLibrary, classifyLibrary, countByFilter } from '@core/browse';
 import type { Library } from '@core/domain';
 import { Button } from '@/components/button';
@@ -12,6 +12,7 @@ import { Board } from './board';
 import { GameCard } from './game-card';
 import { DEFAULT_SORT, directionOf, type LibrarySearch } from './library-search';
 import { LibraryToolbar } from './library-toolbar';
+import { SelectionBar } from './selection-bar';
 import type { StateEditor } from './state-editor';
 import { useGridReveal } from './use-grid-reveal';
 import { NEXT_BATCH, useRevealedCount } from './use-revealed-count';
@@ -47,6 +48,7 @@ export function LibraryView({
         [library.games, overrides]
     );
     const counts = useMemo(() => countByFilter(entries), [entries]);
+    const entryById = useMemo(() => new Map(entries.map((entry) => [entry.game.id.externalId, entry])), [entries]);
     // Typing stays responsive while the list catches up
     const settled = useDeferredValue(search);
     const board = settled.view === 'board';
@@ -72,6 +74,34 @@ export function LibraryView({
     // Stable across refreshes, which bring a new owner object
     const ownerId = library.owner.externalId;
     const ownerSource = library.owner.source;
+    // Null outside selection; only an editor selects
+    const [picked, setPicked] = useState<ReadonlySet<string> | null>(null);
+    const selection = editor === null ? null : picked;
+    const toggle = useCallback(
+        (appid: string) =>
+            setPicked((current) => {
+                if (current === null) return current;
+                const next = new Set(current);
+                if (!next.delete(appid)) next.add(appid);
+                return next;
+            }),
+        []
+    );
+    // Games refreshed out of the library drop out of the selection
+    const selectedGames = useMemo(
+        () => [...(selection ?? [])].flatMap((appid) => entryById.get(appid)?.game ?? []),
+        [selection, entryById]
+    );
+    const allSelected = visible.every((entry) => selection?.has(entry.game.id.externalId));
+    const changeMany = editor?.changeMany;
+    const moveSelection = useCallback(
+        (state: BacklogState | null) => {
+            changeMany?.(selectedGames, state);
+            setPicked(new Set());
+        },
+        [changeMany, selectedGames]
+    );
+
     const artOwner = useMemo(
         () => (withImages ? { source: ownerSource, externalId: ownerId } : null),
         [withImages, ownerSource, ownerId]
@@ -79,11 +109,24 @@ export function LibraryView({
 
     return (
         <ArtOwnerContext value={artOwner}>
-            <section aria-labelledby={titleId} className="library-view">
+            <section
+                aria-labelledby={titleId}
+                className="library-view"
+                onKeyDown={(event) => {
+                    if (event.key === 'Escape' && !event.defaultPrevented && selection !== null) setPicked(null);
+                }}
+            >
                 <h2 className="library-view__title rise-in" id={titleId} style={riseStyle(STEP.library)}>
                     {t('title')}
                 </h2>
-                <LibraryToolbar counts={counts} onChange={onSearchChange} search={search} total={entries.length} />
+                <LibraryToolbar
+                    counts={counts}
+                    onChange={onSearchChange}
+                    onSelectingChange={editor === null ? undefined : (on) => setPicked(on ? new Set<string>() : null)}
+                    search={search}
+                    selecting={selection !== null}
+                    total={entries.length}
+                />
                 <p className="library-view__count" role="status">
                     {t('count', { shown: visible.length, total: entries.length })}
                 </p>
@@ -93,7 +136,14 @@ export function LibraryView({
                     </p>
                 ) : null}
                 {board ? (
-                    <Board editor={editor} entries={visible} key={`${order}|${settled.q ?? ''}`} />
+                    <Board
+                        editor={editor}
+                        entries={visible}
+                        key={`${order}|${settled.q ?? ''}`}
+                        onMoveSelection={moveSelection}
+                        onToggle={toggle}
+                        selection={selection}
+                    />
                 ) : visible.length === 0 ? (
                     <div className="library-view__empty">
                         <p>{t('empty')}</p>
@@ -106,6 +156,8 @@ export function LibraryView({
                                 entry={entry}
                                 key={entry.game.id.externalId}
                                 onChange={editor?.change ?? null}
+                                onToggle={toggle}
+                                selected={selection === null ? null : selection.has(entry.game.id.externalId)}
                                 withImages={withImages}
                             />
                         ))}
@@ -121,6 +173,22 @@ export function LibraryView({
                         </Button>
                     </div>
                 ) : null}
+                {selection === null ? null : (
+                    <SelectionBar
+                        allSelected={allSelected}
+                        count={selectedGames.length}
+                        matching={visible.length}
+                        onClear={() => setPicked(new Set())}
+                        onDone={() => setPicked(null)}
+                        onMove={moveSelection}
+                        onSelectAll={() =>
+                            setPicked(
+                                (current) =>
+                                    new Set([...(current ?? []), ...visible.map((entry) => entry.game.id.externalId)])
+                            )
+                        }
+                    />
+                )}
             </section>
         </ArtOwnerContext>
     );

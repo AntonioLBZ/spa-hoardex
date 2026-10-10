@@ -230,7 +230,21 @@
         },
         "board": {
             "hint": "Arrastra un juego a otra columna, o elige su estado en su menú.",
-            "empty": "Ningún juego"
+            "empty": "Ningún juego",
+            "selectionHint": "Arrastra un juego seleccionado para mover toda la selección a otra columna."
+        },
+        "select": {
+            "start": "Seleccionar",
+            "label": "Juegos seleccionados",
+            "count": "{count, plural, =0 {Ningún juego seleccionado} one {# juego seleccionado} other {# juegos seleccionados}}",
+            "game": "Seleccionar {name}",
+            "all": "Seleccionar todos ({count})",
+            "none": "Quitar selección",
+            "moveLabel": "Mover a",
+            "choose": "Elige un estado",
+            "automatic": "Automático",
+            "move": "Mover",
+            "done": "Terminar"
         }
     },
     "policy": {

@@ -129,6 +129,76 @@ describe('PUT /api/me/backlog/:appid', () => {
     });
 });
 
+describe('PUT /api/me/backlog', () => {
+    it('sets one state on several games in a single request, each with its own playtime', async () => {
+        const { call, session } = setup();
+        const cookie = await session();
+
+        const put = await call('PUT', '/api/me/backlog', {
+            cookie,
+            body: { appids: [OWNED, '620', OWNED], state: 'paused' },
+        });
+        expect(put.response.status).toBe(200);
+        expect(put.response.headers.get('cache-control')).toBe('no-store');
+        const overrides = {
+            [OWNED]: { state: 'paused', minutesAtSet: 1840, setAt: NOW.toISOString() },
+            '620': { state: 'paused', minutesAtSet: 59, setAt: NOW.toISOString() },
+        };
+        expect(put.body).toEqual({ kind: 'ok', data: { overrides } });
+        expect((await call('GET', `/api/backlog/${ID}`, { origin: null })).body).toEqual({
+            kind: 'ok',
+            data: { overrides },
+        });
+    });
+
+    it('sends several games back to the computed state', async () => {
+        const { call, session } = setup();
+        const cookie = await session();
+        await call('PUT', '/api/me/backlog', { cookie, body: { appids: [OWNED, '620', '10'], state: 'finished' } });
+
+        const cleared = await call('PUT', '/api/me/backlog', { cookie, body: { appids: [OWNED, '10'], state: null } });
+        expect(Object.keys((cleared.body as { data: { overrides: object } }).data.overrides)).toEqual(['620']);
+    });
+
+    it('changes nothing when one of the games is not in the owner’s library', async () => {
+        const { call, session } = setup();
+        const cookie = await session();
+        const put = await call('PUT', '/api/me/backlog', {
+            cookie,
+            body: { appids: [OWNED, '999999'], state: 'finished' },
+        });
+        expect(put.response.status).toBe(404);
+        expect((await call('GET', '/api/me/backlog', { cookie, origin: null })).body).toEqual({
+            kind: 'ok',
+            data: { overrides: {} },
+        });
+    });
+
+    it.each([
+        ['no games', { appids: [], state: 'finished' }],
+        ['too many games', { appids: Array.from({ length: 1001 }, (_, index) => String(index)), state: 'finished' }],
+        ['an appid that is not a number', { appids: ['abc'], state: 'finished' }],
+        ['an unknown state', { appids: [OWNED], state: 'wishlisted' }],
+        ['no state', { appids: [OWNED] }],
+    ])('refuses %s', async (_case, body) => {
+        const { call, session } = setup();
+        const put = await call('PUT', '/api/me/backlog', { cookie: await session(), body });
+        expect(put.response.status).toBe(400);
+    });
+
+    it('refuses a request without a session or from another site', async () => {
+        const { call, session } = setup();
+        const body = { appids: [OWNED], state: 'finished' };
+        expect((await call('PUT', '/api/me/backlog', { body })).response.status).toBe(401);
+        const foreign = await call('PUT', '/api/me/backlog', {
+            cookie: await session(),
+            body,
+            origin: 'https://evil.example',
+        });
+        expect(foreign.response.status).toBe(403);
+    });
+});
+
 describe('DELETE /api/me/backlog/:appid', () => {
     it('goes back to the computed state', async () => {
         const { call, session } = setup();

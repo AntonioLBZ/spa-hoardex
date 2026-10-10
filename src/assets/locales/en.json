@@ -230,7 +230,21 @@
         },
         "board": {
             "hint": "Drag a game to another column, or pick its state in its menu.",
-            "empty": "No games"
+            "empty": "No games",
+            "selectionHint": "Drag a selected game to move the whole selection to another column."
+        },
+        "select": {
+            "start": "Select",
+            "label": "Selected games",
+            "count": "{count, plural, =0 {No games selected} one {# game selected} other {# games selected}}",
+            "game": "Select {name}",
+            "all": "Select all ({count})",
+            "none": "Clear selection",
+            "moveLabel": "Move to",
+            "choose": "Pick a state",
+            "automatic": "Automatic",
+            "move": "Move",
+            "done": "Done"
         }
     },
     "policy": {

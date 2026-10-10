@@ -54,11 +54,20 @@ function write(next: Overrides): void {
 // The demo's manual states live in this browser only
 export function useDemoBacklog() {
     const overrides = useSyncExternalStore(subscribe, snapshot, () => EMPTY);
-    const set = useCallback((appid: string, override: BacklogOverride | null) => {
-        const { [appid]: _previous, ...rest } = snapshot();
-        write(override === null ? rest : { ...rest, [appid]: override });
-    }, []);
-    return { overrides, set };
+    // Null for a game sends it back to the computed state
+    const update = useCallback(
+        (changesFor: (current: Overrides) => Readonly<Record<string, BacklogOverride | null>>) => {
+            const current = snapshot();
+            const next: Record<string, BacklogOverride> = { ...current };
+            for (const [appid, override] of Object.entries(changesFor(current))) {
+                if (override === null) delete next[appid];
+                else next[appid] = override;
+            }
+            write(next);
+        },
+        []
+    );
+    return { overrides, update };
 }
 
 // Tests start from a clean store

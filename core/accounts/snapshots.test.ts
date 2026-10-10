@@ -94,15 +94,7 @@ describe('account deletion and sessions', () => {
     it('ends every session by bumping the epoch, and deleting removes everything', async () => {
         const repository = createSqlRepository(database.query);
         const { userId } = await repository.recordLogin(ME, DAY1);
-        await repository.setOverride(
-            userId,
-            { source: 'steam', externalId: '3' },
-            {
-                state: 'abandoned',
-                minutesAtSet: 1,
-                setAt: DAY1.toISOString(),
-            }
-        );
+        await repository.setOverrides(userId, 'steam', [{ gameId: '3', minutes: 1 }], 'abandoned', DAY1.toISOString());
         await takeSnapshot(repository, userId, library({ '3': 600 }), DAY1);
 
         expect(await repository.endSessions(userId)).toBe(1);

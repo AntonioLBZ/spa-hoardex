@@ -18,6 +18,9 @@ export const MANUAL_STATES = BACKLOG_STATES;
 
 export type ManualState = BacklogState;
 
+// Games one request may change at once
+export const MAX_BULK_CHANGE = 1000;
+
 // A state set by hand; it wins over the computed one
 export interface BacklogOverride {
     state: BacklogState;

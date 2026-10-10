@@ -1,5 +1,5 @@
 import type { EntityId, Library, ProfileAccess } from '../domain/index.js';
-import type { AccountRepository, SnapshotGame } from './types.js';
+import type { AccountRepository, GameMinutes } from './types.js';
 
 // Only accounts signed in within this window get daily snapshots, so a forgotten account stops costing Steam calls
 export const SNAPSHOT_ACTIVE_DAYS = 90;
@@ -10,7 +10,7 @@ export function snapshotDay(now: Date): string {
     return now.toISOString().slice(0, 10);
 }
 
-export function snapshotGames(library: Library): SnapshotGame[] {
+export function snapshotGames(library: Library): GameMinutes[] {
     return library.games
         .filter((game) => game.playtime.totalMinutes > 0)
         .map((game) => ({ gameId: game.id.externalId, minutes: game.playtime.totalMinutes }));

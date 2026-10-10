@@ -6,8 +6,9 @@ import { DatabaseError } from './types.js';
 
 const ME = { source: 'steam', externalId: '76561198000000001' } as const;
 const OTHER = { source: 'steam', externalId: '76561198000000002' } as const;
-const GAME = { source: 'steam', externalId: '620' } as const;
+const GAME = { gameId: '620', minutes: 90 } as const;
 const NOW = new Date('2026-10-09T16:00:00Z');
+const LATER = new Date('2026-10-10T09:00:00Z');
 
 let database: Awaited<ReturnType<typeof createTestDatabase>>;
 
@@ -36,20 +37,46 @@ describe('createSqlRepository', () => {
         const repository = createSqlRepository(database.query);
         const { userId } = await repository.recordLogin(ME, NOW);
 
-        await repository.setOverride(userId, GAME, { state: 'abandoned', minutesAtSet: 90, setAt: NOW.toISOString() });
-        await repository.setOverride(userId, GAME, { state: 'finished', minutesAtSet: 95, setAt: NOW.toISOString() });
+        await repository.setOverrides(userId, 'steam', [GAME], 'abandoned', NOW.toISOString());
+        await repository.setOverrides(userId, 'steam', [{ gameId: '620', minutes: 95 }], 'finished', NOW.toISOString());
         expect(await repository.listOverrides(ME)).toEqual({
             '620': { state: 'finished', minutesAtSet: 95, setAt: '2026-10-09T16:00:00.000Z' },
         });
 
-        await repository.clearOverride(userId, GAME);
+        await repository.clearOverrides(userId, 'steam', ['620']);
         expect(await repository.listOverrides(ME)).toEqual({});
+    });
+
+    it('changes several games in one statement, keeping the ones already in that state as they were', async () => {
+        const repository = createSqlRepository(database.query);
+        const { userId } = await repository.recordLogin(ME, NOW);
+        await repository.setOverrides(userId, 'steam', [GAME], 'finished', NOW.toISOString());
+
+        await repository.setOverrides(
+            userId,
+            'steam',
+            [
+                { gameId: '620', minutes: 120 },
+                { gameId: '70', minutes: 5 },
+                { gameId: '10', minutes: 0 },
+            ],
+            'finished',
+            LATER.toISOString()
+        );
+        expect(await repository.listOverrides(ME)).toEqual({
+            '620': { state: 'finished', minutesAtSet: 90, setAt: NOW.toISOString() },
+            '70': { state: 'finished', minutesAtSet: 5, setAt: LATER.toISOString() },
+            '10': { state: 'finished', minutesAtSet: 0, setAt: LATER.toISOString() },
+        });
+
+        await repository.clearOverrides(userId, 'steam', ['620', '10', '999']);
+        expect(Object.keys(await repository.listOverrides(ME))).toEqual(['70']);
     });
 
     it('keeps each account’s states apart, and answers empty for a profile without an account', async () => {
         const repository = createSqlRepository(database.query);
         const { userId } = await repository.recordLogin(ME, NOW);
-        await repository.setOverride(userId, GAME, { state: 'paused', minutesAtSet: 0, setAt: NOW.toISOString() });
+        await repository.setOverrides(userId, 'steam', [GAME], 'paused', NOW.toISOString());
 
         expect(await repository.listOverrides(OTHER)).toEqual({});
         expect(Object.keys(await repository.listOverrides(ME))).toEqual(['620']);
@@ -74,8 +101,10 @@ describe('createSqlRepository', () => {
     it('refuses a state the schema does not know', async () => {
         const repository = createSqlRepository(database.query);
         const { userId } = await repository.recordLogin(ME, NOW);
-        const unknown = { state: 'wishlisted', minutesAtSet: 0, setAt: NOW.toISOString() } as never;
-        await expect(repository.setOverride(userId, GAME, unknown)).rejects.toBeInstanceOf(DatabaseError);
+        const unknown = 'wishlisted' as never;
+        await expect(
+            repository.setOverrides(userId, 'steam', [GAME], unknown, NOW.toISOString())
+        ).rejects.toBeInstanceOf(DatabaseError);
     });
 
     it('reports a failing database without the query or its values', async () => {

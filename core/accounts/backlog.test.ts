@@ -5,7 +5,7 @@ import { createSqlRepository } from './repository.js';
 import { createTestDatabase } from './test-db.js';
 
 const ME = { source: 'steam', externalId: '76561198000000001' } as const;
-const GAME = { source: 'steam', externalId: '620' } as const;
+const GAME = { gameId: '620', minutes: 42 } as const;
 const NOW = new Date('2026-10-09T16:00:00Z');
 
 let database: Awaited<ReturnType<typeof createTestDatabase>>;
@@ -38,12 +38,20 @@ describe('createBacklogService', () => {
         await service.read(ME);
 
         const expected = { '620': { state: 'abandoned', minutesAtSet: 42, setAt: NOW.toISOString() } };
-        expect(await service.set(account, ME, GAME, 'abandoned', 42)).toEqual(expected);
+        expect(await service.set(account, ME, [GAME], 'abandoned')).toEqual(expected);
         expect(await service.read(ME)).toEqual(expected);
 
-        expect(await service.clear(account, ME, GAME)).toEqual({});
+        expect(await service.clear(account, ME, ['620'])).toEqual({});
         expect(await service.read(ME)).toEqual({});
         expect(listOverrides).toHaveBeenCalledTimes(3);
+    });
+
+    it('changes a game given twice once', async () => {
+        const { repository, service } = setup();
+        const account = await repository.recordLogin(ME, NOW);
+        const overrides = await service.set(account, ME, [GAME, { gameId: '620', minutes: 50 }], 'paused');
+        expect(overrides).toEqual({ '620': { state: 'paused', minutesAtSet: 50, setAt: NOW.toISOString() } });
+        expect(await service.clear(account, ME, ['620', '620'])).toEqual({});
     });
 
     it('treats a copy with another shape as missing', async () => {

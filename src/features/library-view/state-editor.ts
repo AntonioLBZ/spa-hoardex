@@ -5,6 +5,8 @@ import type { Game } from '@core/domain';
 export interface StateEditor {
     // null goes back to the computed state
     change(game: Game, state: BacklogState | null): void;
+    // Several games in one request
+    changeMany(games: readonly Game[], state: BacklogState | null): void;
     // The last change could not be saved
     failed: boolean;
 }

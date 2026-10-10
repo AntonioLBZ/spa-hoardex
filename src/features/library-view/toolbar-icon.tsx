@@ -9,6 +9,7 @@ const PATHS = {
     up: 'M12 19V5M6 11l6-6 6 6',
     grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
     board: 'M4 4h4v16H4zM10 4h4v10h-4zM16 4h4v13h-4z',
+    select: 'M4 4h16v16H4zM8 12l3 3 5-6',
 } as const;
 
 interface ToolbarIconProps {

@@ -1,0 +1,133 @@
+/* Sticky at the end of the library: it floats over the cards and stops at the section's end */
+.selection-bar {
+    --card-padding: var(--size-75);
+
+    align-items: center;
+    bottom: var(--size-100);
+    box-shadow:
+        0 1px 2px rgb(0 0 0 / 6%),
+        0 16px 40px -12px rgb(0 0 0 / 35%);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-50) var(--size-100);
+    position: sticky;
+    z-index: 5;
+}
+
+.selection-bar__count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
+}
+
+.selection-bar .button {
+    white-space: nowrap;
+}
+
+.selection-bar__pick,
+.selection-bar__move {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-50);
+}
+
+.selection-bar__move {
+    margin-inline-start: auto;
+}
+
+.selection-bar__label {
+    color: var(--color-content-muted);
+    font-size: 0.875rem;
+}
+
+.selection-bar__select-wrap {
+    align-items: center;
+    display: inline-flex;
+    position: relative;
+}
+
+.selection-bar__select {
+    appearance: none;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-border-radius);
+    color: var(--color-content);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    min-block-size: 2.25rem;
+    padding-inline: var(--size-75) 2rem;
+}
+
+.selection-bar__select:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+}
+
+.selection-bar__select option {
+    background-color: var(--color-bg-raised);
+    color: var(--color-content);
+}
+
+.selection-bar__chevron {
+    color: var(--color-content-muted);
+    inset-inline-end: var(--size-50);
+    pointer-events: none;
+    position: absolute;
+}
+
+/* Phones: three short rows, count and done on top, the move form spanning the last one */
+@container (width < 42rem) {
+    .selection-bar {
+        display: grid;
+        gap: var(--size-50);
+        grid-template-areas:
+            'count done'
+            'pick pick'
+            'move move';
+        grid-template-columns: 1fr auto;
+    }
+
+    .selection-bar__count {
+        grid-area: count;
+    }
+
+    .selection-bar__done {
+        grid-area: done;
+    }
+
+    .selection-bar__pick {
+        flex-wrap: nowrap;
+        grid-area: pick;
+        margin-inline: calc(-1 * var(--size-50));
+    }
+
+    .selection-bar__pick .button {
+        padding-inline: var(--size-50);
+    }
+
+    .selection-bar__move {
+        flex-wrap: nowrap;
+        grid-area: move;
+        margin-inline-start: 0;
+    }
+
+    .selection-bar__label {
+        block-size: 1px;
+        clip-path: inset(50%);
+        inline-size: 1px;
+        overflow: hidden;
+        position: absolute;
+        white-space: nowrap;
+    }
+
+    .selection-bar__select-wrap {
+        flex: 1 1 auto;
+        min-inline-size: 0;
+    }
+
+    .selection-bar__select {
+        inline-size: 100%;
+    }
+}

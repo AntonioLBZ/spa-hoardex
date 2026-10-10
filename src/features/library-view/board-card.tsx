@@ -19,6 +19,9 @@ interface BoardCardProps {
     dragging: boolean;
     onDragStart: (appid: string) => void;
     onDragEnd: () => void;
+    // Null outside selection
+    selected: boolean | null;
+    onToggle: (appid: string) => void;
 }
 
 export const BoardCard = memo(function BoardCard({
@@ -27,10 +30,13 @@ export const BoardCard = memo(function BoardCard({
     dragging,
     onDragStart,
     onDragEnd,
+    selected,
+    onToggle,
 }: BoardCardProps) {
     const { game } = entry;
     const hours = useHours();
     const editable = onChange !== null;
+    const selecting = selected !== null;
 
     function startDrag(event: DragEvent<HTMLLIElement>) {
         event.dataTransfer.setData(DRAG_TYPE, game.id.externalId);
@@ -40,17 +46,35 @@ export const BoardCard = memo(function BoardCard({
 
     return (
         <li
-            className={clsx('board-card', dragging && 'board-card--dragging')}
+            className={clsx(
+                'board-card',
+                dragging && 'board-card--dragging',
+                selected === true && 'board-card--selected'
+            )}
             draggable={editable}
             style={{ '--state-color': STATE_COLOR[entry.state] } as CSSProperties}
             onDragEnd={editable ? onDragEnd : undefined}
             onDragStart={editable ? startDrag : undefined}
         >
-            <p className="board-card__name" title={game.name}>
-                {game.name}
-            </p>
+            {selecting ? (
+                <label className="board-card__select">
+                    <input
+                        checked={selected}
+                        className="board-card__checkbox"
+                        onChange={() => onToggle(game.id.externalId)}
+                        type="checkbox"
+                    />
+                    <span className="board-card__name" title={game.name}>
+                        {game.name}
+                    </span>
+                </label>
+            ) : (
+                <p className="board-card__name" title={game.name}>
+                    {game.name}
+                </p>
+            )}
             <div className="board-card__meta">
-                <StateChip entry={entry} onChange={onChange} variant="plain" />
+                <StateChip entry={entry} onChange={selecting ? null : onChange} variant="plain" />
                 <span className="board-card__hours">{hours(game.playtime.totalMinutes)}</span>
             </div>
         </li>

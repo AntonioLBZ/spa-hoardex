@@ -19,10 +19,15 @@ interface BoardProps {
     // Already searched and sorted; the state filter does not apply here
     entries: readonly BrowseEntry[];
     editor: StateEditor | null;
+    // Null outside selection
+    selection: ReadonlySet<string> | null;
+    onToggle: (appid: string) => void;
+    // Dropping a selected card moves the whole selection
+    onMoveSelection: (state: BacklogState) => void;
 }
 
-// One column per state. Native drag and drop moves a card; its select does the same without a pointer
-export function Board({ entries, editor }: BoardProps) {
+// One column per state. Native drag and drop moves a card (or the selection); its menu does it without a pointer
+export function Board({ entries, editor, selection, onToggle, onMoveSelection }: BoardProps) {
     const t = useTranslations('library');
     const groups = useMemo(() => groupByState(entries), [entries]);
     const byId = useMemo(() => new Map(entries.map((entry) => [entry.game.id.externalId, entry])), [entries]);
@@ -35,15 +40,19 @@ export function Board({ entries, editor }: BoardProps) {
     const drop = useCallback(
         (state: BacklogState, appid: string) => {
             const entry = byId.get(appid);
-            if (change !== null && entry !== undefined && entry.state !== state) change(entry.game, state);
+            if (change === null || entry === undefined) return;
+            if (selection?.has(appid)) onMoveSelection(state);
+            else if (entry.state !== state) change(entry.game, state);
         },
-        [byId, change]
+        [byId, change, selection, onMoveSelection]
     );
     const endDrag = useCallback(() => setDragged(null), []);
 
     return (
         <div className="board">
-            {change === null ? null : <p className="board__hint">{t('board.hint')}</p>}
+            {change === null ? null : (
+                <p className="board__hint">{t(selection === null ? 'board.hint' : 'board.selectionHint')}</p>
+            )}
             <div className="board__columns">
                 {columns.map((state) => (
                     <BoardColumn
@@ -54,6 +63,8 @@ export function Board({ entries, editor }: BoardProps) {
                         onDragEnd={endDrag}
                         onDragStart={setDragged}
                         onDrop={drop}
+                        onToggle={onToggle}
+                        selection={selection}
                         state={state}
                     />
                 ))}
@@ -70,9 +81,21 @@ interface BoardColumnProps {
     onDragStart: (appid: string) => void;
     onDragEnd: () => void;
     onDrop: (state: BacklogState, appid: string) => void;
+    selection: ReadonlySet<string> | null;
+    onToggle: (appid: string) => void;
 }
 
-function BoardColumn({ state, entries, onChange, dragged, onDragStart, onDragEnd, onDrop }: BoardColumnProps) {
+function BoardColumn({
+    state,
+    entries,
+    onChange,
+    dragged,
+    onDragStart,
+    onDragEnd,
+    onDrop,
+    selection,
+    onToggle,
+}: BoardColumnProps) {
     const t = useTranslations('library');
     const states = useTranslations('dashboard.states');
     const format = useFormatter();
@@ -125,6 +148,8 @@ function BoardColumn({ state, entries, onChange, dragged, onDragStart, onDragEnd
                             onChange={onChange}
                             onDragEnd={onDragEnd}
                             onDragStart={onDragStart}
+                            onToggle={onToggle}
+                            selected={selection === null ? null : selection.has(entry.game.id.externalId)}
                         />
                     ))}
                 </ul>

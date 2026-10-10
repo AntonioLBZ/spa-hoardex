@@ -528,6 +528,7 @@ Si cada visita a un perfil consultara Neon, lo mantendría despierto. Las lectur
 | `GET /api/backlog/:input` | Estados manuales de un perfil (desde Redis) | `s-maxage` corto, como la biblioteca |
 | `PUT /api/me/backlog/:appid` `{state}` | Pone un estado manual | `no-store` |
 | `DELETE /api/me/backlog/:appid` | Vuelve al estado automático | `no-store` |
+| `PUT /api/me/backlog` `{appids, state}` | Un estado (o `null`, automático) para varios juegos (§19.15) | `no-store` |
 | `PUT /api/me/settings` `{snapshots}` | Activa o desactiva los snapshots | `no-store` |
 | `DELETE /api/me` | Borra cuenta, overrides, snapshots y claves de Redis (derecho de supresión) | `no-store` |
 | `GET /api/cron/snapshots` | Cron diario, con `Authorization: Bearer CRON_SECRET` | `no-store` |
@@ -620,3 +621,11 @@ Si cada visita a un perfil consultara Neon, lo mantendría despierto. Las lectur
 3. **4c** `resolveState`, *Abandonado*, menú por tarjeta y demo editable.
 4. **4d** Vista tablero con arrastre.
 5. **4e** Snapshots (cron y oportunista), `/account` y la política de privacidad.
+
+### 19.15 Mover varios juegos a la vez (2026-10-10)
+
+- **API:** `PUT /api/me/backlog` `{ appids, state }` (de 1 a `MAX_BULK_CHANGE` = 1000 appids, en `core/backlog`; `state: null` los devuelve al estado automático), con los mismos controles que el PUT de un juego (§19.10). Si algún appid no está en la biblioteca, 404 `notOwned` y no cambia nada. Una sola sentencia (`unnest` de appids y minutos; el borrado con `= any(...)`), y el servicio quita los repetidos (un `on conflict do update` no puede tocar la misma fila dos veces). **Un juego que ya tenía ese estado manual conserva su `setAt` y su `minutesAtSet`** (`where … is distinct from`), así que la pista «jugado desde entonces» no se pierde al mover una selección que lo incluye; vale también para el PUT de un juego. Las rutas de un juego siguen y usan el mismo camino (`setOverrides`/`clearOverrides` en el repositorio).
+- **Cliente:** `StateEditor.changeMany`. Con un juego se sigue usando la ruta de un juego; con más, `putBacklogStates` en tandas de `MAX_BULK_CHANGE`. Es el mismo `useMutation` optimista; la demo escribe todo de una vez en `localStorage`.
+- **UI** (solo quien edita, en la cuadrícula y en el tablero): el botón «Seleccionar» de la barra de herramientas (`aria-pressed`) activa el modo selección. Cada tarjeta muestra una casilla (en la cuadrícula toda la tarjeta es su `<label>`, con la casilla arriba a la derecha y un anillo del color de acento) y el chip de estado pasa a solo lectura. Al final de la sección aparece la **barra de selección** (`selection-bar.tsx`, `position: sticky` abajo, como la burbuja del dueño): cuántos hay seleccionados (`role="status"`), «Seleccionar todos (N)» (lo que muestran la búsqueda y los filtros, también lo que «Mostrar más» aún no ha pintado), «Quitar selección», un `<select>` nativo «Mover a» (Automático y cada estado) con el botón «Mover» (un `<select>` que aplicara al cambiar movería juegos con las flechas en algunos navegadores) y «Terminar». Escape también sale. La selección sobrevive a los cambios de filtro y de vista; tras mover se vacía y el modo sigue. En el tablero, **arrastrar una tarjeta seleccionada mueve toda la selección**; una no seleccionada se mueve sola.
+- **Móvil:** por debajo de 42rem la barra pasa a tres filas (cantidad y «Terminar»; seleccionar y quitar; estado y «Mover») y ocupa ~150px a 360px de ancho (comprobado en un iframe de 360px, porque la ventana de automatización no baja de ese ancho).
+- **Comprobado:** tests de repositorio, servicio, ruta y front (dueño, demo, tablero, visitante sin botón); en Chrome por el proxy, la cuadrícula, el tablero y la barra en escritorio y a 360px. Chunk diferido: +1 KB gzip de JS y +0,3 KB de CSS. El arrastre real sigue sin poder probarse con la extensión (§19.12), y el táctil tampoco.

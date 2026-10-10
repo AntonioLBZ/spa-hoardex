@@ -101,6 +101,33 @@ describe('board view', () => {
         });
     });
 
+    it('moves every selected game when one of them is dropped on a column', async () => {
+        const lib = library([
+            game('1', 'Alpha Quest', 0, null),
+            game('2', 'Beta Run', 600, 10),
+            game('3', 'Gamma', 30, 5),
+        ]);
+        stubDemo(lib);
+        const { user } = renderApp('/demo?view=board');
+
+        await user.click(await screen.findByRole('button', { name: 'Select' }));
+        expect(screen.getByText('Drag a selected game to move the whole selection to another column.')).toBeTruthy();
+        await user.click(screen.getByRole('checkbox', { name: 'Alpha Quest' }));
+        await user.click(screen.getByRole('checkbox', { name: 'Beta Run' }));
+
+        const card = cardIn(column('Untouched'), 'Alpha Quest');
+        const transfer = dataTransfer();
+        fireEvent.dragStart(card, { dataTransfer: transfer });
+        fireEvent.dragOver(column('Paused'), { dataTransfer: transfer });
+        fireEvent.drop(column('Paused'), { dataTransfer: transfer });
+        fireEvent.dragEnd(card, { dataTransfer: transfer });
+
+        expect(within(column('Paused')).getByText('Alpha Quest')).toBeTruthy();
+        expect(within(column('Paused')).getByText('Beta Run')).toBeTruthy();
+        expect(within(column('Tried')).getByText('Gamma')).toBeTruthy();
+        expect(screen.getByText('No games selected')).toBeTruthy();
+    });
+
     it('ignores anything dropped that is not one of its cards', async () => {
         stubDemo(SMALL);
         renderApp('/demo?view=board');

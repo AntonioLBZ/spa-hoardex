@@ -12,5 +12,5 @@ export type {
     BacklogOverride,
     Overrides,
     SnapshotAccount,
-    SnapshotGame,
+    GameMinutes,
 } from './types.js';

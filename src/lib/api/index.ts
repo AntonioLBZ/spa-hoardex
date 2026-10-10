@@ -16,6 +16,7 @@ export {
     postLogout,
     postRefresh,
     putBacklogState,
+    putBacklogStates,
     putSnapshots,
     type AccountSettings,
     type BacklogData,

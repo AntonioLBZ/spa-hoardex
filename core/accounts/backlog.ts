@@ -3,7 +3,7 @@ import { CACHE_TTL } from '../cache/ttl.js';
 import type { CacheStore } from '../cache/store.js';
 import { entityKey, type EntityId } from '../domain/index.js';
 import { cachedOverridesSchema } from './schemas.js';
-import type { Account, AccountRepository, Overrides } from './types.js';
+import type { Account, AccountRepository, GameMinutes, Overrides } from './types.js';
 
 export interface BacklogServiceOptions {
     repository: AccountRepository;
@@ -16,8 +16,9 @@ export interface BacklogServiceOptions {
 export interface BacklogService {
     // Redis first, so public views do not wake the database
     read(identity: EntityId): Promise<Overrides>;
-    set(account: Account, identity: EntityId, game: EntityId, state: ManualState, minutes: number): Promise<Overrides>;
-    clear(account: Account, identity: EntityId, game: EntityId): Promise<Overrides>;
+    // Games of the identity's own source, with their playtime now
+    set(account: Account, identity: EntityId, games: readonly GameMinutes[], state: ManualState): Promise<Overrides>;
+    clear(account: Account, identity: EntityId, gameIds: readonly string[]): Promise<Overrides>;
     // After the account is deleted: its copy becomes empty at once
     forget(identity: EntityId): Promise<void>;
 }
@@ -57,17 +58,15 @@ export function createBacklogService({
             return (await cached(identity)) ?? reload(identity);
         },
 
-        async set(account, identity, game, state, minutes) {
-            await repository.setOverride(account.userId, game, {
-                state,
-                minutesAtSet: minutes,
-                setAt: now().toISOString(),
-            });
+        async set(account, identity, games, state) {
+            // One row per game: a repeated one would hit the same row twice in one statement
+            const unique = [...new Map(games.map((game) => [game.gameId, game])).values()];
+            await repository.setOverrides(account.userId, identity.source, unique, state, now().toISOString());
             return reload(identity);
         },
 
-        async clear(account, identity, game) {
-            await repository.clearOverride(account.userId, game);
+        async clear(account, identity, gameIds) {
+            await repository.clearOverrides(account.userId, identity.source, [...new Set(gameIds)]);
             return reload(identity);
         },
 

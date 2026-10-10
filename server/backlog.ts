@@ -1,6 +1,8 @@
 import { Hono, type Context } from 'hono';
 import { z } from 'zod';
+import type { GameMinutes } from '../core/accounts/index.js';
 import { storedStateSchema } from '../core/accounts/schemas.js';
+import { MAX_BULK_CHANGE, type ManualState } from '../core/backlog/index.js';
 import type { CachedAdapter } from '../core/cache/cached-adapter.js';
 import type { EntityId } from '../core/domain/index.js';
 import type { AuthDeps } from './auth.js';
@@ -18,6 +20,16 @@ export interface BacklogRouteDeps {
 const APPID_PATTERN = /^\d{1,10}$/;
 // A tab still on the previous build may send a retired state
 const stateBodySchema = z.object({ state: storedStateSchema });
+const bulkBodySchema = z.object({
+    appids: z.array(z.string()).min(1).max(MAX_BULK_CHANGE),
+    state: storedStateSchema.nullable(),
+});
+
+interface Change {
+    appids: readonly string[];
+    // Null: back to the computed state
+    state: ManualState | null;
+}
 
 function steamIdentity(session: Session): EntityId {
     return { source: 'steam', externalId: session.steamId };
@@ -49,39 +61,40 @@ export function createBacklogRoutes({ getData, getAuth, getAccounts }: BacklogRo
         return ok(c, await getAccounts().backlog.read(steamIdentity(session)));
     });
 
-    // The checks every write shares: the owner, a valid appid
-    async function writer(c: Context) {
+    // Only games of the owner's own library; a new state keeps their playtime at that moment
+    async function write(c: Context, change: Change | null) {
         const owner = await requireOwner(c, getAuth, getAccounts, { mutation: true });
-        if ('error' in owner) return owner;
-        const appid = c.req.param('appid') ?? '';
-        if (!APPID_PATTERN.test(appid)) return { error: failure(c, 'invalidInput', 400) };
-        const game: EntityId = { source: 'steam', externalId: appid };
-        return { ...owner, game };
+        if ('error' in owner) return owner.error;
+        if (change === null || !change.appids.every((appid) => APPID_PATTERN.test(appid)))
+            return failure(c, 'invalidInput', 400);
+        const { appids, state } = change;
+        const { accounts, account, identity } = owner;
+        if (state === null) return ok(c, await accounts.backlog.clear(account, identity, appids));
+
+        const library = await getData().getLibrary(identity);
+        if (library.kind !== 'ok') return failure(c, 'library', 409);
+        const minutes = new Map(library.data.games.map((game) => [game.id.externalId, game.playtime.totalMinutes]));
+        const games: GameMinutes[] = [];
+        for (const appid of appids) {
+            const played = minutes.get(appid);
+            if (played === undefined) return failure(c, 'notOwned', 404);
+            games.push({ gameId: appid, minutes: played });
+        }
+        return ok(c, await accounts.backlog.set(account, identity, games, state));
     }
 
-    // Only games of the owner's own library, with their playtime at that moment
+    // Several games at once; a null state sends them back to the computed one
+    routes.put('/me/backlog', async (c) => {
+        const body = bulkBodySchema.safeParse(await c.req.json().catch(() => null));
+        return write(c, body.success ? body.data : null);
+    });
+
     routes.put('/me/backlog/:appid', async (c) => {
         const body = stateBodySchema.safeParse(await c.req.json().catch(() => null));
-        const write = await writer(c);
-        if ('error' in write) return write.error;
-        if (!body.success) return failure(c, 'invalidInput', 400);
-
-        const library = await getData().getLibrary(write.identity);
-        if (library.kind !== 'ok') return failure(c, 'library', 409);
-        const owned = library.data.games.find((game) => game.id.externalId === write.game.externalId);
-        if (owned === undefined) return failure(c, 'notOwned', 404);
-
-        const { accounts, account, identity, game } = write;
-        const minutes = owned.playtime.totalMinutes;
-        return ok(c, await accounts.backlog.set(account, identity, game, body.data.state, minutes));
+        return write(c, body.success ? { appids: [c.req.param('appid')], state: body.data.state } : null);
     });
 
-    routes.delete('/me/backlog/:appid', async (c) => {
-        const write = await writer(c);
-        if ('error' in write) return write.error;
-        const { accounts, account, identity, game } = write;
-        return ok(c, await accounts.backlog.clear(account, identity, game));
-    });
+    routes.delete('/me/backlog/:appid', (c) => write(c, { appids: [c.req.param('appid')], state: null }));
 
     return routes;
 }
