@@ -78,20 +78,25 @@ function AccountContent({ steamId }: { steamId: string }) {
     );
 }
 
+// Turning it off deletes the saved days, so it asks first when there are any
 function SnapshotsToggle({ settings }: { settings: AccountSettings }) {
     const t = useTranslations('accountPage.snapshots');
     const format = useFormatter();
     const queryClient = useQueryClient();
+    const [asking, setAsking] = useState(false);
     const on = settings.snapshotsSince !== null;
     const change = useMutation({
         mutationFn: putSnapshots,
-        onSuccess: (next) => queryClient.setQueryData(accountQuery().queryKey, next),
+        onSuccess: (next) => {
+            setAsking(false);
+            queryClient.setQueryData(accountQuery().queryKey, next);
+        },
     });
 
     return (
         <>
             <Switch
-                busy={change.isPending}
+                busy={change.isPending || asking}
                 checked={on}
                 description={
                     on
@@ -102,8 +107,32 @@ function SnapshotsToggle({ settings }: { settings: AccountSettings }) {
                         : t('off')
                 }
                 label={t('label')}
-                onChange={(checked) => change.mutate(checked)}
+                onChange={(checked) => {
+                    if (!checked && settings.snapshotDays > 0) setAsking(true);
+                    else change.mutate(checked);
+                }}
             />
+            {asking ? (
+                <div
+                    className="account-page__confirm"
+                    role="group"
+                    aria-label={t('confirm', { days: settings.snapshotDays })}
+                >
+                    <p className="account-page__warning">{t('confirm', { days: settings.snapshotDays })}</p>
+                    <Button
+                        aria-disabled={change.isPending}
+                        variant="danger"
+                        onClick={() => {
+                            if (!change.isPending) change.mutate(false);
+                        }}
+                    >
+                        {t('confirmAction')}
+                    </Button>
+                    <Button variant="secondary" onClick={() => setAsking(false)}>
+                        {t('cancel')}
+                    </Button>
+                </div>
+            ) : null}
             {change.isError ? <p role="alert">{t('failed')}</p> : null}
         </>
     );

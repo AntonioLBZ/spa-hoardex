@@ -22,10 +22,13 @@
         "myProfile": "Go to my profile",
         "snapshots": {
             "heading": "Playtime history",
-            "body": "Steam only gives total hours. With this on, Hoardex saves once a day the hours of every game you have played, so later it can show how your playtime changes over time. It only keeps games whose hours changed, and stops while you have not signed in for {days} days.",
+            "body": "Steam only gives total hours. With this on, Hoardex can save once a day the hours of every game you have played, so later it can show how your playtime changes over time. It only keeps games whose hours changed, and stops if you have not signed in to Hoardex for {days} days.",
             "label": "Save my playtime every day",
-            "on": "On since {since}. {days, plural, =0 {No day saved yet.} one {# day saved.} other {# days saved.}}",
-            "off": "Off. Turning it off deletes the saved history.",
+            "on": "On since {since}. {days, plural, =0 {No day saved yet.} one {# day saved.} other {# days saved.}} Turning it off deletes the saved history.",
+            "off": "Off.",
+            "confirm": "{days, plural, one {# saved day} other {# saved days}} will be deleted. This cannot be undone. Continue?",
+            "confirmAction": "Turn off and delete history",
+            "cancel": "Cancel",
             "failed": "That change could not be saved. Try again."
         },
         "sessions": {
@@ -36,10 +39,10 @@
         },
         "delete": {
             "heading": "Delete my account",
-            "body": "Deletes your account, your manual states and your playtime history from Hoardex for good. Your Steam account is not touched.",
-            "action": "Delete my account…",
-            "confirm": "This cannot be undone. Delete everything?",
-            "confirmAction": "Delete for good",
+            "body": "Deletes your account data on Hoardex: your manual states and your playtime history. Your Steam account is not touched.",
+            "action": "Delete my account",
+            "confirm": "This cannot be undone. Continue?",
+            "confirmAction": "Confirm account deletion",
             "cancel": "Cancel",
             "failed": "Your account could not be deleted. Try again."
         }
@@ -263,7 +266,7 @@
         },
         "snapshots": {
             "heading": "Playtime history (optional)",
-            "body": "Only if you turn it on in your account page: once a day, Hoardex asks Steam for your library and saves, for each game whose hours changed since the last time, its total hours and the date. It stops while you have not signed in for {days} days, and resumes when you sign in again. Turning it off deletes the whole history."
+            "body": "Only if you turn it on in your account page: once a day, Hoardex asks Steam for your library and saves, for each game whose hours changed since the last time, its total hours and the date. It stops if you have not signed in to Hoardex for {days} days, and resumes when you sign in again. Turning it off deletes the whole history."
         },
         "analytics": {
             "heading": "Analytics",

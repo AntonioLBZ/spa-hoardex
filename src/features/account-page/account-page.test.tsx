@@ -31,7 +31,7 @@ describe('account page', () => {
 
         const toggle = await screen.findByRole('switch', { name: 'Save my playtime every day' });
         expect(toggle).toHaveProperty('checked', false);
-        expect(screen.getByText('Off. Turning it off deletes the saved history.')).toBeTruthy();
+        expect(screen.getByText('Off.')).toBeTruthy();
 
         await user.click(toggle);
         expect(fetchMock).toHaveBeenCalledWith('/api/me/settings', {
@@ -39,8 +39,42 @@ describe('account page', () => {
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ snapshots: true }),
         });
-        expect(await screen.findByText('On since October 9, 2026. 1 day saved.')).toBeTruthy();
+        expect(
+            await screen.findByText('On since October 9, 2026. 1 day saved. Turning it off deletes the saved history.')
+        ).toBeTruthy();
         expect(toggle).toHaveProperty('checked', true);
+    });
+
+    it('asks before turning the history off, and can be cancelled', async () => {
+        const fetchMock = stubApi({ ...SIGNED_IN, '/api/me/account': { body: ON } });
+        const { user } = renderApp('/account');
+
+        const toggle = await screen.findByRole('switch', { name: 'Save my playtime every day' });
+        await user.click(toggle);
+        expect(screen.getByText('1 saved day will be deleted. This cannot be undone. Continue?')).toBeTruthy();
+        expect(toggle).toHaveProperty('checked', true);
+        await user.click(screen.getByRole('button', { name: 'Cancel' }));
+        expect(screen.queryByRole('button', { name: 'Turn off and delete history' })).toBeNull();
+        expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
+    });
+
+    it('turns the history off once confirmed', async () => {
+        const fetchMock = stubApi({
+            ...SIGNED_IN,
+            '/api/me/account': { body: ON },
+            '/api/me/settings': { body: OFF },
+        });
+        const { user } = renderApp('/account');
+
+        await user.click(await screen.findByRole('switch', { name: 'Save my playtime every day' }));
+        await user.click(screen.getByRole('button', { name: 'Turn off and delete history' }));
+        expect(await screen.findByText('Off.')).toBeTruthy();
+        expect(fetchMock).toHaveBeenCalledWith('/api/me/settings', {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ snapshots: false }),
+        });
+        expect(screen.queryByRole('button', { name: 'Turn off and delete history' })).toBeNull();
     });
 
     it('signs out everywhere and goes home signed out', async () => {
@@ -65,10 +99,10 @@ describe('account page', () => {
         });
         const { user } = renderApp('/account');
 
-        await user.click(await screen.findByRole('button', { name: 'Delete my account…' }));
-        expect(screen.getByText('This cannot be undone. Delete everything?')).toBeTruthy();
+        await user.click(await screen.findByRole('button', { name: 'Delete my account' }));
+        expect(screen.getByText('This cannot be undone. Continue?')).toBeTruthy();
         await user.click(screen.getByRole('button', { name: 'Cancel' }));
-        expect(screen.queryByRole('button', { name: 'Delete for good' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Confirm account deletion' })).toBeNull();
         expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
     });
 
@@ -83,8 +117,8 @@ describe('account page', () => {
         vi.stubGlobal('fetch', fetchMock);
         const { user, router } = renderApp('/account');
 
-        await user.click(await screen.findByRole('button', { name: 'Delete my account…' }));
-        await user.click(screen.getByRole('button', { name: 'Delete for good' }));
+        await user.click(await screen.findByRole('button', { name: 'Delete my account' }));
+        await user.click(screen.getByRole('button', { name: 'Confirm account deletion' }));
         await waitFor(() => expect(router.state.location.pathname).toBe('/'));
         expect(fetchMock).toHaveBeenCalledWith('/api/me', { method: 'DELETE' });
         expect(await screen.findByRole('link', { name: 'Sign in with Steam' })).toBeTruthy();

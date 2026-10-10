@@ -22,10 +22,13 @@
         "myProfile": "Ir a mi perfil",
         "snapshots": {
             "heading": "Historial de tiempo de juego",
-            "body": "Steam solo da el total de horas. Con esto activado, Hoardex guarda una vez al día las horas de cada juego que has jugado, para poder enseñar más adelante cómo cambia tu tiempo de juego. Solo guarda los juegos cuyas horas cambiaron, y se detiene si llevas {days} días sin iniciar sesión.",
+            "body": "Steam solo da el total de horas. Con esto activado, Hoardex puede guardar una vez al día las horas de cada juego que has jugado, para poder enseñar más adelante cómo cambia tu tiempo de juego. Solo guarda los juegos cuyas horas cambiaron, y se detiene si llevas {days} días sin iniciar sesión en Hoardex.",
             "label": "Guardar mi tiempo de juego cada día",
-            "on": "Activado desde el {since}. {days, plural, =0 {Aún no hay ningún día guardado.} one {# día guardado.} other {# días guardados.}}",
-            "off": "Desactivado. Al desactivarlo se borra el historial guardado.",
+            "on": "Activado desde el {since}. {days, plural, =0 {Aún no hay ningún día guardado.} one {# día guardado.} other {# días guardados.}} Al desactivarlo se borra el historial guardado.",
+            "off": "Desactivado.",
+            "confirm": "Se {days, plural, one {borrará # día guardado} other {borrarán # días guardados}}. No se puede deshacer. ¿Continuar?",
+            "confirmAction": "Desactivar y borrar historial",
+            "cancel": "Cancelar",
             "failed": "No se pudo guardar ese cambio. Inténtalo de nuevo."
         },
         "sessions": {
@@ -35,11 +38,11 @@
             "failed": "No funcionó. Inténtalo de nuevo."
         },
         "delete": {
-            "heading": "Borrar mi cuenta",
-            "body": "Borra para siempre de Hoardex tu cuenta, tus estados manuales y tu historial de tiempo de juego. Tu cuenta de Steam no se toca.",
-            "action": "Borrar mi cuenta…",
-            "confirm": "No se puede deshacer. ¿Borrarlo todo?",
-            "confirmAction": "Borrar para siempre",
+            "heading": "Eliminar mi cuenta",
+            "body": "Borra los datos de tu cuenta en Hoardex: tus estados manuales y tu historial de tiempo de juego. Tu cuenta de Steam no se toca.",
+            "action": "Eliminar mi cuenta",
+            "confirm": "No se puede deshacer. ¿Continuar?",
+            "confirmAction": "Confirmar eliminar cuenta",
             "cancel": "Cancelar",
             "failed": "No se pudo borrar tu cuenta. Inténtalo de nuevo."
         }
@@ -263,7 +266,7 @@
         },
         "snapshots": {
             "heading": "Historial de tiempo de juego (opcional)",
-            "body": "Solo si lo activas en la página de tu cuenta: una vez al día, Hoardex pide a Steam tu biblioteca y guarda, de cada juego cuyas horas cambiaron desde la vez anterior, su total de horas y la fecha. Se detiene si llevas {days} días sin iniciar sesión y sigue cuando vuelves a entrar. Al desactivarlo se borra todo el historial."
+            "body": "Solo si lo activas en la página de tu cuenta: una vez al día, Hoardex pide a Steam tu biblioteca y guarda, de cada juego cuyas horas cambiaron desde la vez anterior, su total de horas y la fecha. Se detiene si llevas {days} días sin iniciar sesión en Hoardex y sigue cuando vuelves a entrar. Al desactivarlo se borra todo el historial."
         },
         "analytics": {
             "heading": "Analíticas",
