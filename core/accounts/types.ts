@@ -69,7 +69,16 @@ export interface AccountRepository {
     updateCategory(userId: string, id: CustomId, fields: CategoryFields): Promise<'updated' | 'notFound' | 'name'>;
     // Only while no manual state uses it
     deleteCategory(userId: string, id: CustomId): Promise<'deleted' | 'notFound' | 'notEmpty'>;
+    // Its colour goes with it
     removeState(userId: string, state: Exclude<BacklogState, 'untouched'>): Promise<void>;
+    // Back below MAX_CATEGORIES; `notFound` unless it was removed
+    restoreState(
+        userId: string,
+        state: BacklogState,
+        maxCategories: number
+    ): Promise<'restored' | 'limit' | 'notFound'>;
+    // Null goes back to its own colour; `notFound` while removed
+    setStateColor(userId: string, state: BacklogState, color: string | null): Promise<'updated' | 'notFound'>;
     getSettings(userId: string): Promise<AccountSettings>;
     // Turning them off deletes the history
     setSnapshots(userId: string, on: boolean, now: Date): Promise<void>;

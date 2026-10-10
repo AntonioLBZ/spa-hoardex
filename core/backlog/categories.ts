@@ -37,6 +37,8 @@ export interface Categories {
     removed: readonly BacklogState[];
     // In creation order
     custom: readonly CustomCategory[];
+    // Built-in states the owner recoloured; absent in copies from before it existed
+    colors?: Readonly<Partial<Record<BacklogState, string>>>;
 }
 
 // What a profile shows of its owner's choices; public, like the library
@@ -48,6 +50,7 @@ export interface BacklogData {
 export const DEFAULT_CATEGORIES: Categories = Object.freeze({
     removed: Object.freeze([]),
     custom: Object.freeze([]),
+    colors: Object.freeze({}),
 });
 
 // Absent keys are categories without games

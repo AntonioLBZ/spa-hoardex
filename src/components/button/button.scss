@@ -71,6 +71,11 @@
     cursor: not-allowed;
 }
 
+/* A ghost stays without a surface: only its text dims */
+.button--ghost[aria-disabled='true'] {
+    --button-bg: transparent;
+}
+
 /* Round and quiet: closing, dismissing, small toolbar actions */
 .icon-button {
     align-items: center;

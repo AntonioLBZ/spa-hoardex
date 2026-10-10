@@ -1,15 +1,12 @@
-import { useId, useState, type FormEvent } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 
 import type { CategoryId } from '@core/backlog';
-import { Button } from '@/components/button';
-import { Card } from '@/components/card';
-import { useCategoryCatalog, type CategoryCatalog } from '@/lib/categories';
+import { Button, IconButton, buttonClass } from '@/components/button';
+import { useCategoryCatalog } from '@/lib/categories';
+import { CategoryMenu } from './category-menu';
 import { ToolbarIcon } from './toolbar-icon';
 
 import './selection-bar.scss';
-
-const AUTOMATIC = 'automatic';
 
 interface SelectionBarProps {
     // Selected games still in the library
@@ -24,12 +21,7 @@ interface SelectionBarProps {
     onDone: () => void;
 }
 
-function targetOf(catalog: CategoryCatalog, value: string): CategoryId | null | undefined {
-    if (value === AUTOMATIC) return null;
-    return catalog.list.find((category) => category.id === value)?.id;
-}
-
-// Sticky at the end of the library: it floats while scrolling through the cards
+// A dock floating over the end of the library: what is selected, how to change it, and where it goes
 export function SelectionBar({
     count,
     matching,
@@ -42,19 +34,26 @@ export function SelectionBar({
     const t = useTranslations('library.select');
     const catalog = useCategoryCatalog();
     const format = useFormatter();
-    const targetId = useId();
-    const [value, setValue] = useState('');
-    const target = targetOf(catalog, value);
-
-    function submit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        if (count > 0 && target !== undefined) onMove(target);
-    }
+    const empty = count === 0;
 
     return (
-        <Card as="section" aria-label={t('label')} className="selection-bar">
+        <section aria-label={t('label')} className="selection-bar">
+            <IconButton className="selection-bar__done" label={t('done')} onClick={onDone}>
+                <svg aria-hidden="true" viewBox="0 0 16 16">
+                    <path d="M4 4l8 8M12 4l-8 8" />
+                </svg>
+            </IconButton>
             <p className="selection-bar__count" role="status">
-                {t('count', { count })}
+                {empty
+                    ? t('empty')
+                    : t.rich('count', {
+                          count,
+                          n: (chunks) => (
+                              <span className="selection-bar__badge" key={count}>
+                                  {chunks}
+                              </span>
+                          ),
+                      })}
             </p>
             <div className="selection-bar__pick">
                 <Button
@@ -65,45 +64,25 @@ export function SelectionBar({
                 >
                     {t('all', { count: format.number(matching) })}
                 </Button>
-                <Button
-                    aria-disabled={count === 0}
-                    onClick={count === 0 ? undefined : onClear}
-                    size="small"
-                    variant="ghost"
-                >
+                <Button aria-disabled={empty} onClick={empty ? undefined : onClear} size="small" variant="ghost">
                     {t('none')}
                 </Button>
             </div>
-            <form className="selection-bar__move" onSubmit={submit}>
-                <label className="selection-bar__label" htmlFor={targetId}>
+            <div className="selection-bar__move">
+                <CategoryMenu
+                    buttonClassName={buttonClass({ size: 'small', className: 'selection-bar__move-button' })}
+                    buttonLabel={t('moveLabel')}
+                    colorOf={(option) => (option === null ? null : catalog.get(option).color)}
+                    disabled={empty}
+                    labelOf={(option) => (option === null ? t('automatic') : catalog.get(option).label)}
+                    menuLabel={t('moveMenu', { count })}
+                    onChoose={onMove}
+                    options={[null, ...catalog.list.map((category) => category.id)]}
+                >
                     {t('moveLabel')}
-                </label>
-                <span className="selection-bar__select-wrap">
-                    <select
-                        className="selection-bar__select"
-                        id={targetId}
-                        onChange={(event) => setValue(event.target.value)}
-                        value={value}
-                    >
-                        <option disabled value="">
-                            {t('choose')}
-                        </option>
-                        <option value={AUTOMATIC}>{t('automatic')}</option>
-                        {catalog.list.map((category) => (
-                            <option key={category.id} value={category.id}>
-                                {category.label}
-                            </option>
-                        ))}
-                    </select>
-                    <ToolbarIcon className="selection-bar__chevron" name="chevron" />
-                </span>
-                <Button aria-disabled={count === 0 || target === undefined} size="small" type="submit">
-                    {t('move')}
-                </Button>
-            </form>
-            <Button className="selection-bar__done" onClick={onDone} size="small" variant="secondary">
-                {t('done')}
-            </Button>
-        </Card>
+                    <ToolbarIcon name="chevron" />
+                </CategoryMenu>
+            </div>
+        </section>
     );
 }

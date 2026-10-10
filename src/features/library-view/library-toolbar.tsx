@@ -1,5 +1,14 @@
 import { clsx } from 'clsx';
-import { useEffect, useId, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react';
+import {
+    useEffect,
+    useId,
+    useRef,
+    useState,
+    type ChangeEvent,
+    type DragEvent,
+    type ReactNode,
+    type RefObject,
+} from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 
 import { hasCategory, type CategoryCounts, type CategoryId } from '@core/backlog';
@@ -9,10 +18,12 @@ import { SegmentedButton, SegmentedTrack } from '@/components/segmented-control'
 import { TextField } from '@/components/text-field';
 import { useCategoryCatalog } from '@/lib/categories';
 import { STEP, riseStyle } from '@/lib/motion';
+import { useReducedMotion } from '@/lib/use-reduced-motion';
 import { isShownState } from '@/lib/shown-states';
 import { DRAG_TYPE } from './drag';
 import { DEFAULT_SORT, compactLibrarySearch, directionOf, type LibrarySearch } from './library-search';
 import { ToolbarIcon } from './toolbar-icon';
+import { useScrollEdges } from './use-scroll-edges';
 
 import './library-toolbar.scss';
 
@@ -57,6 +68,7 @@ export function LibraryToolbar({
     const [text, setText] = useState(search.q ?? '');
 
     const searchRef = useRef<HTMLInputElement>(null);
+    const strip = useRef<HTMLFieldSetElement>(null);
 
     // Follow the URL when it changes elsewhere (back button, clear filters). While typing it only echoes the box,
     // and syncing then could put an older value back over the next keystrokes
@@ -85,6 +97,7 @@ export function LibraryToolbar({
             .filter(({ id }) => editing || id === active || isShownState(id, counts[id] ?? 0))
             .map(({ id, label, color }) => ({ value: id, label, count: counts[id] ?? 0, color })),
     ];
+    const edges = useScrollEdges(strip, options.map((option) => `${option.label}${option.count}`).join('|'));
 
     return (
         <div className="library-toolbar rise-in" style={riseStyle(STEP.library)}>
@@ -132,30 +145,115 @@ export function LibraryToolbar({
                     </SegmentedButton>
                 </SegmentedTrack>
             )}
-            <fieldset className="library-toolbar__filters">
-                <legend className="visually-hidden">{t('stateLegend')}</legend>
-                {options.map(({ value, label, count, color }) => {
-                    const chip = (
-                        <RadioChip
-                            checked={active === value}
-                            color={color}
-                            count={format.number(count)}
-                            key={value ?? 'all'}
-                            label={label}
-                            name={groupName}
-                            onChange={() => onChange(compactLibrarySearch({ ...search, state: value }))}
-                        />
-                    );
-                    return value === undefined || onDropOn === undefined ? (
-                        chip
-                    ) : (
-                        <DropTarget accepts={dragging} key={value} onDrop={(appid) => onDropOn(value, appid)}>
-                            {chip}
-                        </DropTarget>
-                    );
-                })}
-            </fieldset>
+            <div
+                className={clsx(
+                    'library-toolbar__strip',
+                    edges.start && 'library-toolbar__strip--more-start',
+                    edges.end && 'library-toolbar__strip--more-end'
+                )}
+            >
+                <fieldset className="library-toolbar__filters" ref={strip}>
+                    <legend className="visually-hidden">{t('stateLegend')}</legend>
+                    {options.map(({ value, label, count, color }) => {
+                        const chip = (
+                            <RadioChip
+                                checked={active === value}
+                                color={color}
+                                count={format.number(count)}
+                                key={value ?? 'all'}
+                                label={label}
+                                name={groupName}
+                                onChange={() => onChange(compactLibrarySearch({ ...search, state: value }))}
+                            />
+                        );
+                        return value === undefined || onDropOn === undefined ? (
+                            chip
+                        ) : (
+                            <DropTarget accepts={dragging} key={value} onDrop={(appid) => onDropOn(value, appid)}>
+                                {chip}
+                            </DropTarget>
+                        );
+                    })}
+                </fieldset>
+                {edges.start ? (
+                    <MoreButton direction={-1} dragging={dragging} label={t('moreBefore')} strip={strip} />
+                ) : null}
+                {edges.end ? (
+                    <MoreButton direction={1} dragging={dragging} label={t('moreAfter')} strip={strip} />
+                ) : null}
+            </div>
         </div>
+    );
+}
+
+interface MoreButtonProps {
+    // Towards the start or the end of the row
+    direction: -1 | 1;
+    label: string;
+    strip: RefObject<HTMLElement | null>;
+    // While a card is dragged, resting it on the arrow keeps the row moving
+    dragging: boolean;
+}
+
+// Pixels per frame while a dragged card rests on an arrow
+const DRAG_SCROLL_STEP = 6;
+
+// For a mouse: the chips are radios, so the keyboard already reaches them with the arrows
+function MoreButton({ direction, label, strip, dragging }: MoreButtonProps) {
+    const reducedMotion = useReducedMotion();
+    const frame = useRef(0);
+
+    const stop = () => {
+        cancelAnimationFrame(frame.current);
+        frame.current = 0;
+    };
+
+    // Gone at the row's end, or once the drag is over
+    useEffect(() => {
+        if (!dragging) stop();
+        return stop;
+    }, [dragging]);
+
+    // Most of a row at a time, for a mouse without a sideways wheel
+    function onClick() {
+        const element = strip.current;
+        element?.scrollBy({
+            left: direction * element.clientWidth * 0.75,
+            behavior: reducedMotion ? 'auto' : 'smooth',
+        });
+    }
+
+    function onDragEnter(event: DragEvent<HTMLButtonElement>) {
+        if (!dragging || !event.dataTransfer.types.includes(DRAG_TYPE) || frame.current !== 0) return;
+        const step = () => {
+            strip.current?.scrollBy({ left: direction * DRAG_SCROLL_STEP });
+            frame.current = requestAnimationFrame(step);
+        };
+        frame.current = requestAnimationFrame(step);
+    }
+
+    function onDragLeave(event: DragEvent<HTMLButtonElement>) {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) stop();
+    }
+
+    return (
+        <button
+            aria-label={label}
+            className={clsx(
+                'library-toolbar__more',
+                `library-toolbar__more--${direction < 0 ? 'start' : 'end'}`,
+                dragging && 'library-toolbar__more--ready'
+            )}
+            onClick={onClick}
+            onDragEnter={onDragEnter}
+            onDragLeave={onDragLeave}
+            onMouseDown={(event) => event.preventDefault()}
+            tabIndex={-1}
+            title={label}
+            type="button"
+        >
+            <ToolbarIcon name={direction < 0 ? 'left' : 'right'} />
+        </button>
     );
 }
 

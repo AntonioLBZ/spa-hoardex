@@ -1,4 +1,4 @@
-import type { BacklogData, CategoryId, CustomId } from '@core/backlog';
+import type { BacklogData, BacklogState, CategoryId, CustomId } from '@core/backlog';
 import type { GameArt, Library, Profile, ProfileAccess } from '@core/domain';
 
 // A non-200 answer from our API; access states are data, not errors
@@ -172,9 +172,19 @@ export function patchCategory(id: CustomId, fields: CategoryFields): Promise<Bac
     return writeBacklog(`/api/me/categories/${encodeURIComponent(id)}`, jsonBody('PATCH', fields));
 }
 
+// A built-in state keeps its name; null gives it back its own colour
+export function patchStateColor(state: BacklogState, color: string | null): Promise<BacklogData> {
+    return writeBacklog(`/api/me/categories/${encodeURIComponent(state)}`, jsonBody('PATCH', { color }));
+}
+
 // Only while no game is in it; the Backlog never
 export function deleteCategory(id: CategoryId): Promise<BacklogData> {
     return writeBacklog(`/api/me/categories/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+// A removed built-in state, back while there is room
+export function restoreState(state: BacklogState): Promise<BacklogData> {
+    return writeBacklog(`/api/me/categories/${encodeURIComponent(state)}/restore`, { method: 'POST' });
 }
 
 export interface AccountSettings {

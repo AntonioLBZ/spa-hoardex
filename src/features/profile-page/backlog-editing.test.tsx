@@ -52,6 +52,14 @@ const overrides = (entries: Record<string, { state: string; minutesAtSet: number
     },
 });
 
+const selectionStatus = () =>
+    within(screen.getByRole('region', { name: 'Selected games' })).getByRole('status').textContent;
+
+async function moveSelectionTo(user: ReturnType<typeof renderApp>['user'], target: string) {
+    await user.click(screen.getByRole('button', { name: 'Move to…' }));
+    await user.click(screen.getByRole('menuitem', { name: target }));
+}
+
 const card = async (name: string) =>
     (await screen.findAllByText(name)).map((text) => text.closest('li.game-card')).find(Boolean) as HTMLElement;
 
@@ -71,7 +79,9 @@ describe('manual states for a visitor', () => {
 
         const two = await card('Game Two');
         await waitFor(() => expect(within(two).getByText('Abandoned')).toBeTruthy());
-        expect(within(two).getByText('Set by hand · Played since')).toBeTruthy();
+        expect(within(two).getByText('Played since you set it')).toBeTruthy();
+        expect(within(two).getByText('Abandoned').classList.contains('state-chip__label--automatic')).toBe(false);
+        expect(within(await card('Game One')).getByText('Automatic')).toBeTruthy();
         expect(screen.queryByRole('button', { name: /^State of/ })).toBeNull();
 
         const legend = (await screen.findByRole('heading', { name: 'Backlog states' })).closest('section');
@@ -102,7 +112,7 @@ describe('manual states for the owner', () => {
         const fetchMock = stubOwner({ body: overrides({ '1': { state: 'finished', minutesAtSet: 0 } }) });
         const { user } = renderApp('/p/someone');
 
-        const button = await screen.findByRole('button', { name: 'State of Game One: Backlog' });
+        const button = await screen.findByRole('button', { name: 'State of Game One: Backlog · Automatic' });
         await user.click(button);
         expect(screen.getByRole('menuitemradio', { name: 'Automatic (Backlog)' }).getAttribute('aria-checked')).toBe(
             'true'
@@ -114,9 +124,8 @@ describe('manual states for the owner', () => {
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ state: 'finished' }),
         });
-        await waitFor(() => expect(within(button.closest('li') as HTMLElement).getByText('Set by hand')).toBeTruthy());
+        await waitFor(() => expect(button.getAttribute('aria-label')).toBe('State of Game One: Finished'));
         expect(button.getAttribute('aria-expanded')).toBe('false');
-        expect(screen.getByRole('button', { name: 'State of Game One: Finished · Set by hand' })).toBe(button);
         expect(screen.queryByRole('alert')).toBeNull();
     });
 
@@ -124,11 +133,11 @@ describe('manual states for the owner', () => {
         stubOwner({ status: 503, body: { error: 'database' } });
         const { user } = renderApp('/p/someone');
 
-        await user.click(await screen.findByRole('button', { name: 'State of Game One: Backlog' }));
+        await user.click(await screen.findByRole('button', { name: 'State of Game One: Backlog · Automatic' }));
         await user.click(screen.getByRole('menuitemradio', { name: 'Abandoned' }));
 
         expect((await screen.findByRole('alert')).textContent).toBe('That change could not be saved. Try again.');
-        expect(screen.getByRole('button', { name: 'State of Game One: Backlog' })).toBeTruthy();
+        expect(screen.getByRole('button', { name: 'State of Game One: Backlog · Automatic' })).toBeTruthy();
     });
 });
 
@@ -163,7 +172,7 @@ describe('manual states in the demo', () => {
         });
         renderApp('/demo');
 
-        expect(await screen.findByRole('button', { name: 'State of Game Two: Finished · Set by hand' })).toBeTruthy();
+        expect(await screen.findByRole('button', { name: 'State of Game Two: Finished' })).toBeTruthy();
     });
 });
 
@@ -190,7 +199,7 @@ describe('moving several games at once', () => {
         expect(screen.queryByRole('button', { name: /^State of/ })).toBeNull();
         await user.click(screen.getByRole('checkbox', { name: 'Select Game One' }));
         await user.click(screen.getByRole('checkbox', { name: 'Select Game Two' }));
-        expect(screen.getByText('2 games selected')).toBeTruthy();
+        expect(selectionStatus()).toBe('2 games selected');
 
         answers['/api/me/backlog'] = {
             body: overrides({
@@ -198,8 +207,7 @@ describe('moving several games at once', () => {
                 '2': { state: 'abandoned', minutesAtSet: 600 },
             }),
         };
-        await user.selectOptions(screen.getByRole('combobox', { name: 'Move to' }), 'Abandoned');
-        await user.click(screen.getByRole('button', { name: 'Move' }));
+        await moveSelectionTo(user, 'Abandoned');
 
         expect(fetchMock).toHaveBeenCalledWith('/api/me/backlog', {
             method: 'PUT',
@@ -209,7 +217,7 @@ describe('moving several games at once', () => {
         const one = await card('Game One');
         await waitFor(() => expect(within(one).getByText('Abandoned')).toBeTruthy());
         expect(within(await card('Game Two')).getByText('Abandoned')).toBeTruthy();
-        expect(screen.getByText('No games selected')).toBeTruthy();
+        expect(selectionStatus()).toBe('Pick the games to move');
         expect(screen.getByRole('checkbox', { name: 'Select Game One' })).toHaveProperty('checked', false);
     });
 
@@ -223,10 +231,10 @@ describe('moving several games at once', () => {
         await user.click(await screen.findByRole('button', { name: 'Select' }));
         await user.click(screen.getByRole('button', { name: 'Select all (1)' }));
         expect(screen.getByRole('checkbox', { name: 'Select Game One' })).toHaveProperty('checked', true);
-        expect(screen.getByText('1 game selected')).toBeTruthy();
+        expect(selectionStatus()).toBe('1 game selected');
 
         await user.click(screen.getByRole('button', { name: 'Clear selection' }));
-        expect(screen.getByText('No games selected')).toBeTruthy();
+        expect(selectionStatus()).toBe('Pick the games to move');
 
         await user.keyboard('{Escape}');
         expect(screen.queryByRole('checkbox')).toBeNull();
@@ -246,8 +254,7 @@ describe('moving several games at once', () => {
 
         await user.click(await screen.findByRole('button', { name: 'Select' }));
         await user.click(screen.getByRole('button', { name: 'Select all (2)' }));
-        await user.selectOptions(screen.getByRole('combobox', { name: 'Move to' }), 'Finished');
-        await user.click(screen.getByRole('button', { name: 'Move' }));
+        await moveSelectionTo(user, 'Finished');
 
         const stored = () =>
             JSON.parse(localStorage.getItem('hoardex:demo-backlog') ?? '{}') as Record<string, unknown>;
@@ -257,12 +264,11 @@ describe('moving several games at once', () => {
         });
 
         await user.click(screen.getByRole('checkbox', { name: 'Select Game Two' }));
-        await user.selectOptions(screen.getByRole('combobox', { name: 'Move to' }), 'Automatic');
-        await user.click(screen.getByRole('button', { name: 'Move' }));
+        await moveSelectionTo(user, 'Automatic (by hours)');
         expect(Object.keys(stored())).toEqual(['1']);
     });
 
-    it('does nothing until a state is picked', async () => {
+    it('offers every category to move to once a game is picked, and moves nothing until one is chosen', async () => {
         stubApi({
             '/api/demo/profile': { body: { kind: 'ok', data: PROFILE } },
             '/api/demo/library': { body: { kind: 'ok', data: LIBRARY } },
@@ -270,10 +276,40 @@ describe('moving several games at once', () => {
         const { user } = renderApp('/demo');
 
         await user.click(await screen.findByRole('button', { name: 'Select' }));
-        await user.click(screen.getByRole('checkbox', { name: 'Select Game One' }));
-        const move = screen.getByRole('button', { name: 'Move' });
+        const move = screen.getByRole('button', { name: 'Move to…' });
         expect(move.getAttribute('aria-disabled')).toBe('true');
         await user.click(move);
+        expect(screen.queryByRole('menu')).toBeNull();
+
+        await user.click(screen.getByRole('checkbox', { name: 'Select Game One' }));
+        expect(move.getAttribute('aria-disabled')).toBeNull();
+        await user.click(move);
+        expect(screen.getByRole('menu', { name: 'Move 1 game to' })).toBeTruthy();
+        expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+            'Automatic (by hours)',
+            'Backlog',
+            'Tried',
+            'In progress',
+            'Paused',
+            'Finished',
+            'Abandoned',
+        ]);
+        await user.keyboard('{Escape}');
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(document.activeElement).toBe(move);
         expect(localStorage.getItem('hoardex:demo-backlog')).toBeNull();
+    });
+
+    it('ends selecting from the dock', async () => {
+        stubApi({
+            '/api/demo/profile': { body: { kind: 'ok', data: PROFILE } },
+            '/api/demo/library': { body: { kind: 'ok', data: LIBRARY } },
+        });
+        const { user } = renderApp('/demo');
+
+        await user.click(await screen.findByRole('button', { name: 'Select' }));
+        await user.click(screen.getByRole('button', { name: 'Stop selecting' }));
+        expect(screen.queryByRole('region', { name: 'Selected games' })).toBeNull();
+        expect(screen.queryByRole('checkbox')).toBeNull();
     });
 });

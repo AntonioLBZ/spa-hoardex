@@ -13,7 +13,7 @@ const ID = '76561198000000001';
 const SECRET = 'a'.repeat(48);
 const NOW = new Date('2026-10-09T16:00:00Z');
 const OWNED = '220';
-const DEFAULTS = { removed: [], custom: [] };
+const DEFAULTS = { removed: [], custom: [], colors: {} };
 
 let database: Awaited<ReturnType<typeof createTestDatabase>>;
 
@@ -320,7 +320,7 @@ describe('categories', () => {
         const removed = await call('DELETE', '/api/me/categories/abandoned', { cookie });
         expect(removed.body).toEqual({
             kind: 'ok',
-            data: { overrides: {}, categories: { removed: ['abandoned'], custom: [] } },
+            data: { overrides: {}, categories: { ...DEFAULTS, removed: ['abandoned'] } },
         });
 
         const put = await call('PUT', `/api/me/backlog/${OWNED}`, { cookie, body: { state: 'abandoned' } });
@@ -330,11 +330,53 @@ describe('categories', () => {
         expect(bulk.body).toEqual({ error: 'unknownCategory' });
     });
 
-    it('cannot rename a built-in state or an unknown id', async () => {
+    it('restores a removed built-in state, which comes back with its own colour', async () => {
+        const { call, session } = setup();
+        const cookie = await session();
+        await call('PATCH', '/api/me/categories/abandoned', { cookie, body: { color: 'p2' } });
+        await call('DELETE', '/api/me/categories/abandoned', { cookie });
+
+        const restored = await call('POST', '/api/me/categories/abandoned/restore', { cookie });
+        expect(restored.response.headers.get('cache-control')).toBe('no-store');
+        expect(restored.body).toEqual({ kind: 'ok', data: { overrides: {}, categories: DEFAULTS } });
+        const again = await call('POST', '/api/me/categories/abandoned/restore', { cookie });
+        expect(again.response.status).toBe(404);
+        expect(again.body).toEqual({ error: 'unknownCategory' });
+        expect((await call('POST', '/api/me/categories/c-00000000/restore', { cookie })).response.status).toBe(404);
+        expect((await call('POST', '/api/me/categories/abandoned/restore', {})).response.status).toBe(401);
+    });
+
+    it('recolours a built-in state, and gives it its own colour back', async () => {
+        const { call, session } = setup();
+        const cookie = await session();
+
+        const recolored = await call('PATCH', '/api/me/categories/paused', { cookie, body: { color: '#ABCDEF' } });
+        expect(recolored.body).toEqual({
+            kind: 'ok',
+            data: { overrides: {}, categories: { ...DEFAULTS, colors: { paused: '#abcdef' } } },
+        });
+        expect((await call('GET', `/api/backlog/${ID}`, { origin: null })).body).toMatchObject({
+            data: { categories: { colors: { paused: '#abcdef' } } },
+        });
+        const reset = await call('PATCH', '/api/me/categories/paused', { cookie, body: { color: null } });
+        expect(reset.body).toEqual({ kind: 'ok', data: { overrides: {}, categories: DEFAULTS } });
+
+        await call('DELETE', '/api/me/categories/abandoned', { cookie });
+        const gone = await call('PATCH', '/api/me/categories/abandoned', { cookie, body: { color: 'p1' } });
+        expect(gone.response.status).toBe(404);
+        expect(gone.body).toEqual({ error: 'unknownCategory' });
+    });
+
+    it('cannot rename a built-in state, nor change an unknown id', async () => {
         const { call, session } = setup();
         const cookie = await session();
         const body = { name: 'Mine', color: 'p1' };
-        expect((await call('PATCH', '/api/me/categories/paused', { cookie, body })).response.status).toBe(404);
+        const renamed = await call('PATCH', '/api/me/categories/paused', { cookie, body });
+        expect(renamed.response.status).toBe(400);
+        expect(renamed.body).toEqual({ error: 'invalidInput' });
+        expect(
+            (await call('PATCH', '/api/me/categories/paused', { cookie, body: { color: 'red' } })).response.status
+        ).toBe(400);
         expect((await call('PATCH', '/api/me/categories/c-00000000', { cookie, body })).response.status).toBe(404);
         expect((await call('DELETE', '/api/me/categories/nope', { cookie })).response.status).toBe(404);
     });

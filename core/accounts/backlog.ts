@@ -48,6 +48,15 @@ export interface BacklogService {
         state: BacklogState,
         games: readonly Game[]
     ): Promise<CategoryOutcome>;
+    // A removed built-in state comes back, with its own colour, while below MAX_CATEGORIES
+    restoreState(account: Account, identity: EntityId, state: BacklogState): Promise<CategoryOutcome>;
+    // Null: back to its own colour
+    recolorState(
+        account: Account,
+        identity: EntityId,
+        state: BacklogState,
+        color: string | null
+    ): Promise<CategoryOutcome>;
     // After the account is deleted: its copy becomes empty at once
     forget(identity: EntityId): Promise<void>;
 }
@@ -148,6 +157,16 @@ export function createBacklogService({
             if ((countByState(games, now(), { overrides, categories })[state] ?? 0) > 0) return { kind: 'notEmpty' };
             await repository.removeState(account.userId, state);
             return ok(identity);
+        },
+
+        async restoreState(account, identity, state) {
+            const result = await repository.restoreState(account.userId, state, MAX_CATEGORIES);
+            return result === 'restored' ? ok(identity) : { kind: result };
+        },
+
+        async recolorState(account, identity, state, color) {
+            const result = await repository.setStateColor(account.userId, state, color);
+            return result === 'updated' ? ok(identity) : { kind: result };
         },
 
         async forget(identity) {

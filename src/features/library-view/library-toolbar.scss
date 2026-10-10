@@ -80,15 +80,84 @@
     color: var(--color-accent);
 }
 
+/* The chips and, when they scroll sideways, a fade and an arrow at each end that hides some */
+.library-toolbar__strip {
+    --strip-fade: 2.5rem;
+
+    flex: 1 1 100%;
+    min-inline-size: 0;
+    position: relative;
+}
+
 .library-toolbar__filters {
     border: none;
     display: flex;
-    flex: 1 1 100%;
     flex-wrap: wrap;
     gap: var(--size-50);
     margin: 0;
     min-inline-size: 0;
     padding: 0;
+}
+
+.library-toolbar__strip--more-start .library-toolbar__filters {
+    mask-image: linear-gradient(to right, transparent, #000 var(--strip-fade));
+}
+
+.library-toolbar__strip--more-end .library-toolbar__filters {
+    mask-image: linear-gradient(to left, transparent, #000 var(--strip-fade));
+}
+
+.library-toolbar__strip--more-start.library-toolbar__strip--more-end .library-toolbar__filters {
+    mask-image: linear-gradient(
+        to right,
+        transparent,
+        #000 var(--strip-fade),
+        #000 calc(100% - var(--strip-fade)),
+        transparent
+    );
+}
+
+/* Only for a mouse: touch scrolls by swiping, the keyboard moves through the radios */
+.library-toolbar__more {
+    align-items: center;
+    background-color: var(--color-bg-raised);
+    block-size: 2rem;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+    color: var(--color-content);
+    cursor: pointer;
+    display: none;
+    inline-size: 2rem;
+    inset-block-start: 50%;
+    justify-content: center;
+    padding: 0;
+    position: absolute;
+    transform: translateY(-50%);
+}
+
+.library-toolbar__more:hover {
+    border-color: var(--color-content-muted);
+}
+
+/* While a card is dragged: resting it here scrolls towards the hidden chips */
+.library-toolbar__more--ready {
+    outline: 2px dashed var(--color-accent);
+    outline-offset: 2px;
+}
+
+.library-toolbar__more--start {
+    inset-inline-start: 0;
+}
+
+.library-toolbar__more--end {
+    inset-inline-end: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .library-toolbar__more {
+        display: inline-flex;
+    }
 }
 
 /* Each category chip takes a dragged card */
@@ -133,6 +202,7 @@
         flex-wrap: nowrap;
         overflow-x: auto;
         padding: var(--size-25);
+        scroll-padding-inline: var(--strip-fade);
         scrollbar-width: none;
     }
 
@@ -158,5 +228,12 @@
         overflow: hidden;
         position: absolute;
         white-space: nowrap;
+    }
+}
+
+@media (forced-colors: active) {
+    .library-toolbar__more {
+        border-color: ButtonText;
+        color: ButtonText;
     }
 }

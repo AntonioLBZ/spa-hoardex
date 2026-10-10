@@ -121,7 +121,7 @@ describe('DELETE /api/me', () => {
         expect(await snapshotCount()).toBe(0);
         expect((await call('GET', `/api/backlog/${ID}`)).body).toEqual({
             kind: 'ok',
-            data: { overrides: {}, categories: { removed: [], custom: [] } },
+            data: { overrides: {}, categories: { removed: [], custom: [], colors: {} } },
         });
     });
 });

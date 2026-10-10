@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 
@@ -57,11 +57,6 @@ function AccountContent({ steamId }: { steamId: string }) {
             <PageTitle title={t('title')} />
             <header className="account-page__header">
                 <h1 className="account-page__title">{t('title')}</h1>
-                <p>
-                    <Link params={{ profile: steamId }} to="/p/$profile">
-                        {t('myProfile')}
-                    </Link>
-                </p>
             </header>
             <section className="account-page__section">
                 <h2 className="account-page__heading">{t('snapshots.heading')}</h2>

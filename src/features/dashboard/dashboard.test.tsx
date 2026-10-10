@@ -91,6 +91,7 @@ describe('Dashboard', () => {
         const categories: Categories = {
             removed: ['tried'],
             custom: [{ id: 'c-12345678', name: 'Co-op', color: '#123456' }],
+            colors: { paused: '#abcdef', inProgress: 'p2' },
         };
         const overrides = { '3': { state: 'c-12345678', setAt: NOW.toISOString(), minutesAtSet: 6000 } } as const;
         render(
@@ -108,6 +109,11 @@ describe('Dashboard', () => {
             'rgb(18, 52, 86)'
         );
         expect(kpi('Backlog').textContent).toContain('2');
+        const swatch = (name: string) =>
+            states.getByText(name).closest('li')?.querySelector<HTMLElement>('.state-breakdown__swatch')?.style;
+        expect(swatch('Paused')?.backgroundColor).toBe('rgb(171, 205, 239)');
+        expect(swatch('In progress')?.backgroundColor).toBe('var(--color-category-p2)');
+        expect(swatch('Finished')?.backgroundColor).toBe('var(--color-state-finished)');
     });
 
     it('ranks the most played games with their hours', () => {

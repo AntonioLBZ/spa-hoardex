@@ -98,7 +98,7 @@ describe('dragging a card onto a state chip', () => {
         const over = drag(card('Alpha Quest'), chip(/^Abandoned/));
 
         expect(over).toContain('library-toolbar__drop--over');
-        await waitFor(() => expect(stateOf('Alpha Quest')).toBe('State of Alpha Quest: Abandoned · Set by hand'));
+        await waitFor(() => expect(stateOf('Alpha Quest')).toBe('State of Alpha Quest: Abandoned'));
         expect(stored()).toMatchObject({ '1': { state: 'abandoned' } });
         expect(screen.getByRole('radio', { name: 'Abandoned 1' })).toBeTruthy();
     });
@@ -126,7 +126,46 @@ describe('dragging a card onto a state chip', () => {
 
         await waitFor(() => expect(stored()).toMatchObject({ '1': { state: 'paused' }, '2': { state: 'paused' } }));
         expect(stored()).not.toHaveProperty('3');
-        expect(screen.getByText('No games selected')).toBeTruthy();
+        expect(within(screen.getByRole('region', { name: 'Selected games' })).getByRole('status').textContent).toBe(
+            'Pick the games to move'
+        );
+    });
+
+    it('scrolls the chips while a dragged card rests on an arrow, and stops when it leaves', async () => {
+        stubDemo();
+        renderApp('/demo');
+        const region = await screen.findByRole('region', { name: 'Library' });
+        const strip = within(region).getByRole('group', { name: 'Filter by state' });
+        const scrollBy = vi.fn();
+        Object.assign(strip, { scrollBy });
+        Object.defineProperty(strip, 'scrollWidth', { configurable: true, value: 800 });
+        Object.defineProperty(strip, 'clientWidth', { configurable: true, value: 300 });
+        fireEvent.scroll(strip);
+        const more = await within(region).findByRole('button', { name: 'Show more states' });
+
+        const transfer = dataTransfer();
+        fireEvent.dragEnter(more, { dataTransfer: transfer });
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(scrollBy).not.toHaveBeenCalled();
+
+        fireEvent.dragStart(card('Alpha Quest'), { dataTransfer: transfer });
+        expect(more.className).toContain('library-toolbar__more--ready');
+        fireEvent.dragEnter(more, { dataTransfer: transfer });
+        await waitFor(() => expect(scrollBy.mock.calls.length).toBeGreaterThan(1));
+        expect(scrollBy).toHaveBeenCalledWith({ left: 6 });
+
+        fireEvent.dragLeave(more, { dataTransfer: transfer, relatedTarget: document.body });
+        const calls = scrollBy.mock.calls.length;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(scrollBy).toHaveBeenCalledTimes(calls);
+
+        fireEvent.dragEnter(more, { dataTransfer: transfer });
+        await waitFor(() => expect(scrollBy.mock.calls.length).toBeGreaterThan(calls));
+        fireEvent.dragEnd(card('Alpha Quest'), { dataTransfer: transfer });
+        await waitFor(() => expect(more.className).not.toContain('library-toolbar__more--ready'));
+        const ended = scrollBy.mock.calls.length;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(scrollBy).toHaveBeenCalledTimes(ended);
     });
 
     it('ignores anything dropped that is not one of its cards', async () => {

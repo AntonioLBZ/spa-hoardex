@@ -22,6 +22,8 @@ export interface CategoryView {
     label: string;
     color: string;
     custom: boolean;
+    // A palette token or #rrggbb; null for a built-in state in its own colour
+    stored: string | null;
 }
 
 export interface CategoryCatalog {
@@ -37,13 +39,18 @@ function useBuildCatalog(categories: Categories): CategoryCatalog {
     return useMemo(() => {
         const custom = new Map(categories.custom.map((category) => [category.id, category]));
         const get = (id: CategoryId): CategoryView => {
-            if (isBuiltInState(id)) return { id, label: states(id), color: STATE_COLOR[id], custom: false };
+            if (isBuiltInState(id)) {
+                const stored = categories.colors?.[id] ?? null;
+                const color = stored === null ? STATE_COLOR[id] : colorValue(stored);
+                return { id, label: states(id), color, custom: false, stored };
+            }
             const own = custom.get(id);
             return {
                 id,
                 label: own?.name ?? states('untouched'),
                 color: own === undefined ? STATE_COLOR.untouched : colorValue(own.color),
                 custom: true,
+                stored: own?.color ?? null,
             };
         };
         return { categories, list: categoryIds(categories).map(get), get };

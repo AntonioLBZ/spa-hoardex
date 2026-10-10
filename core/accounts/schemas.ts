@@ -40,6 +40,7 @@ export const customCategorySchema = z.object({
 export const categoriesSchema = z.object({
     removed: z.array(z.enum(BACKLOG_STATES).refine((state) => state !== FALLBACK_STATE)),
     custom: z.array(customCategorySchema),
+    colors: z.partialRecord(z.enum(BACKLOG_STATES), categoryColorSchema),
 });
 
 export const overrideSchema = z.object({
@@ -62,6 +63,7 @@ export const overrideRowSchema = z.object({
 export const categoryRowSchema = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('custom'), id: customIdSchema, name: z.string(), color: z.string() }),
     z.object({ kind: z.literal('removed'), id: z.enum(BACKLOG_STATES) }),
+    z.object({ kind: z.literal('color'), id: z.enum(BACKLOG_STATES), color: z.string() }),
 ]);
 
 export const categoryCreateRowSchema = z.object({
@@ -73,6 +75,10 @@ export const categoryCreateRowSchema = z.object({
 export const categoryUpdateRowSchema = z.object({ found: z.boolean(), taken: z.boolean() });
 
 export const categoryDeleteRowSchema = z.object({ found: z.boolean(), used: z.boolean() });
+
+export const stateRestoreRowSchema = z.object({ restored: z.number().int(), found: z.boolean() });
+
+export const stateColorRowSchema = z.object({ found: z.boolean() });
 
 export const accountRowSchema = z.object({ user_id: z.string(), session_epoch: z.number().int() });
 

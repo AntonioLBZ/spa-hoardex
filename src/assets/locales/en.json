@@ -19,7 +19,6 @@
         "signedOut": "You are not signed in",
         "signedOutBody": "Sign in with Steam to see and change your account.",
         "signIn": "Sign in with Steam",
-        "myProfile": "Go to my profile",
         "snapshots": {
             "heading": "Playtime history",
             "body": "Steam only gives total hours. With this on, Hoardex can save once a day the hours of every game you have played, so later it can show how your playtime changes over time. It only keeps games whose hours changed, and stops if you have not signed in to Hoardex for {days} days.",
@@ -38,23 +37,27 @@
             "failed": "Your categories could not be loaded. Try again later.",
             "games": "{count, plural, =0 {No games} one {# game} other {# games}}",
             "builtIn": "Built in",
-            "rename": "Rename",
-            "renameLabel": "Rename {name}",
+            "edit": "Edit",
+            "editLabel": "Edit {name}",
             "delete": "Delete",
             "deleteLabel": "Delete {name}",
             "fixed": "Backlog cannot be deleted: every game needs a category to fall back on.",
             "notEmpty": "{count, plural, one {Move its game} other {Move its # games}} to another category to delete it.",
             "noLibrary": "Your library could not be loaded, so it is not known whether this category is empty.",
-            "confirm": "Delete {name}? {builtIn, select, true {A built-in category cannot be brought back.} other {This cannot be undone.}}",
+            "confirm": "Delete {name}? {builtIn, select, true {You can bring it back from “New category”.} other {This cannot be undone.}}",
             "confirmAction": "Delete {name}",
             "cancel": "Cancel",
             "new": "New category",
+            "restore": "Bring back a built-in one:",
+            "restoreLabel": "Bring back {name}",
+            "orCreate": "Or make one of your own:",
             "create": "Create category",
             "save": "Save",
             "name": "Name",
             "nameHint": "Up to {max, number} characters.",
             "color": "Colour",
             "palette": "Colour {index, number}",
+            "ownColor": "Default",
             "customColor": "Custom",
             "customColorLabel": "Pick a custom colour",
             "limit": "You have the maximum of {max, number} categories. Delete one to make another.",
@@ -134,7 +137,8 @@
         "emptyLibrary": "This library has no games.",
         "demoNotice": "This is a demo with a fictional library. No real Steam account is involved.",
         "eyebrow": "Steam library",
-        "demoEyebrow": "Demo library"
+        "demoEyebrow": "Demo library",
+        "steamLink": "(view their profile on Steam, opens in a new tab)"
     },
     "refresh": {
         "action": "Refresh",
@@ -248,6 +252,8 @@
             }
         },
         "stateLegend": "Filter by state",
+        "moreBefore": "Show the previous states",
+        "moreAfter": "Show more states",
         "all": "All",
         "count": "Showing {shown, number} of {total, plural, one {# game} other {# games}}",
         "empty": "No games match these filters.",
@@ -256,23 +262,23 @@
         "showMore": "Show {next, number} more",
         "stateOf": "State of {name}",
         "automaticOption": "Automatic ({state})",
-        "manual": "Set by hand",
-        "playedSince": "Played since",
+        "automatic": "Automatic",
+        "playedSince": "Played since you set it",
         "saveFailed": "That change could not be saved. Try again.",
         "demoEditing": "You can change any game’s state. In the demo, changes stay in this browser only.",
         "dragHint": "Drag a game onto a state above to move it. While selecting, the whole selection goes with it.",
         "select": {
             "start": "Select",
             "label": "Selected games",
-            "count": "{count, plural, =0 {No games selected} one {# game selected} other {# games selected}}",
+            "count": "{count, plural, one {<n>#</n> game selected} other {<n>#</n> games selected}}",
+            "empty": "Pick the games to move",
             "game": "Select {name}",
             "all": "Select all ({count})",
             "none": "Clear selection",
-            "moveLabel": "Move to",
-            "choose": "Pick a state",
-            "automatic": "Automatic",
-            "move": "Move",
-            "done": "Done"
+            "moveLabel": "Move to…",
+            "moveMenu": "Move {count, plural, one {# game} other {# games}} to",
+            "automatic": "Automatic (by hours)",
+            "done": "Stop selecting"
         }
     },
     "policy": {
@@ -307,7 +313,7 @@
         },
         "manual": {
             "heading": "Your manual states",
-            "body": "If you sign in, Hoardex keeps an account in its database (Neon Postgres, on AWS in North Virginia, USA): your SteamID and when you first and last signed in. When you set a game’s state by hand, it also keeps the state, when you set it and your playtime for that game at that moment. It also keeps the name and colour of each category you create and which built-in categories you deleted. These states and categories are public: anyone who opens your profile sees them, signed in or not. A copy is kept in Upstash Redis for up to {backlog}, renewed with every change. They stay until you return each game to its automatic state, delete each category, or delete your account from your account page, which removes everything at once."
+            "body": "If you sign in, Hoardex keeps an account in its database (Neon Postgres, on AWS in North Virginia, USA): your SteamID and when you first and last signed in. When you set a game’s state by hand, it also keeps the state, when you set it and your playtime for that game at that moment. It also keeps the name and colour of each category you create, the colour you give a built-in one and which built-in categories you deleted. These states and categories are public: anyone who opens your profile sees them, signed in or not. A copy is kept in Upstash Redis for up to {backlog}, renewed with every change. They stay until you return each game to its automatic state, delete each category, or delete your account from your account page, which removes everything at once."
         },
         "snapshots": {
             "heading": "Playtime history (optional)",

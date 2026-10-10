@@ -6,7 +6,7 @@ import type { Game } from '../domain/index.js';
 import { createTestDatabase } from './test-db.js';
 
 const ME = { source: 'steam', externalId: '76561198000000001' } as const;
-const EMPTY = { overrides: {}, categories: { removed: [], custom: [] } };
+const EMPTY = { overrides: {}, categories: { removed: [], custom: [], colors: {} } };
 const GAME = { gameId: '620', minutes: 42 } as const;
 const NOW = new Date('2026-10-09T16:00:00Z');
 
@@ -73,6 +73,13 @@ describe('createBacklogService', () => {
         expect(listOverrides).toHaveBeenCalledOnce();
     });
 
+    it('treats a copy from before built-in colours as missing', async () => {
+        const { listOverrides, store, service } = setup();
+        await store.set('bl:steam:76561198000000001', { overrides: {}, categories: { removed: [], custom: [] } }, 60);
+        expect(await service.read(ME)).toEqual(EMPTY);
+        expect(listOverrides).toHaveBeenCalledOnce();
+    });
+
     it('reads a completed state in the copy as finished', async () => {
         const { listOverrides, store, service } = setup();
         const stored = { state: 'completed', minutesAtSet: 42, setAt: NOW.toISOString() };
@@ -108,7 +115,10 @@ describe('createBacklogService', () => {
         const created = await service.createCategory(account, ME, { name: 'Co-op', color: 'p2' });
         expect(created).toEqual({
             kind: 'ok',
-            data: { ...EMPTY, categories: { removed: [], custom: [{ id: 'c-00000001', name: 'Co-op', color: 'p2' }] } },
+            data: {
+                ...EMPTY,
+                categories: { ...EMPTY.categories, custom: [{ id: 'c-00000001', name: 'Co-op', color: 'p2' }] },
+            },
         });
         expect(await service.createCategory(account, ME, { name: 'co-op', color: 'p3' })).toEqual({ kind: 'name' });
         expect((await service.createCategory(account, ME, { name: 'Later', color: 'p3' })).kind).toBe('ok');
@@ -166,5 +176,32 @@ describe('createBacklogService', () => {
 
         await service.set(account, ME, [GAME], 'abandoned');
         expect(await service.removeState(account, ME, 'abandoned', [tried])).toEqual({ kind: 'notEmpty' });
+    });
+
+    it('restores and recolours a built-in state, writing the copy through', async () => {
+        const { repository, service } = setup();
+        const account = await repository.recordLogin(ME, NOW);
+        await service.removeState(account, ME, 'tried', []);
+        await service.read(ME);
+
+        expect(await service.recolorState(account, ME, 'tried', 'p4')).toEqual({ kind: 'notFound' });
+        expect((await service.restoreState(account, ME, 'tried')).kind).toBe('ok');
+        expect(await service.restoreState(account, ME, 'tried')).toEqual({ kind: 'notFound' });
+        expect((await service.recolorState(account, ME, 'tried', 'p4')).kind).toBe('ok');
+        expect((await service.read(ME)).categories).toEqual({ removed: [], custom: [], colors: { tried: 'p4' } });
+    });
+
+    it('stops restoring at the category limit', async () => {
+        const { repository, store } = setup();
+        let next = 0;
+        const service = createBacklogService({
+            repository,
+            store,
+            newCategoryId: () => `c-${String(next++).padStart(8, '0')}`,
+        });
+        const account = await repository.recordLogin(ME, NOW);
+        await service.removeState(account, ME, 'abandoned', []);
+        for (let i = 0; i < 7; i++) await service.createCategory(account, ME, { name: `Shelf ${i}`, color: 'p1' });
+        expect(await service.restoreState(account, ME, 'abandoned')).toEqual({ kind: 'limit' });
     });
 });

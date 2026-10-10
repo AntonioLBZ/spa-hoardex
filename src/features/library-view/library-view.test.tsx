@@ -92,6 +92,31 @@ describe('library view', () => {
         expect(router.state.location.search).toEqual({});
     });
 
+    it('says when the state chips hide some to either side, and scrolls to them on request', async () => {
+        const { region, user } = await openLibrary('/demo');
+        const strip = within(region).getByRole('group', { name: 'Filter by state' });
+        expect(within(region).queryByRole('button', { name: 'Show more states' })).toBeNull();
+
+        const scrollBy = vi.fn();
+        Object.assign(strip, { scrollBy });
+        Object.defineProperty(strip, 'scrollWidth', { configurable: true, value: 800 });
+        Object.defineProperty(strip, 'clientWidth', { configurable: true, value: 300 });
+        fireEvent.scroll(strip);
+        const more = await within(region).findByRole('button', { name: 'Show more states' });
+        expect(within(region).queryByRole('button', { name: 'Show the previous states' })).toBeNull();
+        expect(strip.parentElement?.className).toContain('library-toolbar__strip--more-end');
+
+        await user.click(more);
+        expect(scrollBy).toHaveBeenCalledWith({ left: 225, behavior: 'auto' });
+
+        strip.scrollLeft = 500;
+        fireEvent.scroll(strip);
+        await within(region).findByRole('button', { name: 'Show the previous states' });
+        expect(within(region).queryByRole('button', { name: 'Show more states' })).toBeNull();
+        await user.click(within(region).getByRole('button', { name: 'Show the previous states' }));
+        expect(scrollBy).toHaveBeenLastCalledWith({ left: -225, behavior: 'auto' });
+    });
+
     it('shows how many games each filter holds, and every category to an editor', async () => {
         const { region } = await openLibrary('/demo');
 

@@ -1,8 +1,9 @@
+/* Three columns, so the signed-in link to the own library stays centred */
 .header {
     align-items: center;
-    display: flex;
-    gap: var(--size-100);
-    justify-content: space-between;
+    display: grid;
+    gap: var(--size-50);
+    grid-template-columns: 1fr auto 1fr;
     margin-inline: auto;
     max-width: var(--size-page-width);
     min-block-size: 4rem;
@@ -17,6 +18,8 @@
     font-size: 1.25rem;
     font-weight: 800;
     gap: var(--size-50);
+    grid-column: 1;
+    justify-self: start;
     letter-spacing: -0.01em;
     text-decoration: none;
 }
@@ -27,7 +30,33 @@
 }
 
 .account-control {
+    grid-column: 3;
+    justify-self: end;
     position: relative;
+}
+
+.account-control__library {
+    align-items: center;
+    border-radius: var(--size-border-radius-pill);
+    color: var(--color-content-muted);
+    display: inline-flex;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    gap: var(--size-50);
+    grid-column: 2;
+    padding: var(--size-50) var(--size-75);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.account-control__library:hover {
+    background-color: color-mix(in srgb, var(--color-content) 8%, transparent);
+    color: var(--color-content);
+}
+
+.account-control__library[aria-current='page'] {
+    background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    color: var(--color-content);
 }
 
 .account-control__icon {
@@ -47,6 +76,8 @@
     font-size: 0.9375rem;
     font-weight: 600;
     gap: var(--size-50);
+    grid-column: 3;
+    justify-self: end;
     padding: var(--size-50) var(--size-75);
     text-decoration: none;
 }

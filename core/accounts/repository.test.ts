@@ -109,9 +109,9 @@ describe('createSqlRepository', () => {
 
     it('starts with the default categories, also for a profile without an account', async () => {
         const repository = createSqlRepository(database.query);
-        expect(await repository.listCategories(ME)).toEqual({ removed: [], custom: [] });
+        expect(await repository.listCategories(ME)).toEqual({ removed: [], custom: [], colors: {} });
         await repository.recordLogin(ME, NOW);
-        expect(await repository.listCategories(ME)).toEqual({ removed: [], custom: [] });
+        expect(await repository.listCategories(ME)).toEqual({ removed: [], custom: [], colors: {} });
     });
 
     it('creates categories in order, with a name of their own, up to the limit', async () => {
@@ -135,8 +135,43 @@ describe('createSqlRepository', () => {
                 { id: 'c-0000000c', name: 'Other', color: '#ff8800' },
                 { id: 'c-0000000a', name: 'Later', color: '#ff8800' },
             ],
+            colors: {},
         });
-        expect(await repository.listCategories(OTHER)).toEqual({ removed: [], custom: [] });
+        expect(await repository.listCategories(OTHER)).toEqual({ removed: [], custom: [], colors: {} });
+    });
+
+    it('restores a removed built-in state below the limit only', async () => {
+        const repository = createSqlRepository(database.query);
+        const { userId } = await repository.recordLogin(ME, NOW);
+        await repository.removeState(userId, 'paused');
+        await repository.removeState(userId, 'tried');
+        await repository.createCategory(userId, { id: 'c-00000001', name: 'One', color: 'p1' }, 8, NOW.toISOString());
+        await repository.createCategory(userId, { id: 'c-00000002', name: 'Two', color: 'p1' }, 8, NOW.toISOString());
+
+        expect(await repository.restoreState(userId, 'paused', 7)).toBe('restored');
+        expect(await repository.restoreState(userId, 'tried', 7)).toBe('limit');
+        expect(await repository.restoreState(userId, 'finished', 7)).toBe('notFound');
+        expect(await repository.restoreState(userId, 'paused', 12)).toBe('notFound');
+        expect((await repository.listCategories(ME)).removed).toEqual(['tried']);
+    });
+
+    it('recolours a built-in state while it is there, and forgets the colour when it goes', async () => {
+        const repository = createSqlRepository(database.query);
+        const { userId } = await repository.recordLogin(ME, NOW);
+
+        expect(await repository.setStateColor(userId, 'paused', 'p3')).toBe('updated');
+        expect(await repository.setStateColor(userId, 'paused', '#123abc')).toBe('updated');
+        expect(await repository.setStateColor(userId, 'untouched', 'p1')).toBe('updated');
+        expect((await repository.listCategories(ME)).colors).toEqual({ paused: '#123abc', untouched: 'p1' });
+        expect(await repository.setStateColor(userId, 'untouched', null)).toBe('updated');
+        expect((await repository.listCategories(ME)).colors).toEqual({ paused: '#123abc' });
+
+        await repository.removeState(userId, 'paused');
+        expect(await repository.setStateColor(userId, 'paused', 'p2')).toBe('notFound');
+        expect(await repository.setStateColor(userId, 'paused', null)).toBe('notFound');
+        expect(await repository.restoreState(userId, 'paused', 12)).toBe('restored');
+        expect((await repository.listCategories(ME)).colors).toEqual({});
+        await expect(repository.setStateColor(userId, 'tried', 'red')).rejects.toBeInstanceOf(DatabaseError);
     });
 
     it('renames a category unless another has that name', async () => {
@@ -181,9 +216,11 @@ describe('createSqlRepository', () => {
         const { userId } = await repository.recordLogin(ME, NOW);
         await repository.createCategory(userId, { id: 'c-00000001', name: 'One', color: 'p1' }, 12, NOW.toISOString());
         await repository.removeState(userId, 'tried');
+        await repository.setStateColor(userId, 'paused', 'p2');
         await repository.deleteAccount(userId);
         const { rows } = await database.db.query<{ n: number }>(
-            'select (select count(*) from backlog_categories) + (select count(*) from removed_states) as n'
+            `select (select count(*) from backlog_categories) + (select count(*) from removed_states)
+                + (select count(*) from state_colors) as n`
         );
         expect(Number(rows[0]?.n)).toBe(0);
     });

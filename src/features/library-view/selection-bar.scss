@@ -1,133 +1,133 @@
-/* Sticky at the end of the library: it floats over the cards and stops at the section's end */
+/* A dock over the end of the library: it floats while scrolling through the cards and stops at the section's end */
 .selection-bar {
-    --card-padding: var(--size-75);
-
     align-items: center;
+    background-color: var(--color-bg-raised);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+    border-radius: var(--size-border-radius-xlarge);
     bottom: var(--size-100);
     box-shadow:
         0 1px 2px rgb(0 0 0 / 6%),
-        0 16px 40px -12px rgb(0 0 0 / 35%);
+        0 18px 48px -16px color-mix(in srgb, var(--color-accent) 40%, rgb(0 0 0 / 45%));
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--size-50) var(--size-100);
+    gap: var(--size-50) var(--size-75);
+    justify-self: center;
+    max-inline-size: 100%;
+    padding: var(--size-50) var(--size-50) var(--size-50) var(--size-25);
     position: sticky;
     z-index: 5;
 }
 
 .selection-bar__count {
+    align-items: center;
+    display: inline-flex;
     font-variant-numeric: tabular-nums;
-    font-weight: 650;
+    font-weight: 600;
+    gap: var(--size-50);
+    white-space: nowrap;
+}
+
+.selection-bar__badge {
+    background-color: var(--color-accent);
+    border-radius: var(--size-border-radius-pill);
+    color: var(--color-content-on-accent);
+    display: inline-block;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.5rem;
+    min-inline-size: 1.5rem;
+    padding-inline: var(--size-50);
+    text-align: center;
 }
 
 .selection-bar .button {
     white-space: nowrap;
 }
 
-.selection-bar__pick,
-.selection-bar__move {
+.selection-bar__pick {
     align-items: center;
+    border-inline: 1px solid var(--color-border);
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--size-50);
+    gap: var(--size-25);
+    padding-inline: var(--size-50);
 }
 
-.selection-bar__move {
-    margin-inline-start: auto;
+.selection-bar__move-button .toolbar-icon {
+    margin-inline-end: calc(-1 * var(--size-25));
 }
 
-.selection-bar__label {
-    color: var(--color-content-muted);
-    font-size: 0.875rem;
+@media (prefers-reduced-motion: no-preference) {
+    .selection-bar {
+        transition:
+            opacity var(--motion-swift) var(--ease-settle),
+            transform var(--motion-swift) var(--ease-settle);
+
+        @starting-style {
+            opacity: 0;
+            transform: translateY(var(--motion-rise));
+        }
+    }
+
+    /* Answers each pick: the number pops as it changes */
+    .selection-bar__badge {
+        animation: selection-bar-pop var(--motion-swift) var(--ease-settle);
+    }
 }
 
-.selection-bar__select-wrap {
-    align-items: center;
-    display: inline-flex;
-    position: relative;
+@keyframes selection-bar-pop {
+    from {
+        opacity: 0.4;
+        transform: scale(0.7);
+    }
 }
 
-.selection-bar__select {
-    appearance: none;
-    background-color: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: var(--size-border-radius);
-    color: var(--color-content);
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.875rem;
-    font-weight: 600;
-    min-block-size: 2.25rem;
-    padding-inline: var(--size-75) 2rem;
-}
-
-.selection-bar__select:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
-}
-
-.selection-bar__select option {
-    background-color: var(--color-bg-raised);
-    color: var(--color-content);
-}
-
-.selection-bar__chevron {
-    color: var(--color-content-muted);
-    inset-inline-end: var(--size-50);
-    pointer-events: none;
-    position: absolute;
-}
-
-/* Phones: three short rows, count and done on top, the move form spanning the last one */
+/* Phones: two rows, the count and the move on top, picking below */
 @container (width < 42rem) {
     .selection-bar {
         display: grid;
-        gap: var(--size-50);
+        gap: var(--size-25) var(--size-50);
         grid-template-areas:
-            'count done'
-            'pick pick'
-            'move move';
-        grid-template-columns: 1fr auto;
-    }
-
-    .selection-bar__count {
-        grid-area: count;
+            'done count move'
+            'pick pick pick';
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        inline-size: 100%;
+        padding: var(--size-50);
     }
 
     .selection-bar__done {
         grid-area: done;
     }
 
+    .selection-bar__count {
+        grid-area: count;
+        min-inline-size: 0;
+        white-space: normal;
+    }
+
+    .selection-bar__move {
+        grid-area: move;
+    }
+
     .selection-bar__pick {
-        flex-wrap: nowrap;
+        border-block-start: 1px solid var(--color-border);
+        border-inline: none;
+        flex-wrap: wrap;
         grid-area: pick;
+        justify-content: space-between;
         margin-inline: calc(-1 * var(--size-50));
+        padding: var(--size-25) 0 0;
     }
 
     .selection-bar__pick .button {
         padding-inline: var(--size-50);
     }
+}
 
-    .selection-bar__move {
-        flex-wrap: nowrap;
-        grid-area: move;
-        margin-inline-start: 0;
+@media (forced-colors: active) {
+    .selection-bar {
+        border-color: CanvasText;
     }
 
-    .selection-bar__label {
-        block-size: 1px;
-        clip-path: inset(50%);
-        inline-size: 1px;
-        overflow: hidden;
-        position: absolute;
-        white-space: nowrap;
-    }
-
-    .selection-bar__select-wrap {
-        flex: 1 1 auto;
-        min-inline-size: 0;
-    }
-
-    .selection-bar__select {
-        inline-size: 100%;
+    .selection-bar__badge {
+        border: 1px solid CanvasText;
     }
 }

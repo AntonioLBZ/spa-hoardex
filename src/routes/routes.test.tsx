@@ -77,6 +77,33 @@ describe('profile page', () => {
         expect(await screen.findByText('Hours played')).toBeTruthy();
     });
 
+    it('links the avatar and the name to the profile on Steam, in a new tab', async () => {
+        const profileUrl = `https://steamcommunity.com/profiles/${STEAM_ID}/`;
+        stubApi({
+            [PROFILE_PATH]: { body: { kind: 'ok', data: { ...PROFILE, profileUrl } } },
+            [LIBRARY_PATH]: { body: { kind: 'ok', data: LIBRARY } },
+        });
+        renderApp('/p/someone');
+
+        const heading = await screen.findByRole('heading', { level: 1 });
+        const link = heading.closest('a');
+        expect(link?.getAttribute('href')).toBe(profileUrl);
+        expect(link?.getAttribute('target')).toBe('_blank');
+        expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+        expect(link?.querySelector('.profile-page__avatar')).toBeTruthy();
+        expect(screen.getByRole('link', { name: /Test Person \(view their profile on Steam/ })).toBe(link);
+    });
+
+    it('gives no link for a profile URL outside Steam', async () => {
+        stubApi({
+            [PROFILE_PATH]: { body: { kind: 'ok', data: PROFILE } },
+            [LIBRARY_PATH]: { body: { kind: 'ok', data: LIBRARY } },
+        });
+        renderApp('/p/someone');
+
+        expect((await screen.findByRole('heading', { level: 1 })).closest('a')).toBeNull();
+    });
+
     it('asks Steam for the avatar without a referrer', async () => {
         stubApi({
             [PROFILE_PATH]: { body: { kind: 'ok', data: PROFILE } },
@@ -325,6 +352,21 @@ describe('demo', () => {
             DEMO_LIBRARY_PATH,
             DEMO_PROFILE_PATH,
         ]);
+    });
+
+    it('never links the fictional profile to Steam', async () => {
+        stubApi({
+            ...DEMO_ANSWERS,
+            [DEMO_PROFILE_PATH]: {
+                body: {
+                    kind: 'ok',
+                    data: { ...PROFILE, profileUrl: `https://steamcommunity.com/profiles/${STEAM_ID}/` },
+                },
+            },
+        });
+        renderApp('/demo');
+
+        expect((await screen.findByRole('heading', { level: 1 })).closest('a')).toBeNull();
     });
 
     it('does not show the notice for a real profile', async () => {

@@ -15,9 +15,10 @@ describe('account control', () => {
 
         const link = await screen.findByRole('link', { name: 'Sign in with Steam' });
         expect(link.getAttribute('href')).toBe(`/api/auth/steam/login?returnTo=${encodeURIComponent('/privacy')}`);
+        expect(screen.queryByRole('link', { name: 'My library' })).toBeNull();
     });
 
-    it('keeps the signed-in links in a menu behind the avatar, and signs out', async () => {
+    it('links to the own library in the header, keeps the rest behind the avatar, and signs out', async () => {
         const fetchMock = stubApi({
             '/api/me': { body: { user: { steamId: ID } } },
             [`/api/profile/${ID}`]: {
@@ -47,7 +48,9 @@ describe('account control', () => {
         expect(trigger.getAttribute('aria-expanded')).toBe('true');
         expect(menu?.hidden).toBe(false);
         expect(within(menu!).getByText('Menu Person')).toBeTruthy();
-        expect(within(menu!).getByRole('link', { name: 'My library' }).getAttribute('href')).toBe(`/p/${ID}`);
+        expect(within(menu!).queryByRole('link', { name: 'My library' })).toBeNull();
+        const library = screen.getByRole('link', { name: 'My library' });
+        expect(library.getAttribute('href')).toBe(`/p/${ID}`);
         expect(within(menu!).getByRole('link', { name: 'Account settings' }).getAttribute('href')).toBe('/account');
         expect(screen.queryByRole('link', { name: 'Sign in with Steam' })).toBeNull();
 

@@ -21,11 +21,48 @@
         0 16px 32px -12px color-mix(in srgb, var(--color-accent) 35%, rgb(0 0 0 / 30%));
 }
 
+/* Avatar and name; on a real profile, one link to it on Steam */
+.profile-page__who {
+    align-items: center;
+    border-radius: var(--size-border-radius-large);
+    color: inherit;
+    display: flex;
+    flex: 1 1 20rem;
+    gap: var(--size-100) var(--size-150);
+    min-inline-size: 0;
+    text-decoration: none;
+}
+
 .profile-page__identity {
     display: grid;
-    flex: 1 1 14rem;
+    flex: 1 1 auto;
     gap: var(--size-25);
     min-inline-size: 0;
+}
+
+.profile-page__identity .eyebrow {
+    align-items: center;
+    display: inline-flex;
+    gap: var(--size-25);
+}
+
+.profile-page__external {
+    block-size: 0.875em;
+    fill: none;
+    inline-size: 0.875em;
+    opacity: 0.6;
+    stroke: currentcolor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.75;
+}
+
+.profile-page__who--link:hover .profile-page__avatar {
+    border-color: var(--color-accent);
+}
+
+.profile-page__who--link:hover .profile-page__external {
+    opacity: 1;
 }
 
 .profile-page__name {

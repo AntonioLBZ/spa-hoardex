@@ -38,7 +38,7 @@ async function openDemo(path = '/demo') {
         '/api/demo/library': { body: { kind: 'ok', data: LIBRARY } },
     });
     const app = renderApp(path);
-    const button = await screen.findByRole('button', { name: 'State of Alpha Quest: Backlog' });
+    const button = await screen.findByRole('button', { name: 'State of Alpha Quest: Backlog · Automatic' });
     return { ...app, button };
 }
 
@@ -147,12 +147,18 @@ describe('state menu', () => {
         expect(screen.getByRole('menu').getAttribute('aria-label')).toBe('State of Beta Run');
     });
 
-    it('shows a game set by hand with a note for screen readers', async () => {
+    it('shows a computed state in italics with a note for screen readers, and one set by hand plainly', async () => {
         const { button, user } = await openDemo();
+        const label = () => button.querySelector('.state-chip__label');
+        expect(label()?.classList.contains('state-chip__label--automatic')).toBe(true);
+        expect(button.getAttribute('title')).toBe('Automatic');
+
         await user.click(button);
         await user.click(screen.getByRole('menuitemradio', { name: 'Abandoned' }));
 
-        expect(screen.getByRole('button', { name: 'State of Alpha Quest: Abandoned · Set by hand' })).toBe(button);
-        expect(button.getAttribute('title')).toBe('Set by hand');
+        expect(screen.getByRole('button', { name: 'State of Alpha Quest: Abandoned' })).toBe(button);
+        expect(label()?.classList.contains('state-chip__label--automatic')).toBe(false);
+        expect(button.getAttribute('title')).toBeNull();
+        expect(button.querySelector('svg:not(.state-chip__chevron)')).toBeNull();
     });
 });

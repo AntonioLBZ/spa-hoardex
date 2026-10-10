@@ -6,6 +6,8 @@ import {
     categoryRowSchema,
     categoryUpdateRowSchema,
     overrideRowSchema,
+    stateColorRowSchema,
+    stateRestoreRowSchema,
     settingsRowSchema,
     snapshotAccountRowSchema,
     snapshotResultSchema,
@@ -61,6 +63,10 @@ union all
 select 'removed', r.state, null, null, null from removed_states r
 join identities i on i.user_id = r.user_id
 where i.source = $1 and i.external_id = $2
+union all
+select 'color', s.state, null, s.color, null from state_colors s
+join identities i on i.user_id = s.user_id
+where i.source = $1 and i.external_id = $2
 order by created_at, id`;
 
 // Inserts only below the limit (built-in states still there plus own ones) and with a name of its own
@@ -103,7 +109,38 @@ with used as (
 select exists (select 1 from backlog_categories where user_id = $1 and category_id = $2) as found,
     (select used from used) as used`;
 
-const REMOVE_STATE = 'insert into removed_states (user_id, state) values ($1, $2) on conflict do nothing';
+// Its colour goes with it: restored, it comes back as it was built
+const REMOVE_STATE = `
+with removed as (insert into removed_states (user_id, state) values ($1, $2) on conflict do nothing),
+uncolored as (delete from state_colors where user_id = $1 and state = $2)
+select 1`;
+
+// Only below the limit; `found` sees the rows as they were before the delete
+const RESTORE_STATE = `
+with total as (
+    select (select count(*) from backlog_categories where user_id = $1)
+        + $4 - (select count(*) from removed_states where user_id = $1) as n
+), restored as (
+    delete from removed_states where user_id = $1 and state = $2 and (select n from total) < $3
+    returning 1
+)
+select (select count(*) from restored)::int as restored,
+    exists (select 1 from removed_states where user_id = $1 and state = $2) as found`;
+
+// Only while the state is there
+const SET_STATE_COLOR = `
+with removed as (
+    select exists (select 1 from removed_states where user_id = $1 and state = $2) as removed
+), saved as (
+    insert into state_colors (user_id, state, color) select $1, $2, $3 where not (select removed from removed)
+    on conflict (user_id, state) do update set color = excluded.color
+    returning 1
+)
+select not (select removed from removed) as found`;
+
+const CLEAR_STATE_COLOR = `
+with cleared as (delete from state_colors where user_id = $1 and state = $2)
+select not exists (select 1 from removed_states where user_id = $1 and state = $2) as found`;
 
 const GET_SETTINGS = `
 select u.snapshots_opt_in_at, count(d.taken_on)::int as snapshot_days, max(d.taken_on)::text as last_snapshot_on
@@ -211,14 +248,16 @@ export function createSqlRepository(query: Query): AccountRepository {
         async listCategories({ source, externalId }) {
             const removed: BacklogState[] = [];
             const custom: CustomCategory[] = [];
+            const colors: Partial<Record<BacklogState, string>> = {};
             for (const row of await run(LIST_CATEGORIES, [source, externalId])) {
                 const parsed = categoryRowSchema.safeParse(row);
                 if (!parsed.success) throw new DatabaseError('Unexpected category row');
                 const category = parsed.data;
                 if (category.kind === 'removed') removed.push(category.id);
+                else if (category.kind === 'color') colors[category.id] = category.color;
                 else custom.push({ id: category.id, name: category.name, color: category.color });
             }
-            return { removed, custom };
+            return { removed, custom, colors };
         },
 
         async createCategory(userId, { id, name, color }, maxCategories, createdAt) {
@@ -260,6 +299,27 @@ export function createSqlRepository(query: Query): AccountRepository {
 
         async removeState(userId, state) {
             await run(REMOVE_STATE, [userId, state]);
+        },
+
+        async restoreState(userId, state, maxCategories) {
+            const parsed = stateRestoreRowSchema.safeParse(
+                (await run(RESTORE_STATE, [userId, state, maxCategories, BACKLOG_STATES.length]))[0]
+            );
+            if (!parsed.success) throw new DatabaseError('Unexpected category result');
+            if (parsed.data.restored > 0) return 'restored';
+            return parsed.data.found ? 'limit' : 'notFound';
+        },
+
+        async setStateColor(userId, state, color) {
+            const parsed = stateColorRowSchema.safeParse(
+                (
+                    await (color === null
+                        ? run(CLEAR_STATE_COLOR, [userId, state])
+                        : run(SET_STATE_COLOR, [userId, state, color]))
+                )[0]
+            );
+            if (!parsed.success) throw new DatabaseError('Unexpected category result');
+            return parsed.data.found ? 'updated' : 'notFound';
         },
 
         async getSettings(userId) {

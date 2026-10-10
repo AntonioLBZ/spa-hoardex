@@ -34,8 +34,8 @@
     padding: var(--size-25);
 }
 
-.category-form__swatch--custom {
-    padding-inline: var(--size-50) var(--size-75);
+.category-form__swatch--labelled {
+    padding-inline: var(--size-25) var(--size-75);
 }
 
 .category-form__dot {
@@ -47,7 +47,7 @@
     inline-size: 1.5rem;
 }
 
-.category-form__custom-text {
+.category-form__swatch-text {
     color: var(--color-content-muted);
     font-size: 0.875rem;
 }

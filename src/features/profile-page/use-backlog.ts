@@ -5,6 +5,7 @@ import {
     DEFAULT_CATEGORIES,
     MAX_BULK_CHANGE,
     type BacklogOverride,
+    type BacklogState,
     type Categories,
     type CategoryId,
     type CustomId,
@@ -18,9 +19,11 @@ import {
     meQuery,
     myBacklogQuery,
     patchCategory,
+    patchStateColor,
     postCategory,
     putBacklogState,
     putBacklogStates,
+    restoreState,
     type BacklogData,
     type CategoryFields,
 } from '@/lib/api';
@@ -35,8 +38,11 @@ export type BacklogEditor = StateEditor;
 // The owner's own categories; each call rejects with an ApiError the caller shows
 export interface CategoryEditor {
     create(fields: CategoryFields): Promise<void>;
-    rename(id: CustomId, fields: CategoryFields): Promise<void>;
+    edit(id: CustomId, fields: CategoryFields): Promise<void>;
+    // Null: back to the built-in colour
+    recolor(state: BacklogState, color: string | null): Promise<void>;
     remove(id: CategoryId): Promise<void>;
+    restore(state: BacklogState): Promise<void>;
 }
 
 interface Backlog {
@@ -55,8 +61,10 @@ interface Change {
 
 type CategoryChange =
     | { kind: 'create'; fields: CategoryFields }
-    | { kind: 'rename'; id: CustomId; fields: CategoryFields }
-    | { kind: 'remove'; id: CategoryId };
+    | { kind: 'edit'; id: CustomId; fields: CategoryFields }
+    | { kind: 'recolor'; state: BacklogState; color: string | null }
+    | { kind: 'remove'; id: CategoryId }
+    | { kind: 'restore'; state: BacklogState };
 
 function overridesOf(access: ProfileAccess<BacklogData> | undefined): Overrides {
     return access?.kind === 'ok' ? access.data.overrides : EMPTY;
@@ -113,10 +121,14 @@ function saveCategory(change: CategoryChange): Promise<BacklogData> {
     switch (change.kind) {
         case 'create':
             return postCategory(change.fields);
-        case 'rename':
+        case 'edit':
             return patchCategory(change.id, change.fields);
+        case 'recolor':
+            return patchStateColor(change.state, change.color);
         case 'remove':
             return deleteCategory(change.id);
+        case 'restore':
+            return restoreState(change.state);
     }
 }
 
@@ -185,8 +197,10 @@ function useSteamBacklog(input: string | null, profileId: string): Backlog {
             isOwner
                 ? {
                       create: async (fields) => void (await mutateAsync({ kind: 'create', fields })),
-                      rename: async (id, fields) => void (await mutateAsync({ kind: 'rename', id, fields })),
+                      edit: async (id, fields) => void (await mutateAsync({ kind: 'edit', id, fields })),
+                      recolor: async (state, color) => void (await mutateAsync({ kind: 'recolor', state, color })),
                       remove: async (id) => void (await mutateAsync({ kind: 'remove', id })),
+                      restore: async (state) => void (await mutateAsync({ kind: 'restore', state })),
                   }
                 : null,
         [isOwner, mutateAsync]

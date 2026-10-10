@@ -5,7 +5,8 @@ import { useTranslations } from 'use-intl';
 
 import { loginHref, meQuery, postLogout, profileQuery } from '@/lib/api';
 
-// Nothing until the session is known, so a signed-in visitor never sees "Sign in" flash
+// Nothing until the session is known, so a signed-in visitor never sees "Sign in" flash; signed in, a link to
+// the visitor's own library sits in the header's middle
 export function AccountControl() {
     const t = useTranslations('account');
     const me = useQuery(meQuery());
@@ -22,7 +23,15 @@ export function AccountControl() {
             </a>
         );
     }
-    return <AccountMenu steamId={user.steamId} />;
+    return (
+        <>
+            <Link className="account-control__library" params={{ profile: user.steamId }} to="/p/$profile">
+                <LibraryIcon />
+                {t('myProfile')}
+            </Link>
+            <AccountMenu steamId={user.steamId} />
+        </>
+    );
 }
 
 function AccountMenu({ steamId }: { steamId: string }) {
@@ -88,16 +97,6 @@ function AccountMenu({ steamId }: { steamId: string }) {
                 <p className="account-control__name">{owner?.displayName ?? t('signedIn')}</p>
                 <ul className="account-control__items">
                     <li>
-                        <Link
-                            className="account-control__item"
-                            onClick={close}
-                            params={{ profile: steamId }}
-                            to="/p/$profile"
-                        >
-                            {t('myProfile')}
-                        </Link>
-                    </li>
-                    <li>
                         <Link className="account-control__item" onClick={close} to="/account">
                             {t('account')}
                         </Link>
@@ -119,6 +118,17 @@ function AccountMenu({ steamId }: { steamId: string }) {
                 </ul>
             </div>
         </div>
+    );
+}
+
+function LibraryIcon() {
+    return (
+        <svg aria-hidden="true" className="account-control__icon" viewBox="0 0 24 24">
+            <rect height="7" rx="1.5" width="7" x="3.5" y="3.5" />
+            <rect height="7" rx="1.5" width="7" x="13.5" y="3.5" />
+            <rect height="7" rx="1.5" width="7" x="3.5" y="13.5" />
+            <rect height="7" rx="1.5" width="7" x="13.5" y="13.5" />
+        </svg>
     );
 }
 

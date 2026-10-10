@@ -36,6 +36,8 @@ const bulkBodySchema = z.object({
     state: storedStateSchema.nullable(),
 });
 const categoryBodySchema = z.object({ name: categoryNameSchema, color: categoryColorSchema });
+// A built-in state keeps its translated name; null gives it back its own colour
+const stateColorBodySchema = z.strictObject({ color: categoryColorSchema.nullable() });
 
 interface Change {
     appids: readonly string[];
@@ -141,14 +143,30 @@ export function createBacklogRoutes({ getData, getAuth, getAccounts }: BacklogRo
         })
     );
 
-    // Only an owner's own categories; built-in ones keep their translated names
+    // Name and colour of an owner's own category; only the colour of a built-in one
     routes.patch('/me/categories/:id', (c) =>
         withCategory(c, async ({ accounts, account, identity }) => {
-            const id = customIdSchema.safeParse(c.req.param('id'));
-            if (!id.success) return failure(c, 'unknownCategory', 404);
-            const body = categoryBodySchema.safeParse(await c.req.json().catch(() => null));
+            const id = c.req.param('id');
+            const json: unknown = await c.req.json().catch(() => null);
+            if (isBuiltInState(id)) {
+                const body = stateColorBodySchema.safeParse(json);
+                if (!body.success) return failure(c, 'invalidInput', 400);
+                return outcome(c, await accounts.backlog.recolorState(account, identity, id, body.data.color));
+            }
+            const custom = customIdSchema.safeParse(id);
+            if (!custom.success) return failure(c, 'unknownCategory', 404);
+            const body = categoryBodySchema.safeParse(json);
             if (!body.success) return failure(c, 'invalidInput', 400);
-            return outcome(c, await accounts.backlog.updateCategory(account, identity, id.data, body.data));
+            return outcome(c, await accounts.backlog.updateCategory(account, identity, custom.data, body.data));
+        })
+    );
+
+    // A removed built-in state, back while there is room
+    routes.post('/me/categories/:id/restore', (c) =>
+        withCategory(c, async ({ accounts, account, identity }) => {
+            const id = c.req.param('id');
+            if (!isBuiltInState(id)) return failure(c, 'unknownCategory', 404);
+            return outcome(c, await accounts.backlog.restoreState(account, identity, id));
         })
     );
 

@@ -6,7 +6,9 @@ import {
     FALLBACK_STATE,
     MAX_CATEGORIES,
     canCreateCategory,
+    isBuiltInState,
     isCustomId,
+    type BacklogState,
     type Categories,
     type CategoryCounts,
 } from '@core/backlog';
@@ -15,12 +17,13 @@ import { Button } from '@/components/button';
 import { useBacklog, type CategoryEditor } from '@/features/profile-page/use-backlog';
 import { libraryQuery, myBacklogQuery } from '@/lib/api';
 import { CategoryProvider, useCategoryCatalog, type CategoryView } from '@/lib/categories';
+import { STATE_COLOR } from '@/lib/state-colors';
 import { useCategoryError } from './category-error';
-import { CategoryForm } from './category-form';
+import { CategoryForm, StateColorForm } from './category-form';
 
 import './categories-section.scss';
 
-// The owner's categories: create, rename and delete; a category goes only while no game is in it
+// The owner's categories: create, edit, delete and restore; a category goes only while no game is in it
 export function CategoriesSection({ steamId }: { steamId: string }) {
     const t = useTranslations('accountPage.categories');
     const headingId = useId();
@@ -92,6 +95,9 @@ function CategoryList({ categories, counts, libraryPending, editor }: CategoryLi
             ) : adding ? (
                 <div className="categories-section__new">
                     <h3 className="categories-section__subheading">{t('new')}</h3>
+                    {categories.removed.length === 0 ? null : (
+                        <RestoreChoices editor={editor} onDone={() => setAdding(false)} removed={categories.removed} />
+                    )}
                     <CategoryForm
                         onCancel={() => setAdding(false)}
                         onSubmit={async (fields) => {
@@ -112,6 +118,82 @@ function CategoryList({ categories, counts, libraryPending, editor }: CategoryLi
     );
 }
 
+interface RestoreChoicesProps {
+    removed: readonly BacklogState[];
+    editor: CategoryEditor;
+    onDone: () => void;
+}
+
+// Built-in categories the owner deleted, one press away from coming back
+function RestoreChoices({ removed, editor, onDone }: RestoreChoicesProps) {
+    const t = useTranslations('accountPage.categories');
+    const describe = useCategoryError();
+    const catalog = useCategoryCatalog();
+    const labelId = useId();
+    const [pending, setPending] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    async function restore(state: BacklogState) {
+        if (pending) return;
+        setPending(true);
+        setError(null);
+        try {
+            await editor.restore(state);
+            onDone();
+        } catch (failure) {
+            setError(describe(failure));
+        } finally {
+            setPending(false);
+        }
+    }
+
+    return (
+        <div aria-labelledby={labelId} className="categories-section__restore" role="group">
+            <p className="categories-section__restore-label" id={labelId}>
+                {t('restore')}
+            </p>
+            <ul className="categories-section__chips">
+                {removed.map((state) => {
+                    const { label } = catalog.get(state);
+                    return (
+                        <li key={state}>
+                            <button
+                                aria-disabled={pending}
+                                aria-label={t('restoreLabel', { name: label })}
+                                className="categories-section__chip"
+                                onClick={() => void restore(state)}
+                                type="button"
+                            >
+                                <PlusIcon />
+                                <span
+                                    aria-hidden="true"
+                                    className="categories-section__swatch"
+                                    style={{ backgroundColor: STATE_COLOR[state] }}
+                                />
+                                {label}
+                            </button>
+                        </li>
+                    );
+                })}
+            </ul>
+            {error === null ? null : (
+                <p className="categories-section__error" role="alert">
+                    {error}
+                </p>
+            )}
+            <p className="categories-section__or">{t('orCreate')}</p>
+        </div>
+    );
+}
+
+function PlusIcon() {
+    return (
+        <svg aria-hidden="true" className="categories-section__plus" viewBox="0 0 16 16">
+            <path d="M8 3v10M3 8h10" />
+        </svg>
+    );
+}
+
 interface CategoryRowProps {
     view: CategoryView;
     // Null while the library is not known
@@ -124,12 +206,10 @@ function CategoryRow({ view, count, libraryPending, editor }: CategoryRowProps) 
     const t = useTranslations('accountPage.categories');
     const describe = useCategoryError();
     const reasonId = useId();
-    const [mode, setMode] = useState<'idle' | 'renaming' | 'asking'>('idle');
+    const [mode, setMode] = useState<'idle' | 'editing' | 'asking'>('idle');
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const { id, label, color, custom } = view;
-    const own = custom && isCustomId(id) ? id : null;
-    const ownFields = useCategoryCatalog().categories.custom.find((category) => category.id === own);
+    const { id, label, color, custom, stored } = view;
 
     // Why it cannot go, if it cannot
     const reason =
@@ -166,14 +246,14 @@ function CategoryRow({ view, count, libraryPending, editor }: CategoryRowProps) 
                 {custom ? null : <span className="categories-section__tag">{t('builtIn')}</span>}
                 <span className="categories-section__count">{count === null ? null : t('games', { count })}</span>
                 <span className="categories-section__actions">
-                    {own === null || mode !== 'idle' ? null : (
+                    {mode !== 'idle' ? null : (
                         <Button
-                            aria-label={t('renameLabel', { name: label })}
-                            onClick={() => setMode('renaming')}
+                            aria-label={t('editLabel', { name: label })}
+                            onClick={() => setMode('editing')}
                             size="small"
                             variant="ghost"
                         >
-                            {t('rename')}
+                            {t('edit')}
                         </Button>
                     )}
                     {mode === 'idle' ? (
@@ -210,12 +290,23 @@ function CategoryRow({ view, count, libraryPending, editor }: CategoryRowProps) 
                     </Button>
                 </div>
             ) : null}
-            {mode === 'renaming' && own !== null && ownFields !== undefined ? (
+            {mode !== 'editing' ? null : isBuiltInState(id) ? (
+                <StateColorForm
+                    initial={stored}
+                    onCancel={() => setMode('idle')}
+                    onSubmit={async (next) => {
+                        await editor.recolor(id, next);
+                        setMode('idle');
+                    }}
+                    own={STATE_COLOR[id]}
+                    submitLabel={t('save')}
+                />
+            ) : isCustomId(id) && stored !== null ? (
                 <CategoryForm
-                    initial={{ name: ownFields.name, color: ownFields.color }}
+                    initial={{ name: label, color: stored }}
                     onCancel={() => setMode('idle')}
                     onSubmit={async (fields) => {
-                        await editor.rename(own, fields);
+                        await editor.edit(id, fields);
                         setMode('idle');
                     }}
                     submitLabel={t('save')}

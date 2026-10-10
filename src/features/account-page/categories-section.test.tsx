@@ -24,7 +24,7 @@ const LIBRARY: Library = {
     games: [game('1', 0), game('2', 30), game('3', 30)],
 };
 
-const backlog = (categories: Categories = { removed: [], custom: [] }) => ({
+const backlog = (categories: Categories = { removed: [], custom: [], colors: {} }) => ({
     body: { kind: 'ok', data: { overrides: {}, categories } },
 });
 
@@ -61,12 +61,12 @@ describe('categories on the account page', () => {
         const triedDelete = within(row('Tried')).getByRole('button', { name: 'Delete Tried' });
         expect(triedDelete.getAttribute('aria-disabled')).toBe('true');
         expect(within(row('Tried')).getByText('Move its 2 games to another category to delete it.')).toBeTruthy();
-        expect(within(row('Tried')).queryByRole('button', { name: /^Rename/ })).toBeNull();
+        expect(within(row('Tried')).getByRole('button', { name: 'Edit Tried' })).toBeTruthy();
     });
 
     it('deletes an empty built-in category after asking', async () => {
         const fetchMock = stubAccount({
-            '/api/me/categories/abandoned': backlog({ removed: ['abandoned'], custom: [] }),
+            '/api/me/categories/abandoned': backlog({ removed: ['abandoned'], custom: [], colors: {} }),
         });
         const { user } = renderApp('/account');
         const remove = await within(await screen.findByRole('region', { name: 'Categories' })).findByRole('button', {
@@ -74,7 +74,7 @@ describe('categories on the account page', () => {
         });
         await waitFor(() => expect(remove.getAttribute('aria-disabled')).toBe('false'));
         await user.click(remove);
-        expect(screen.getByText('Delete Abandoned? A built-in category cannot be brought back.')).toBeTruthy();
+        expect(screen.getByText('Delete Abandoned? You can bring it back from “New category”.')).toBeTruthy();
         await user.click(screen.getByRole('button', { name: 'Delete Abandoned' }));
 
         await waitFor(() => expect(within(section()).queryByText('Abandoned', { selector: 'span' })).toBeNull());
@@ -83,7 +83,9 @@ describe('categories on the account page', () => {
 
     it('creates a category with a custom colour', async () => {
         const created = { id: 'c-0a1b2c3d', name: 'Co-op', color: '#123456' } as const;
-        const fetchMock = stubAccount({ '/api/me/categories': backlog({ removed: [], custom: [created] }) });
+        const fetchMock = stubAccount({
+            '/api/me/categories': backlog({ removed: [], custom: [created], colors: {} }),
+        });
         const { user } = renderApp('/account');
 
         await user.click(await screen.findByRole('button', { name: 'New category' }));
@@ -97,7 +99,7 @@ describe('categories on the account page', () => {
             body: JSON.stringify({ name: 'Co-op', color: '#123456' }),
         });
         expect(await within(section()).findByText('Co-op', { selector: 'span' })).toBeTruthy();
-        expect(within(row('Co-op')).getByRole('button', { name: 'Rename Co-op' })).toBeTruthy();
+        expect(within(row('Co-op')).getByRole('button', { name: 'Edit Co-op' })).toBeTruthy();
         expect(screen.queryByRole('button', { name: 'Create category' })).toBeNull();
     });
 
@@ -123,18 +125,21 @@ describe('categories on the account page', () => {
         expect(fetchMock.mock.calls.some(([path]) => path === '/api/me/categories')).toBe(false);
     });
 
-    it('renames a category of its own', async () => {
+    it('edits the name and colour of a category of its own', async () => {
         const own = { id: 'c-0a1b2c3d', name: 'Co-op', color: 'p2' } as const;
         const fetchMock = stubAccount({
-            '/api/me/backlog': backlog({ removed: [], custom: [own] }),
+            '/api/me/backlog': backlog({ removed: [], custom: [own], colors: {} }),
             '/api/me/categories/c-0a1b2c3d': backlog({
                 removed: [],
                 custom: [{ ...own, name: 'Friends', color: 'p3' }],
+                colors: {},
             }),
         });
         const { user } = renderApp('/account');
 
-        await user.click(await screen.findByRole('button', { name: 'Rename Co-op' }));
+        await user.click(await screen.findByRole('button', { name: 'Edit Co-op' }));
+        expect(screen.getByRole('radio', { name: 'Colour 2' })).toHaveProperty('checked', true);
+        expect(screen.queryByRole('radio', { name: 'Default' })).toBeNull();
         const name = screen.getByRole('textbox', { name: 'Name' });
         await user.clear(name);
         await user.type(name, 'Friends');
@@ -168,12 +173,67 @@ describe('categories on the account page', () => {
             name: `Shelf ${index}`,
             color: 'p1',
         }));
-        stubAccount({ '/api/me/backlog': backlog({ removed: [], custom }) });
+        stubAccount({ '/api/me/backlog': backlog({ removed: [], custom, colors: {} }) });
         renderApp('/account');
 
         expect(
             await screen.findByText('You have the maximum of 12 categories. Delete one to make another.')
         ).toBeTruthy();
         expect(screen.queryByRole('button', { name: 'New category' })).toBeNull();
+    });
+
+    it('changes only the colour of a built-in category, and can give it its own back', async () => {
+        const fetchMock = stubAccount({
+            '/api/me/backlog': backlog({ removed: [], custom: [], colors: { paused: 'p4' } }),
+            '/api/me/categories/paused': backlog(),
+        });
+        const { user } = renderApp('/account');
+
+        await user.click(await screen.findByRole('button', { name: 'Edit Paused' }));
+        expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull();
+        expect(screen.getByRole('radio', { name: 'Colour 4' })).toHaveProperty('checked', true);
+        await user.click(screen.getByRole('radio', { name: 'Default' }));
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        expect(fetchMock).toHaveBeenCalledWith('/api/me/categories/paused', {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ color: null }),
+        });
+        await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull());
+    });
+
+    it('offers the deleted built-in categories back when making a new one', async () => {
+        const fetchMock = stubAccount({
+            '/api/me/backlog': backlog({ removed: ['paused', 'abandoned'], custom: [], colors: {} }),
+            '/api/me/categories/abandoned/restore': backlog({ removed: ['paused'], custom: [], colors: {} }),
+        });
+        const { user } = renderApp('/account');
+
+        await user.click(await screen.findByRole('button', { name: 'New category' }));
+        const choices = screen.getByRole('group', { name: 'Bring back a built-in one:' });
+        expect(
+            within(choices)
+                .getAllByRole('button')
+                .map((button) => button.getAttribute('aria-label'))
+        ).toEqual(['Bring back Paused', 'Bring back Abandoned']);
+        await user.click(within(choices).getByRole('button', { name: 'Bring back Abandoned' }));
+
+        expect(fetchMock).toHaveBeenCalledWith('/api/me/categories/abandoned/restore', { method: 'POST' });
+        expect(await within(section()).findByText('Abandoned', { selector: 'span' })).toBeTruthy();
+        expect(screen.queryByRole('group', { name: 'Bring back a built-in one:' })).toBeNull();
+    });
+
+    it('says why a built-in category could not come back', async () => {
+        stubAccount({
+            '/api/me/backlog': backlog({ removed: ['paused'], custom: [], colors: {} }),
+            '/api/me/categories/paused/restore': { status: 409, body: { error: 'categoryLimit' } },
+        });
+        const { user } = renderApp('/account');
+
+        await user.click(await screen.findByRole('button', { name: 'New category' }));
+        await user.click(screen.getByRole('button', { name: 'Bring back Paused' }));
+
+        expect((await screen.findByRole('alert')).textContent).toBe('You already have the maximum of 12 categories.');
     });
 });
