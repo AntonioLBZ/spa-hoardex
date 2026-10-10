@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 
 import type { LibrarySummary } from '@core/stats';
+import { Card } from '@/components/card';
 import { CountUp } from '@/components/count-up';
 import { riseStyle, stepDelay } from '@/lib/motion';
 import { hoursDigits, useHours } from '@/lib/use-hours';
@@ -56,7 +57,7 @@ export function KpiGrid({ summary }: { summary: LibrarySummary }) {
     return (
         <dl className="kpi-grid">
             {items.map((item, index) => (
-                <div
+                <Card
                     className="kpi-grid__item rise-in"
                     key={item.key}
                     style={{ ...riseStyle(index), '--tint': item.tint } as CSSProperties}
@@ -66,7 +67,7 @@ export function KpiGrid({ summary }: { summary: LibrarySummary }) {
                         <CountUp delay={stepDelay(index)} format={item.text} value={item.value} />
                     </dd>
                     {item.detail === null ? null : <dd className="kpi-grid__detail">{item.detail}</dd>}
-                </div>
+                </Card>
             ))}
         </dl>
     );

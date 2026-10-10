@@ -4,25 +4,26 @@ A dashboard for your Steam library: hours played, backlog state and most played 
 
 **Live:** <https://hoardex.vercel.app>, or [explore a fictional library](https://hoardex.vercel.app/demo) without entering anything.
 
-Hoardex is a personal portfolio project and it is still in progress (phase 1): achievements and the wishlist are not built yet.
+Hoardex is a personal portfolio project and it is still in progress: achievements and the wishlist are not built yet.
 
 ## Features
 
 - Enter a Steam profile as a URL, a custom name or a SteamID64 (SteamID2 and SteamID3 work too).
 - A dashboard with the number of games and hours, the backlog by state (untouched, tried, in progress, paused, finished), the most played games and the hours by year of last play.
-- A library view: a cover grid with state filters, search and sorting, all kept in the URL.
+- A library view: a cover grid with state filters, search and sorting, all kept in the URL, and a board with one column per state.
+- Optional sign-in with Steam: set a game's state by hand (drag it on the board or pick it from its card), and turn on a daily playtime history from your account page.
 - A manual refresh with a cooldown, so one profile cannot drain the Steam API.
 - A demo library with fictional data that needs no Steam key.
 - English and Spanish, light and dark.
-- No accounts, no cookies and short-lived caches: see the [privacy policy](https://hoardex.vercel.app/privacy).
+- Short-lived caches, and cookies only if you sign in: see the [privacy policy](https://hoardex.vercel.app/privacy).
 
 ## Stack
 
-Vite 8, React 19 and TypeScript; TanStack Router and Query; Recharts, Motion and GSAP; SCSS. A Hono API served as one Vercel Function, with Upstash Redis as the cache. Vitest and Testing Library. pnpm. Hosted on Vercel Hobby.
+Vite 8, React 19 and TypeScript; TanStack Router and Query; Recharts, Motion and GSAP; SCSS. A Hono API served as one Vercel Function, with Upstash Redis as the cache and Neon Postgres for accounts. Vitest and Testing Library. pnpm. Hosted on Vercel Hobby.
 
 ## How it works
 
-The browser talks to `/api` on the same origin. The server asks Steam's Web API through an adapter, so Steam's types never reach the front. Redis is the source of truth for the cache; the CDN is only an optimization. The design, the Steam API behaviour and the decisions behind them are in [`ARCHITECTURE.md`](ARCHITECTURE.md) (in Spanish).
+The browser talks to `/api` on the same origin. The server asks Steam's Web API through an adapter, so Steam's types never reach the front. Redis is the source of truth for the cache; the CDN is only an optimization. Signing in gives Hoardex only your SteamID (Steam OpenID): it never makes a private library visible. The design, the Steam API behaviour and the decisions behind them are in [`ARCHITECTURE.md`](ARCHITECTURE.md) (in Spanish).
 
 ## Run it locally
 
@@ -40,6 +41,9 @@ pnpm dev                     # the app on :5173, with /api sent to :3000
 | `STEAM_API_KEY`                                           | Required for real profiles. Get one at <https://steamcommunity.com/dev/apikey>. The demo does not need it.           |
 | `UPSTASH_KV_REST_API_URL`, `UPSTASH_KV_REST_API_TOKEN`    | Upstash Redis REST credentials. Required in production; locally the cache falls back to memory.                      |
 | `STEAM_DAILY_BUDGET`                                      | Optional. Daily cap on Steam requests (a positive integer, 80000 by default); past it only cached data is served.   |
+| `DATABASE_URL`                                            | Neon Postgres connection string, for sign-in and manual states. Apply the schema with `node --env-file=.env.local scripts/migrate.ts`.             |
+| `SESSION_SECRET`                                          | Signs the sign-in cookie; at least 32 characters. Required for sign-in.                                              |
+| `CRON_SECRET`                                             | Protects the daily playtime-history job; at least 32 characters.                                                     |
 
 ```bash
 pnpm test           # unit and component tests

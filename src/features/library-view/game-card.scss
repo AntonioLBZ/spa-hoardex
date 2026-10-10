@@ -5,7 +5,7 @@
 
 /* The cover is the card: no transform anywhere, the hover only fades a ring in */
 .game-card__frame {
-    border-radius: 0.75rem;
+    border-radius: var(--size-border-radius-large);
     isolation: isolate;
     overflow: hidden;
     position: relative;

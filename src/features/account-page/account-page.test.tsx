@@ -29,7 +29,7 @@ describe('account page', () => {
         });
         const { user } = renderApp('/account');
 
-        const toggle = await screen.findByRole('checkbox', { name: 'Save my playtime every day' });
+        const toggle = await screen.findByRole('switch', { name: 'Save my playtime every day' });
         expect(toggle).toHaveProperty('checked', false);
         expect(screen.getByText('Off. Turning it off deletes the saved history.')).toBeTruthy();
 

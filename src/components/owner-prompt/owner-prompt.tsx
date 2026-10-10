@@ -3,6 +3,7 @@ import { useRouterState } from '@tanstack/react-router';
 import { useId, useState } from 'react';
 import { useTranslations } from 'use-intl';
 
+import { IconButton } from '@/components/button';
 import { loginHref, meQuery } from '@/lib/api';
 
 import './owner-prompt.scss';
@@ -74,19 +75,18 @@ export function OwnerBubble() {
     return (
         <aside aria-labelledby={titleId} className="owner-prompt owner-prompt--bubble">
             <Content returnTo={here} titleId={titleId} />
-            <button
-                aria-label={t('dismiss')}
+            <IconButton
                 className="owner-prompt__close"
+                label={t('dismiss')}
                 onClick={() => {
                     storeDismissed();
                     setDismissed(true);
                 }}
-                type="button"
             >
-                <svg aria-hidden="true" className="owner-prompt__close-icon" viewBox="0 0 24 24">
+                <svg aria-hidden="true" viewBox="0 0 24 24">
                     <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
-            </button>
+            </IconButton>
         </aside>
     );
 }

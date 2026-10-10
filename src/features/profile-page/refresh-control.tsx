@@ -84,7 +84,7 @@ export function RefreshControl({ input, library }: RefreshControlProps) {
             <Button
                 aria-describedby={coolingDown ? metaId : undefined}
                 aria-disabled={blocked}
-                className="button--secondary"
+                variant="secondary"
                 onClick={() => {
                     if (!blocked) refresh.mutate();
                 }}

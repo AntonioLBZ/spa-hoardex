@@ -41,7 +41,7 @@
 
 .account-control__sign-in {
     align-items: center;
-    border-radius: 999px;
+    border-radius: var(--size-border-radius-pill);
     color: var(--color-content-muted);
     display: inline-flex;
     font-size: 0.9375rem;
@@ -85,7 +85,7 @@
 .account-control__menu {
     background-color: var(--color-bg-raised);
     border: 1px solid var(--color-border);
-    border-radius: calc(var(--size-border-radius) * 1.5);
+    border-radius: var(--size-border-radius-large);
     box-shadow: 0 16px 40px -12px rgb(0 0 0 / 35%);
     inset: calc(100% + var(--size-50)) 0 auto auto;
     min-inline-size: 13rem;

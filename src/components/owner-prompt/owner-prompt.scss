@@ -44,33 +44,8 @@
 }
 
 .owner-prompt__close {
-    align-items: center;
-    background: none;
-    block-size: 2rem;
-    border: none;
-    border-radius: 50%;
-    color: var(--color-content-muted);
-    cursor: pointer;
-    display: inline-flex;
-    inline-size: 2rem;
     inset: var(--size-50) var(--size-50) auto auto;
-    justify-content: center;
-    padding: 0;
     position: absolute;
-}
-
-.owner-prompt__close:hover {
-    background-color: color-mix(in srgb, var(--color-content) 8%, transparent);
-    color: var(--color-content);
-}
-
-.owner-prompt__close-icon {
-    block-size: 1rem;
-    fill: none;
-    inline-size: 1rem;
-    stroke: currentcolor;
-    stroke-linecap: round;
-    stroke-width: 2;
 }
 
 @media (prefers-reduced-motion: no-preference) {

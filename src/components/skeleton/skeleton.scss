@@ -122,7 +122,7 @@
     background-color: color-mix(in srgb, var(--color-content) 6%, var(--color-bg-raised));
     block-size: calc(var(--bar) * 1%);
     border: 1px solid var(--color-border);
-    border-radius: 0.25rem 0.25rem 0 0;
+    border-radius: var(--size-border-radius-small) var(--size-border-radius-small) 0 0;
 }
 
 .chart-skeleton__ring {

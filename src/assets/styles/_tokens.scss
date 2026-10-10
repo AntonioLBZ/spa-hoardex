@@ -8,8 +8,13 @@
     --size-200: 2rem;
     --size-300: 3rem;
     --size-400: 4rem;
+
+    /* Radii: small for bars and marks, default for controls, large for cards, panels and menus */
+    --size-border-radius-small: 0.25rem;
     --size-border-radius: 0.5rem;
     --size-border-radius-large: 0.75rem;
+    --size-border-radius-xlarge: 1rem;
+    --size-border-radius-pill: 999px;
     --size-content-width: 40rem;
     --size-page-width: 80rem;
 

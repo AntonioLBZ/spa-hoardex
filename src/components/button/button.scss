@@ -1,30 +1,104 @@
 .button {
+    --button-bg: var(--color-accent);
+    --button-border: transparent;
+    --button-content: var(--color-content-on-accent);
+
     align-items: center;
-    background-color: var(--color-accent);
-    border: none;
+    background-color: var(--button-bg);
+    border: 1px solid var(--button-border);
     border-radius: var(--size-border-radius);
-    color: var(--color-content-on-accent);
+    color: var(--button-content);
     cursor: pointer;
     display: inline-flex;
     font: inherit;
     font-weight: 600;
+    gap: var(--size-50);
     justify-content: center;
-    min-height: 2.75rem;
+    min-block-size: 2.75rem;
     padding-inline: var(--size-100);
     text-decoration: none;
 }
 
+.button--primary:not([aria-disabled='true']):hover {
+    --button-bg: color-mix(in srgb, var(--color-accent) 88%, var(--color-content));
+}
+
 .button--secondary {
-    background-color: transparent;
-    border: 1px solid var(--color-border);
-    color: var(--color-content);
+    --button-bg: transparent;
+    --button-border: var(--color-border);
+    --button-content: var(--color-content);
+}
+
+.button--secondary:not([aria-disabled='true']):hover {
+    --button-bg: color-mix(in srgb, var(--color-content) 6%, transparent);
+    --button-border: var(--color-content-muted);
+}
+
+.button--ghost {
+    --button-bg: transparent;
+    --button-content: var(--color-content);
+}
+
+.button--ghost:not([aria-disabled='true']):hover {
+    --button-bg: color-mix(in srgb, var(--color-content) 8%, transparent);
+}
+
+.button--danger {
+    --button-bg: var(--color-danger);
+}
+
+.button--danger:not([aria-disabled='true']):hover {
+    --button-bg: color-mix(in srgb, var(--color-danger) 88%, var(--color-content));
+}
+
+.button--small {
+    font-size: 0.875rem;
+    min-block-size: 2.25rem;
+    padding-inline: var(--size-75);
+}
+
+.button:focus-visible,
+.icon-button:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
 }
 
 .button[aria-disabled='true'] {
-    background-color: var(--color-border);
-    border-color: transparent;
-    color: var(--color-content-muted);
+    --button-bg: var(--color-border);
+    --button-border: transparent;
+    --button-content: var(--color-content-muted);
+
     cursor: not-allowed;
+}
+
+/* Round and quiet: closing, dismissing, small toolbar actions */
+.icon-button {
+    align-items: center;
+    background: none;
+    block-size: 2rem;
+    border: none;
+    border-radius: 50%;
+    color: var(--color-content-muted);
+    cursor: pointer;
+    display: inline-flex;
+    flex: none;
+    inline-size: 2rem;
+    justify-content: center;
+    padding: 0;
+}
+
+.icon-button:hover {
+    background-color: color-mix(in srgb, var(--color-content) 8%, transparent);
+    color: var(--color-content);
+}
+
+.icon-button svg {
+    block-size: 1rem;
+    fill: none;
+    inline-size: 1rem;
+    stroke: currentcolor;
+    stroke-linecap: round;
+    stroke-width: 2;
 }
 
 @media (forced-colors: active) {
@@ -35,11 +109,13 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-    .button {
+    .button,
+    .icon-button {
         transition: transform var(--motion-quick) var(--ease-standard);
     }
 
-    .button:not([aria-disabled='true']):active {
-        transform: scale(0.98);
+    .button:not([aria-disabled='true']):active,
+    .icon-button:active {
+        transform: scale(0.97);
     }
 }

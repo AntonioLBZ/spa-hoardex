@@ -130,7 +130,7 @@ function BoardColumn({ state, entries, onChange, dragged, onDragStart, onDragEnd
                 </ul>
             )}
             {entries.length > shown ? (
-                <Button className="button--secondary" onClick={() => setShown((count) => count + COLUMN_MORE)}>
+                <Button variant="secondary" onClick={() => setShown((count) => count + COLUMN_MORE)}>
                     {t('showMore', { next: Math.min(COLUMN_MORE, entries.length - shown) })}
                 </Button>
             ) : null}

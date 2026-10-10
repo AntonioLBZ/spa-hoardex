@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { Suspense, lazy, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 
+import { buttonClass } from '@/components/button';
 import { EntryForm } from '@/features/entry-form';
 import { riseStyle } from '@/lib/motion';
 import { STATE_COLOR } from '@/lib/state-colors';
@@ -51,7 +52,7 @@ export function Home({ loginFailed }: { loginFailed: boolean }) {
                         <OwnerPrompt returnTo="/" />
                     </Suspense>
                     <p className="home__demo rise-in" style={riseStyle(4)}>
-                        <Link className="button button--secondary" to="/demo">
+                        <Link className={buttonClass({ variant: 'secondary' })} to="/demo">
                             {t('demo')}
                         </Link>
                         <span className="home__demo-note">{t('demoNote')}</span>

@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 
 import { SNAPSHOT_ACTIVE_DAYS } from '@core/accounts/snapshots';
 import { Button, ButtonLink } from '@/components/button';
 import { PageTitle } from '@/components/page-title';
 import { StateMessage } from '@/components/state-message';
+import { Switch } from '@/components/switch';
 import {
     accountQuery,
     deleteAccount,
@@ -81,7 +82,6 @@ function SnapshotsToggle({ settings }: { settings: AccountSettings }) {
     const t = useTranslations('accountPage.snapshots');
     const format = useFormatter();
     const queryClient = useQueryClient();
-    const id = useId();
     const on = settings.snapshotsSince !== null;
     const change = useMutation({
         mutationFn: putSnapshots,
@@ -89,27 +89,23 @@ function SnapshotsToggle({ settings }: { settings: AccountSettings }) {
     });
 
     return (
-        <div className="account-page__toggle">
-            <input
-                aria-describedby={`${id}-status`}
+        <>
+            <Switch
+                busy={change.isPending}
                 checked={on}
-                className="account-page__checkbox"
-                disabled={change.isPending}
-                id={id}
-                onChange={(event) => change.mutate(event.target.checked)}
-                type="checkbox"
+                description={
+                    on
+                        ? t('on', {
+                              since: format.dateTime(new Date(settings.snapshotsSince ?? 0), { dateStyle: 'long' }),
+                              days: settings.snapshotDays,
+                          })
+                        : t('off')
+                }
+                label={t('label')}
+                onChange={(checked) => change.mutate(checked)}
             />
-            <label htmlFor={id}>{t('label')}</label>
-            <p className="account-page__status" id={`${id}-status`} role="status">
-                {on
-                    ? t('on', {
-                          since: format.dateTime(new Date(settings.snapshotsSince ?? 0), { dateStyle: 'long' }),
-                          days: settings.snapshotDays,
-                      })
-                    : t('off')}
-            </p>
             {change.isError ? <p role="alert">{t('failed')}</p> : null}
-        </div>
+        </>
     );
 }
 
@@ -124,7 +120,7 @@ function SessionsSection({ onDone }: { onDone: () => Promise<void> }) {
             <p>
                 <Button
                     aria-disabled={end.isPending}
-                    className="button--secondary"
+                    variant="secondary"
                     onClick={() => {
                         if (!end.isPending) end.mutate();
                     }}
@@ -152,20 +148,20 @@ function DeleteSection({ onDone }: { onDone: () => Promise<void> }) {
                     <p className="account-page__warning">{t('confirm')}</p>
                     <Button
                         aria-disabled={remove.isPending}
-                        className="account-page__danger"
+                        variant="danger"
                         onClick={() => {
                             if (!remove.isPending) remove.mutate();
                         }}
                     >
                         {t('confirmAction')}
                     </Button>
-                    <Button className="button--secondary" onClick={() => setAsking(false)}>
+                    <Button variant="secondary" onClick={() => setAsking(false)}>
                         {t('cancel')}
                     </Button>
                 </div>
             ) : (
                 <p>
-                    <Button className="button--secondary" onClick={() => setAsking(true)}>
+                    <Button variant="secondary" onClick={() => setAsking(true)}>
                         {t('action')}
                     </Button>
                 </p>

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { Card } from '@/components/card';
+
 import './state-message.scss';
 
 interface StateMessageProps {
@@ -12,10 +14,10 @@ interface StateMessageProps {
 
 export function StateMessage({ title, body, role = 'status', children }: StateMessageProps) {
     return (
-        <section className="state-message rise-in" role={role}>
+        <Card as="section" className="state-message rise-in" role={role}>
             <h2 className="state-message__title">{title}</h2>
             {body === undefined ? null : <p className="state-message__body">{body}</p>}
             {children === undefined ? null : <div className="state-message__actions">{children}</div>}
-        </section>
+        </Card>
     );
 }

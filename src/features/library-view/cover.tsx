@@ -1,3 +1,4 @@
+import { clsx } from 'clsx';
 import { useState, type CSSProperties } from 'react';
 
 import type { EntityId } from '@core/domain';
@@ -35,7 +36,7 @@ export function Cover({ id, name, withImages }: CoverProps) {
     const [failed, setFailed] = useState(0);
     const url = withImages ? coverUrls(id)[failed] : undefined;
     // Landscape fallback: shown whole, not cropped
-    const className = failed > 0 && url !== undefined ? 'cover cover--landscape' : 'cover';
+    const className = clsx('cover', failed > 0 && url !== undefined && 'cover--landscape');
 
     return (
         <div className={className} style={{ '--hue': hueOf(id.externalId) } as CSSProperties}>

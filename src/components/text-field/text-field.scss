@@ -1,0 +1,108 @@
+.text-field {
+    container-type: inline-size;
+    display: grid;
+    gap: var(--size-50);
+    min-inline-size: 0;
+}
+
+.text-field__label {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+/* Icon, text and an optional control share one bordered frame */
+.text-field__frame {
+    align-items: center;
+    background-color: var(--color-bg-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-border-radius-large);
+    display: flex;
+    gap: var(--size-50);
+    min-inline-size: 0;
+    padding-inline: var(--size-75);
+}
+
+.text-field--raised .text-field__frame {
+    box-shadow: 0 8px 24px -12px rgb(0 0 0 / 25%);
+}
+
+/* The control sits flush inside the frame */
+.text-field__frame--with-end {
+    flex-wrap: wrap;
+    padding: 0.3125rem 0.3125rem 0.3125rem var(--size-75);
+}
+
+.text-field__frame:hover {
+    border-color: var(--color-content-muted);
+}
+
+.text-field__frame:has(.text-field__input:focus-visible) {
+    border-color: var(--color-accent);
+    outline: 2px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+.text-field__frame:has(.text-field__input[aria-invalid='true']) {
+    border-color: var(--color-danger);
+}
+
+.text-field__icon {
+    color: var(--color-content-muted);
+    display: inline-flex;
+    flex: none;
+}
+
+/* No specificity: an icon with its own size keeps it */
+:where(.text-field__icon svg) {
+    block-size: 1.25rem;
+    inline-size: 1.25rem;
+}
+
+.text-field__input {
+    background-color: transparent;
+    border: none;
+    color: var(--color-content);
+    flex: 1 1 0;
+    font: inherit;
+    min-block-size: calc(2.75rem - 2px);
+    min-inline-size: 0;
+    padding: 0;
+}
+
+.text-field__input:focus-visible {
+    outline: none;
+}
+
+.text-field__input::placeholder {
+    color: var(--color-content-muted);
+    opacity: 1;
+}
+
+.text-field__end {
+    display: flex;
+    flex: none;
+}
+
+.text-field__message {
+    color: var(--color-content-muted);
+    font-size: 0.875rem;
+}
+
+.text-field__message--error {
+    color: var(--color-danger);
+}
+
+@container (width < 24rem) {
+    .text-field__end {
+        flex: 1 1 100%;
+    }
+
+    .text-field__end > * {
+        flex: 1 1 auto;
+    }
+}
+
+@media (forced-colors: active) {
+    .text-field__frame:has(.text-field__input:focus-visible) {
+        outline-color: Highlight;
+    }
+}

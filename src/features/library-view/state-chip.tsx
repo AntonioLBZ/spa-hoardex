@@ -1,3 +1,4 @@
+import { clsx } from 'clsx';
 import {
     useCallback,
     useEffect,
@@ -213,7 +214,7 @@ function StateMenu({ entry: { game, computed, manual }, onChange, className, lab
             {open ? (
                 <div
                     aria-label={t('stateOf', { name: game.name })}
-                    className={POPOVER ? 'state-chip__menu' : 'state-chip__menu state-chip__menu--inline'}
+                    className={clsx('state-chip__menu', !POPOVER && 'state-chip__menu--inline')}
                     id={menuId}
                     onBlur={(event) => {
                         const next = event.relatedTarget as Node | null;

@@ -1,3 +1,5 @@
+import { clsx } from 'clsx';
+
 import './toolbar-icon.scss';
 
 const PATHS = {
@@ -15,9 +17,8 @@ interface ToolbarIconProps {
 }
 
 export function ToolbarIcon({ name, className }: ToolbarIconProps) {
-    const classes = className === undefined ? 'toolbar-icon' : `toolbar-icon ${className}`;
     return (
-        <svg aria-hidden="true" className={classes} viewBox="0 0 24 24">
+        <svg aria-hidden="true" className={clsx('toolbar-icon', className)} viewBox="0 0 24 24">
             <path d={PATHS[name]} />
         </svg>
     );

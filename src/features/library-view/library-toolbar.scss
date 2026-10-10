@@ -1,6 +1,4 @@
 .library-toolbar {
-    --toolbar-height: 2.75rem;
-
     align-items: center;
     display: flex;
     flex-wrap: wrap;
@@ -11,86 +9,7 @@
 }
 
 .library-toolbar__search {
-    align-items: center;
-    display: flex;
     flex: 1 1 16rem;
-    position: relative;
-}
-
-.library-toolbar__search-icon {
-    color: var(--color-content-muted);
-    inset-inline-start: var(--size-75);
-    pointer-events: none;
-    position: absolute;
-}
-
-.library-toolbar__input {
-    background-color: var(--color-bg-raised);
-    border: 1px solid var(--color-border);
-    border-radius: var(--size-border-radius-large);
-    color: var(--color-content);
-    font: inherit;
-    inline-size: 100%;
-    min-block-size: var(--toolbar-height);
-    padding-inline: 2.5rem var(--size-75);
-}
-
-.library-toolbar__input::placeholder {
-    color: var(--color-content-muted);
-    opacity: 1;
-}
-
-.library-toolbar__input:hover {
-    border-color: var(--color-content-muted);
-}
-
-.library-toolbar__input:focus-visible {
-    border-color: var(--color-accent);
-    outline: 2px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
-    outline-offset: 0;
-}
-
-/* A bordered track holding segments: the sort control and the view switch */
-.library-toolbar__group {
-    align-items: center;
-    background-color: var(--color-bg-raised);
-    border: 1px solid var(--color-border);
-    border-radius: var(--size-border-radius-large);
-    display: flex;
-    gap: 0.125rem;
-    margin: 0;
-    min-block-size: var(--toolbar-height);
-    min-inline-size: 0;
-    padding: 0.1875rem;
-}
-
-.library-toolbar__segment {
-    align-items: center;
-    background: none;
-    border: none;
-    border-radius: calc(var(--size-border-radius-large) - 0.1875rem);
-    color: var(--color-content-muted);
-    cursor: pointer;
-    display: inline-flex;
-    font: inherit;
-    font-size: 0.875rem;
-    font-weight: 500;
-    gap: var(--size-50);
-    justify-content: center;
-    min-block-size: calc(var(--toolbar-height) - 0.5rem);
-    min-inline-size: calc(var(--toolbar-height) - 0.5rem);
-    padding-inline: var(--size-75);
-}
-
-.library-toolbar__segment:hover {
-    background-color: color-mix(in srgb, var(--color-content) 6%, transparent);
-    color: var(--color-content);
-}
-
-.library-toolbar__segment:focus-visible,
-.library-toolbar__view-input:focus-visible + .library-toolbar__segment {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
 }
 
 .library-toolbar__sort-label {
@@ -110,13 +29,13 @@
     appearance: none;
     background: none;
     border: none;
-    border-radius: calc(var(--size-border-radius-large) - 0.1875rem);
+    border-radius: calc(var(--size-border-radius-large) - var(--segmented-inset));
     color: var(--color-content);
     cursor: pointer;
     font: inherit;
     font-size: 0.875rem;
     font-weight: 600;
-    min-block-size: calc(var(--toolbar-height) - 0.5rem);
+    min-block-size: calc(var(--segmented-height) - 0.5rem);
     padding-inline: var(--size-50) 1.75rem;
 }
 
@@ -152,19 +71,6 @@
     color: var(--color-accent);
 }
 
-.library-toolbar__view {
-    display: inline-flex;
-    position: relative;
-}
-
-.library-toolbar__view-input:checked + .library-toolbar__segment {
-    background-color: var(--color-bg);
-    box-shadow:
-        0 0 0 1px var(--color-border),
-        0 1px 2px rgb(0 0 0 / 12%);
-    color: var(--color-content);
-}
-
 .library-toolbar__filters {
     border: none;
     display: flex;
@@ -174,71 +80,6 @@
     margin: 0;
     min-inline-size: 0;
     padding: 0;
-}
-
-.library-toolbar__chip {
-    display: inline-flex;
-    flex: none;
-    position: relative;
-}
-
-.library-toolbar__chip-label {
-    --chip-color: var(--color-accent);
-
-    align-items: center;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    color: var(--color-content-muted);
-    cursor: pointer;
-    display: inline-flex;
-    font-size: 0.875rem;
-    font-weight: 500;
-    gap: var(--size-50);
-    min-block-size: 2.5rem;
-    padding-inline: 0.875rem 0.5rem;
-    white-space: nowrap;
-}
-
-.library-toolbar__chip-label:hover {
-    border-color: var(--color-content-muted);
-    color: var(--color-content);
-}
-
-.library-toolbar__swatch {
-    background-color: var(--chip-color);
-    block-size: 0.5rem;
-    border-radius: 50%;
-    flex: none;
-    forced-color-adjust: none;
-    inline-size: 0.5rem;
-}
-
-.library-toolbar__chip-count {
-    background-color: color-mix(in srgb, currentcolor 10%, transparent);
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    line-height: 1.5rem;
-    min-inline-size: 1.5rem;
-    padding-inline: 0.375rem;
-    text-align: center;
-}
-
-.library-toolbar__chip-input:checked + .library-toolbar__chip-label {
-    background-color: color-mix(in srgb, var(--chip-color) 14%, var(--color-bg-raised));
-    border-color: color-mix(in srgb, var(--chip-color) 70%, transparent);
-    color: var(--color-content);
-}
-
-.library-toolbar__chip-input:checked + .library-toolbar__chip-label .library-toolbar__chip-count {
-    background-color: var(--chip-color);
-    color: var(--color-bg);
-}
-
-.library-toolbar__chip-input:focus-visible + .library-toolbar__chip-label {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
 }
 
 /* Phones: the chips scroll sideways instead of stacking three rows deep */
@@ -265,31 +106,12 @@
 
 @container (width < 26rem) {
     .library-toolbar__sort-label,
-    .library-toolbar__view-text {
+    .library-toolbar__views .segmented__text {
         block-size: 1px;
         clip-path: inset(50%);
         inline-size: 1px;
         overflow: hidden;
         position: absolute;
         white-space: nowrap;
-    }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-    .library-toolbar__segment,
-    .library-toolbar__chip-label {
-        transition: transform var(--motion-quick) var(--ease-standard);
-    }
-
-    .library-toolbar__chip-label:active,
-    .library-toolbar__segment:active {
-        transform: scale(0.97);
-    }
-}
-
-@media (forced-colors: active) {
-    .library-toolbar__view-input:checked + .library-toolbar__segment,
-    .library-toolbar__chip-input:checked + .library-toolbar__chip-label {
-        outline: 2px solid Highlight;
     }
 }

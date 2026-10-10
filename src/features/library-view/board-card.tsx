@@ -1,3 +1,4 @@
+import { clsx } from 'clsx';
 import { memo, type CSSProperties, type DragEvent } from 'react';
 
 import type { BrowseEntry } from '@core/browse';
@@ -39,7 +40,7 @@ export const BoardCard = memo(function BoardCard({
 
     return (
         <li
-            className={dragging ? 'board-card board-card--dragging' : 'board-card'}
+            className={clsx('board-card', dragging && 'board-card--dragging')}
             draggable={editable}
             style={{ '--state-color': STATE_COLOR[entry.state] } as CSSProperties}
             onDragEnd={editable ? onDragEnd : undefined}

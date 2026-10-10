@@ -1,7 +1,7 @@
 .board-card {
     background-color: var(--color-bg);
     border: 1px solid var(--color-border);
-    border-radius: 0.625rem;
+    border-radius: var(--size-border-radius);
     contain-intrinsic-size: auto 5rem;
     content-visibility: auto;
     display: grid;

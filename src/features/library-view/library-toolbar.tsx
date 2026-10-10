@@ -1,7 +1,10 @@
-import { useEffect, useId, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
+import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 
 import { NATURAL_DIRECTION, SORTS, STATE_FILTERS, type Sort, type StateFilter } from '@core/browse';
+import { RadioChip } from '@/components/radio-chip';
+import { SegmentedButton, SegmentedControl, SegmentedTrack } from '@/components/segmented-control';
+import { TextField } from '@/components/text-field';
 import { STEP, riseStyle } from '@/lib/motion';
 import { isShownState } from '@/lib/shown-states';
 import { STATE_COLOR } from '@/lib/state-colors';
@@ -25,10 +28,8 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
     const t = useTranslations('library');
     const states = useTranslations('dashboard.states');
     const format = useFormatter();
-    const searchId = useId();
     const sortId = useId();
     const groupName = useId();
-    const viewName = useId();
     const view = search.view ?? 'grid';
     const sort = search.sort ?? DEFAULT_SORT;
     const direction = directionOf(search);
@@ -71,23 +72,19 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
 
     return (
         <div className="library-toolbar rise-in" style={riseStyle(STEP.library)}>
-            <div className="library-toolbar__search">
-                <label className="visually-hidden" htmlFor={searchId}>
-                    {t('search')}
-                </label>
-                <ToolbarIcon className="library-toolbar__search-icon" name="search" />
-                <input
-                    autoComplete="off"
-                    className="library-toolbar__input"
-                    id={searchId}
-                    onChange={onTextChange}
-                    placeholder={t('search')}
-                    ref={searchRef}
-                    type="search"
-                    value={text}
-                />
-            </div>
-            <div className="library-toolbar__group library-toolbar__sort">
+            <TextField
+                autoComplete="off"
+                className="library-toolbar__search"
+                hideLabel
+                icon={<ToolbarIcon name="search" />}
+                label={t('search')}
+                onChange={onTextChange}
+                placeholder={t('search')}
+                ref={searchRef}
+                type="search"
+                value={text}
+            />
+            <SegmentedTrack className="library-toolbar__sort">
                 <label className="library-toolbar__sort-label" htmlFor={sortId}>
                     {t('sortLabel')}
                 </label>
@@ -101,66 +98,45 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
                     </select>
                     <ToolbarIcon className="library-toolbar__chevron" name="chevron" />
                 </span>
-                <button
+                <SegmentedButton
                     aria-pressed={reversed}
-                    className="library-toolbar__segment library-toolbar__reverse"
+                    className="library-toolbar__reverse"
                     onClick={onReverse}
                     title={t(`order.${sort}.${direction}`)}
-                    type="button"
                 >
                     <ToolbarIcon name={direction === 'asc' ? 'up' : 'down'} />
                     <span className="visually-hidden">{t('order.reverse')}</span>
-                </button>
-            </div>
-            <fieldset className="library-toolbar__group library-toolbar__views">
-                <legend className="visually-hidden">{t('view.legend')}</legend>
-                {VIEWS.map((option) => (
-                    <label className="library-toolbar__view" key={option}>
-                        <input
-                            checked={view === option}
-                            className="library-toolbar__view-input visually-hidden"
-                            name={viewName}
-                            onChange={() =>
-                                onChange(
-                                    compactLibrarySearch({ ...search, view: option === 'board' ? 'board' : undefined })
-                                )
-                            }
-                            type="radio"
-                        />
-                        <span className="library-toolbar__segment">
-                            <ToolbarIcon name={option} />
-                            <span className="library-toolbar__view-text">{t(`view.${option}`)}</span>
-                        </span>
-                    </label>
-                ))}
-            </fieldset>
+                </SegmentedButton>
+            </SegmentedTrack>
+            <SegmentedControl
+                className="library-toolbar__views"
+                legend={t('view.legend')}
+                onChange={(option) =>
+                    onChange(compactLibrarySearch({ ...search, view: option === 'board' ? 'board' : undefined }))
+                }
+                options={VIEWS.map((option) => ({
+                    value: option,
+                    label: t(`view.${option}`),
+                    icon: <ToolbarIcon name={option} />,
+                }))}
+                value={view}
+            />
             {view === 'board' ? null : (
                 <fieldset className="library-toolbar__filters">
                     <legend className="visually-hidden">{t('stateLegend')}</legend>
                     {options.map(({ value, label, count }) => (
-                        <label className="library-toolbar__chip" key={value ?? 'all'}>
-                            <input
-                                checked={search.state === value}
-                                className="library-toolbar__chip-input visually-hidden"
-                                name={groupName}
-                                onChange={() => onChange(compactLibrarySearch({ ...search, state: value }))}
-                                type="radio"
-                            />
-                            <span className="library-toolbar__chip-label" style={chipStyle(value)}>
-                                {value === undefined || value === 'backlog' ? null : (
-                                    <span aria-hidden="true" className="library-toolbar__swatch" />
-                                )}
-                                {label} <span className="library-toolbar__chip-count">{format.number(count)}</span>
-                            </span>
-                        </label>
+                        <RadioChip
+                            checked={search.state === value}
+                            color={value === undefined || value === 'backlog' ? undefined : STATE_COLOR[value]}
+                            count={format.number(count)}
+                            key={value ?? 'all'}
+                            label={label}
+                            name={groupName}
+                            onChange={() => onChange(compactLibrarySearch({ ...search, state: value }))}
+                        />
                     ))}
                 </fieldset>
             )}
         </div>
     );
-}
-
-function chipStyle(value: StateFilter | undefined): CSSProperties | undefined {
-    if (value === undefined || value === 'backlog') return undefined;
-    return { '--chip-color': STATE_COLOR[value] } as CSSProperties;
 }
