@@ -1,10 +1,13 @@
-import type { EntityId, Library, Profile, ProfileAccess, Source } from '../domain/index.js';
+import type { EntityId, GameArt, Library, Profile, ProfileAccess, Source } from '../domain/index.js';
 
 // Read by the UI to hide panels that do not apply
 export interface AdapterCapabilities {
     achievements: 'none' | 'perGame' | 'perBatch';
     wishlist: boolean;
 }
+
+// Images by game externalId; a game the store does not list is absent
+export type ArtResult = { kind: 'ok'; data: Record<string, GameArt> } | { kind: 'rateLimited' };
 
 // Parsed visitor input (no network). An alias is a custom profile name, lower-cased
 export type ProfileInput = { kind: 'id'; id: EntityId } | { kind: 'alias'; alias: string } | { kind: 'invalid' };
@@ -19,6 +22,8 @@ export interface StoreAdapter {
     // Alias to account id only, without the profile lookup
     resolveAlias(alias: string): Promise<ProfileAccess<EntityId>>;
     getLibrary(profile: EntityId): Promise<ProfileAccess<Library>>;
+    // Store images of some games, by externalId
+    getArt(games: readonly string[]): Promise<ArtResult>;
 }
 
 // Transport failure, upstream 5xx or a non-JSON body; never an access state

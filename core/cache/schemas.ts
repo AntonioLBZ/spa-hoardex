@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { EntityId, Library, Profile, ProfileAccess } from '../domain/index.js';
+import type { EntityId, GameArt, Library, Profile, ProfileAccess } from '../domain/index.js';
 
 // Validates Redis values on read; a mismatch is a cache miss
 const entityId: z.ZodType<EntityId> = z.object({ source: z.literal('steam'), externalId: z.string() });
@@ -70,3 +70,9 @@ export interface CachedAlias {
 }
 
 export const cachedAliasSchema: z.ZodType<CachedAlias> = z.object({ id: entityId.nullable() });
+
+// Store images of one game; an empty object means the store has none
+export const cachedArtSchema: z.ZodType<GameArt> = z.object({
+    cover: z.string().optional(),
+    header: z.string().optional(),
+});

@@ -1,6 +1,7 @@
-import type { Game, PlatformPlaytime, Profile, ProfileVisibility } from '../../domain/index.js';
+import type { Game, GameArt, PlatformPlaytime, Profile, ProfileVisibility } from '../../domain/index.js';
 import { capIssues, describeIssues } from './drift.js';
-import { rawGameSchema, type RawGame, type RawPlayer } from './schemas.js';
+import { steamAssetUrl } from './images.js';
+import { rawGameSchema, rawStoreItemSchema, type RawGame, type RawPlayer } from './schemas.js';
 
 const GAME_ICON_BASE = 'https://media.steampowered.com/steamcommunity/public/images/apps';
 const ICON_HASH = /^[0-9A-Za-z]+$/;
@@ -95,4 +96,31 @@ export function normalizeOwnedGames(entries: readonly unknown[]): NormalizedGame
         else issues.push(...describeIssues(parsed.error, ['games', index]));
     });
     return { games, issues: capIssues(issues) };
+}
+
+export interface NormalizedArt {
+    // By appid; a game Steam lists without usable images maps to an empty object
+    art: Record<string, GameArt>;
+    issues: string[];
+}
+
+// Keeps only the asked appids and the asset paths that fit the known shape
+export function normalizeStoreItems(entries: readonly unknown[], asked: readonly string[]): NormalizedArt {
+    const wanted = new Set(asked);
+    const art: Record<string, GameArt> = {};
+    const issues: string[] = [];
+    entries.forEach((entry, index) => {
+        const parsed = rawStoreItemSchema.safeParse(entry);
+        if (!parsed.success) {
+            issues.push(...describeIssues(parsed.error, ['store_items', index]));
+            return;
+        }
+        const appid = String(parsed.data.appid);
+        if (!wanted.has(appid)) return;
+        const assets = parsed.data.assets;
+        const cover = steamAssetUrl(appid, assets?.asset_url_format, assets?.library_capsule);
+        const header = steamAssetUrl(appid, assets?.asset_url_format, assets?.header);
+        art[appid] = { ...(cover === undefined ? {} : { cover }), ...(header === undefined ? {} : { header }) };
+    });
+    return { art, issues: capIssues(issues) };
 }

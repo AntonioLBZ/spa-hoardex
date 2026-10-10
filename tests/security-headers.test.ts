@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { steamCoverUrls } from '../core/adapters/steam/images.js';
+import { steamAssetUrl, steamCoverUrls } from '../core/adapters/steam/images.js';
 
 interface Header {
     key: string;
@@ -45,6 +45,8 @@ describe('Content-Security-Policy', () => {
     it('allows the host of every cover URL the app builds', () => {
         const allowed = directives().get('img-src') ?? [];
         for (const url of steamCoverUrls('1091500')) expect(allowed).toContain(new URL(url).origin);
+        const asset = steamAssetUrl('1091500', 'steam/apps/1091500/${FILENAME}', 'header.jpg');
+        expect(allowed).toContain(new URL(asset!).origin);
     });
 
     it('allows the host Steam gives for avatars', () => {

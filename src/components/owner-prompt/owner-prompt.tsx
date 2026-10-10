@@ -15,19 +15,20 @@ function useSignedOut(): boolean {
     return !me.isPending && (me.data?.user ?? null) === null;
 }
 
-function Content({ returnTo, titleId }: { returnTo: string; titleId: string }) {
+function Content({ returnTo, titleId, bubble = false }: { returnTo: string; titleId: string; bubble?: boolean }) {
     const t = useTranslations('home.owner');
 
     return (
         <>
             <p className="owner-prompt__title" id={titleId}>
-                {t('title')}
+                {bubble ? t('bubbleTitle') : t('title')}
             </p>
             <p className="owner-prompt__text">{t('text')}</p>
             <a className="owner-prompt__action" href={loginHref(returnTo)}>
                 {t('action')}
                 <span aria-hidden="true"> →</span>
             </a>
+            <p className="owner-prompt__note">{t('note')}</p>
         </>
     );
 }
@@ -74,7 +75,11 @@ export function OwnerBubble() {
 
     return (
         <aside aria-labelledby={titleId} className="owner-prompt owner-prompt--bubble">
-            <Content returnTo={here} titleId={titleId} />
+            <svg aria-hidden="true" className="owner-prompt__icon" viewBox="0 0 24 24">
+                <circle cx="8" cy="15" r="4" />
+                <path d="M11 12l9-9M17 6l3 3M14 9l2 2" />
+            </svg>
+            <Content bubble returnTo={here} titleId={titleId} />
             <IconButton
                 className="owner-prompt__close"
                 label={t('dismiss')}

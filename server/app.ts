@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import { createDemoData, type DemoData } from '../core/adapters/steam/index.js';
 import { UpstreamError } from '../core/adapters/types.js';
+import { ART_BATCH_SIZE } from '../core/domain/index.js';
 import type { CachedAdapter } from '../core/cache/cached-adapter.js';
 import { createAuthRoutes, type AuthDeps } from './auth.js';
 import { createAccountRoutes } from './account.js';
@@ -12,6 +13,16 @@ import { DatabaseError } from '../core/accounts/index.js';
 
 // The demo never changes meaningfully, so the CDN can hold it for long
 const DEMO_CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate=86400';
+// Store images change rarely; Redis keeps them a week
+const ART_CACHE_CONTROL = 'public, s-maxage=86400, stale-while-revalidate=604800';
+const APPID_LIST = /^\d{1,10}(?:,\d{1,10})*$/;
+
+// Comma-separated appids, at most one batch; null when malformed
+function parseAppids(raw: string | undefined): string[] | null {
+    if (raw === undefined || !APPID_LIST.test(raw)) return null;
+    const appids = raw.split(',');
+    return appids.length > ART_BATCH_SIZE ? null : appids;
+}
 
 function retryLater(c: Context, error: string, status: 429 | 503, retryAfterSeconds: number) {
     c.header('Cache-Control', NO_STORE);
@@ -62,6 +73,16 @@ export function createApp(
         const input = data.parseInput(c.req.param('input'));
         if (input.kind === 'invalid') return failure(c, 'invalidInput', 400);
         return access(c, await data.resolveLibrary(input));
+    });
+
+    // Store images of games whose default cover failed; only games of that library
+    app.get('/art/:input', async (c) => {
+        const data = getData();
+        const input = data.parseInput(c.req.param('input'));
+        const appids = parseAppids(c.req.query('appids'));
+        if (input.kind === 'invalid' || appids === null) return failure(c, 'invalidInput', 400);
+        const result = await data.resolveArt(input, appids);
+        return access(c, result, result.kind === 'ok' ? ART_CACHE_CONTROL : undefined);
     });
 
     // Asks Steam again past the cache, once per cooldown per account. The answer carries the fresh data: the CDN may still hold the old GET

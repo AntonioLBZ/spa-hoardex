@@ -81,7 +81,9 @@
         },
         "owner": {
             "title": "¿Es tu biblioteca?",
-            "text": "Entra con tu cuenta de Steam para mover juegos a Completado o Abandonado y guardar un historial de horas. Steam solo nos dice tu SteamID, nunca tu contraseña.",
+            "bubbleTitle": "¿Esta biblioteca es tuya?",
+            "text": "Entra con Steam para poder ordenar tu backlog y guardar tu historial de horas.",
+            "note": "Solo recibimos tu SteamID, ningún dato más.",
             "action": "Continuar con Steam",
             "dismiss": "Cerrar"
         }
@@ -233,7 +235,7 @@
     },
     "policy": {
         "title": "Política de privacidad",
-        "updated": "Última actualización: 9 de octubre de 2026.",
+        "updated": "Última actualización: 10 de octubre de 2026.",
         "intro": "Hoardex es un proyecto personal de portfolio, sin fines comerciales, que muestra la biblioteca y el tiempo de juego de un perfil de Steam. Iniciar sesión es opcional y no hay anuncios. Esta página explica qué datos maneja, dónde se guardan y durante cuánto tiempo.",
         "input": {
             "heading": "Qué envías y qué se muestra",
@@ -247,9 +249,10 @@
                 "profile": "El perfil: nombre, dirección del avatar, dirección del perfil, visibilidad y fecha de creación: {duration}.",
                 "library": "La biblioteca: nombres de los juegos, horas jugadas y fechas de la última partida: {duration}.",
                 "misses": "Una respuesta «no encontrado»: {missing}. Una respuesta «privado»: {locked}.",
-                "cooldown": "Tras un refresco manual, el SteamID y la hora: {refresh} ({retry} si el refresco falló), para limitar cada cuánto se refresca un perfil."
+                "cooldown": "Tras un refresco manual, el SteamID y la hora: {refresh} ({retry} si el refresco falló), para limitar cada cuánto se refresca un perfil.",
+                "art": "Si la portada de un juego no carga, las direcciones de sus imágenes en la tienda de Steam: {duration}. Se guardan por juego, sin relación con ningún perfil."
             },
-            "after": "No se guarda nada más tiempo y no hay historial. La CDN del sitio también puede conservar una respuesta unos minutos."
+            "after": "Estas copias no se guardan más tiempo. Lo único que dura más es lo que guardas tú al iniciar sesión, descrito abajo. La CDN del sitio también puede conservar una respuesta unos minutos."
         },
         "hosting": {
             "heading": "Alojamiento",
@@ -266,7 +269,7 @@
         },
         "snapshots": {
             "heading": "Historial de tiempo de juego (opcional)",
-            "body": "Solo si lo activas en la página de tu cuenta: una vez al día, Hoardex pide a Steam tu biblioteca y guarda, de cada juego cuyas horas cambiaron desde la vez anterior, su total de horas y la fecha. Se detiene si llevas {days} días sin iniciar sesión en Hoardex y sigue cuando vuelves a entrar. Al desactivarlo se borra todo el historial."
+            "body": "Solo si lo activas en la página de tu cuenta: una vez al día, Hoardex pide a Steam tu biblioteca y guarda, de cada juego cuyas horas cambiaron desde la vez anterior, su total de horas y la fecha, además de desde cuándo está activado. Se detiene si llevas {days} días sin iniciar sesión en Hoardex y sigue cuando vuelves a entrar. Al desactivarlo se borra todo el historial."
         },
         "analytics": {
             "heading": "Analíticas",

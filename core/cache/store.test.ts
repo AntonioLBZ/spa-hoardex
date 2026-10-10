@@ -7,6 +7,21 @@ function clock(start = 1_000_000) {
 }
 
 describe('memory store', () => {
+    it('reads and writes several keys at once, null for the missing ones', async () => {
+        const time = clock();
+        const store = createMemoryStore({ now: time.now });
+        await store.setMany(
+            [
+                ['a', { n: 1 }],
+                ['b', { n: 2 }],
+            ],
+            60
+        );
+        expect(await store.getMany(['a', 'nope', 'b'])).toEqual([{ n: 1 }, null, { n: 2 }]);
+        time.advance(60);
+        expect(await store.getMany(['a', 'b'])).toEqual([null, null]);
+    });
+
     it('returns null for a missing key', async () => {
         expect(await createMemoryStore().get('nope')).toBeNull();
     });

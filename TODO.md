@@ -8,9 +8,6 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 ### UI (owner, 2026-10-09)
 
-- Better copy and look for the "Is this your library?" bubble on profiles.
-- Covers of recent games 404 (both `library_600x900.jpg` and `header.jpg` on `cdn.cloudflare.steamstatic.com`): Steam keeps their assets under hashed paths. Check whether `IStoreBrowseService/GetItems` gives those paths and which host they use, which the CSP would have to allow.
-- Check whether Steam exposes how many times a game was launched (or sessions). `GetOwnedGames` only gives playtime and the last-played date; if nothing else gives it, drop the idea.
 
 ### Later phases
 

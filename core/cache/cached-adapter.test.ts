@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { FIXTURE_NOW } from '../../fixtures/load.js';
 import type { ProfileInput, StoreAdapter } from '../adapters/types.js';
 import { UpstreamError } from '../adapters/types.js';
-import type { EntityId, Library, Profile, ProfileAccess } from '../domain/index.js';
+import type { ArtResult } from '../adapters/types.js';
+import { ART_BATCH_SIZE, type EntityId, type Library, type Profile, type ProfileAccess } from '../domain/index.js';
 import { createCachedAdapter, type ResolvableInput } from './cached-adapter.js';
 import { createMemoryStore, type CacheStore } from './store.js';
 import { CACHE_TTL } from './ttl.js';
@@ -37,6 +38,7 @@ interface Script {
     alias?: () => ProfileAccess<EntityId>;
     profile?: () => ProfileAccess<Profile>;
     library?: () => ProfileAccess<Library>;
+    art?: (games: readonly string[]) => ArtResult;
 }
 
 function fakeAdapter(script: Script = {}) {
@@ -56,6 +58,10 @@ function fakeAdapter(script: Script = {}) {
         async getLibrary(id) {
             calls.push(`library:${id.externalId}`);
             return (script.library ?? (() => ({ kind: 'ok', data: LIBRARY })))();
+        },
+        async getArt(games) {
+            calls.push(`art:${games.join(',')}`);
+            return (script.art ?? (() => ({ kind: 'ok', data: {} })))(games);
         },
     };
     return { adapter, calls };
@@ -391,6 +397,8 @@ describe('refresh', () => {
         const broken: CacheStore = {
             get: () => Promise.reject(new Error('down')),
             set: () => Promise.reject(new Error('down')),
+            getMany: () => Promise.reject(new Error('down')),
+            setMany: () => Promise.reject(new Error('down')),
             setIfAbsent: () => Promise.reject(new Error('down')),
             increment: () => Promise.reject(new Error('down')),
         };
@@ -420,6 +428,8 @@ describe('a misbehaving store', () => {
         const broken: CacheStore = {
             get: () => Promise.reject(new Error('down')),
             set: () => Promise.reject(new Error('down')),
+            getMany: () => Promise.reject(new Error('down')),
+            setMany: () => Promise.reject(new Error('down')),
             setIfAbsent: () => Promise.reject(new Error('down')),
             increment: () => Promise.reject(new Error('down')),
         };
@@ -428,5 +438,71 @@ describe('a misbehaving store', () => {
         expect(await cached.resolveProfile(byId)).toEqual({ kind: 'ok', data: PROFILE });
         expect(calls).toHaveLength(2);
         expect(errors).toEqual(['get', 'set', 'get', 'set']);
+    });
+});
+
+const COVER = 'https://shared.steamstatic.com/store_item_assets/steam/apps/620/library_600x900.jpg';
+
+function libraryOf(appids: string[]): Library {
+    const [game] = LIBRARY.games;
+    return { ...LIBRARY, games: appids.map((appid) => ({ ...game!, id: steam(appid) })) };
+}
+
+describe('art', () => {
+    it('asks the adapter once and then serves the cache, sharing it across accounts', async () => {
+        const { cached, calls, store } = setup({ art: () => ({ kind: 'ok', data: { '620': { cover: COVER } } }) });
+        expect(await cached.resolveArt(byId, ['620'])).toEqual({ kind: 'ok', data: { '620': { cover: COVER } } });
+        expect(await cached.resolveArt(byId, ['620'])).toEqual({ kind: 'ok', data: { '620': { cover: COVER } } });
+        expect(calls).toEqual([`library:${ID.externalId}`, 'art:620']);
+        expect(await store.get('art:steam:620')).toEqual({ cover: COVER });
+    });
+
+    it('only asks for games in that library, deduplicated, sorted and capped', async () => {
+        const owned = Array.from({ length: ART_BATCH_SIZE + 5 }, (_, index) => String(1000 + index));
+        const { cached, calls } = setup({ library: () => ({ kind: 'ok', data: libraryOf(owned) }) });
+        const result = await cached.resolveArt(byId, ['999', ...owned.toReversed(), owned[0]!]);
+        expect(calls.at(-1)).toBe(`art:${owned.slice(0, ART_BATCH_SIZE).join(',')}`);
+        expect(Object.keys(result.kind === 'ok' ? result.data : {})).toHaveLength(ART_BATCH_SIZE);
+    });
+
+    it('answers without asking the store when no game belongs to the library', async () => {
+        const { cached, calls } = setup();
+        expect(await cached.resolveArt(byId, ['1', '2'])).toEqual({ kind: 'ok', data: {} });
+        expect(calls).toEqual([`library:${ID.externalId}`]);
+    });
+
+    it('remembers a game the store does not list as having no images', async () => {
+        const { cached, calls } = setup();
+        expect(await cached.resolveArt(byId, ['620'])).toEqual({ kind: 'ok', data: { '620': {} } });
+        await cached.resolveArt(byId, ['620']);
+        expect(calls.filter((call) => call.startsWith('art:'))).toHaveLength(1);
+    });
+
+    it('asks again once the art ttl has passed', async () => {
+        const { cached, calls, advance } = setup();
+        await cached.resolveArt(byId, ['620']);
+        advance(CACHE_TTL.art);
+        await cached.resolveArt(byId, ['620']);
+        expect(calls.filter((call) => call.startsWith('art:'))).toHaveLength(2);
+    });
+
+    it('never caches rateLimited', async () => {
+        const { cached, calls } = setup({ art: () => ({ kind: 'rateLimited' }) });
+        expect(await cached.resolveArt(byId, ['620'])).toEqual({ kind: 'rateLimited' });
+        await cached.resolveArt(byId, ['620']);
+        expect(calls.filter((call) => call.startsWith('art:'))).toHaveLength(2);
+    });
+
+    it('passes on the access state of a library it cannot read', async () => {
+        const { cached, calls } = setup({ library: () => ({ kind: 'libraryPrivate' }) });
+        expect(await cached.resolveArt(byAlias('someone'), ['620'])).toEqual({ kind: 'libraryPrivate' });
+        expect(calls.some((call) => call.startsWith('art:'))).toBe(false);
+    });
+
+    it('treats a cached entry in an unexpected shape as a miss', async () => {
+        const { cached, calls, store } = setup({ art: () => ({ kind: 'ok', data: { '620': { cover: COVER } } }) });
+        await store.set('art:steam:620', { cover: 42 }, 60);
+        expect(await cached.resolveArt(byId, ['620'])).toEqual({ kind: 'ok', data: { '620': { cover: COVER } } });
+        expect(calls).toContain('art:620');
     });
 });

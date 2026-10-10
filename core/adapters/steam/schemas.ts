@@ -58,8 +58,31 @@ export const ownedGamesResponseSchema = z.looseObject({
     }),
 });
 
+// IStoreBrowseService/GetItems/v1 (include_assets): one entry of `store_items`
+export const rawStoreItemSchema = z.looseObject({
+    appid: z.number().int().nonnegative().optional(),
+    assets: z
+        .looseObject({
+            // `steam/apps/<appid>/${FILENAME}?t=<stamp>`
+            asset_url_format: z.string().optional(),
+            // File names, under a hash folder for recent games
+            library_capsule: z.string().optional(),
+            header: z.string().optional(),
+        })
+        .optional(),
+});
+
+export const storeItemsResponseSchema = z.looseObject({
+    response: z.looseObject({
+        // Entries are validated one by one (see normalizeStoreItems)
+        store_items: z.array(z.unknown()).optional(),
+    }),
+});
+
 export type RawResolveVanityResponse = z.infer<typeof resolveVanityResponseSchema>;
 export type RawPlayer = z.infer<typeof rawPlayerSchema>;
 export type RawPlayerSummariesResponse = z.infer<typeof playerSummariesResponseSchema>;
 export type RawGame = z.infer<typeof rawGameSchema>;
 export type RawOwnedGamesResponse = z.infer<typeof ownedGamesResponseSchema>;
+export type RawStoreItem = z.infer<typeof rawStoreItemSchema>;
+export type RawStoreItemsResponse = z.infer<typeof storeItemsResponseSchema>;

@@ -8,6 +8,9 @@ import { createApp } from './app.js';
 import { ConfigError } from './deps.js';
 
 const ID = (loadFixture('ResolveVanityURL.found').body as { response: { steamid: string } }).response.steamid;
+const OWNED_APPIDS = (
+    loadFixture('GetOwnedGames.library').body as { response: { games: { appid: number }[] } }
+).response.games.map((game) => String(game.appid));
 const GAME_COUNT = (loadFixture('GetOwnedGames.library').body as { response: { games: unknown[] } }).response.games
     .length;
 
@@ -144,6 +147,55 @@ describe('GET /api/library/:input', () => {
             expect(steamCalls()).toBe(0);
         }
     );
+});
+
+describe('GET /api/art/:input', () => {
+    const storeItems = () =>
+        new Response(
+            JSON.stringify({
+                response: {
+                    store_items: OWNED_APPIDS.map((appid) => ({
+                        appid: Number(appid),
+                        assets: { asset_url_format: `steam/apps/${appid}/\${FILENAME}`, header: 'header.jpg' },
+                    })),
+                },
+            })
+        );
+
+    it('answers the images of games in that library, for a day on the CDN, and serves the repeat from Redis', async () => {
+        const { get, steamCalls } = setup({ ownedGames: 'GetOwnedGames.library', storeItems });
+        const [first] = OWNED_APPIDS;
+        const { response, body } = await get(`/api/art/${ID}?appids=${first},1`);
+        expect(response.status).toBe(200);
+        expect(response.headers.get('cache-control')).toBe('public, s-maxage=86400, stale-while-revalidate=604800');
+        expect(body).toEqual({
+            kind: 'ok',
+            data: {
+                [first!]: { header: `https://shared.steamstatic.com/store_item_assets/steam/apps/${first}/header.jpg` },
+            },
+        });
+        expect(steamCalls()).toBe(2);
+        await get(`/api/art/${ID}?appids=${first}`);
+        expect(steamCalls()).toBe(2);
+    });
+
+    it('refuses missing, malformed or oversized appid lists without calling Steam', async () => {
+        const { get, steamCalls } = setup({});
+        const tooMany = Array.from({ length: 25 }, (_, index) => index + 1).join(',');
+        for (const query of ['', '?appids=', '?appids=1,,2', '?appids=abc', '?appids=1;2', `?appids=${tooMany}`]) {
+            const { response, body } = await get(`/api/art/${ID}${query}`);
+            expect(response.status).toBe(400);
+            expect(body).toEqual({ error: 'invalidInput' });
+        }
+        expect(steamCalls()).toBe(0);
+    });
+
+    it('passes on a private library as data', async () => {
+        const { get } = setup({ ownedGames: 'GetOwnedGames.private', summaries: 'GetPlayerSummaries.private' });
+        const { response, body } = await get(`/api/art/${ID}?appids=620`);
+        expect(body).toEqual({ kind: 'profilePrivate' });
+        expect(response.headers.get('cache-control')).toBe('public, s-maxage=30');
+    });
 });
 
 describe('POST /api/refresh/:input', () => {

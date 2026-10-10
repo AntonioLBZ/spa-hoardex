@@ -474,3 +474,65 @@ describe('integration with the backlog classifier', () => {
         }
     });
 });
+
+describe('getArt', () => {
+    const FORMAT = (appid: string) => `steam/apps/${appid}/\${FILENAME}?t=1790591892`;
+    const BASE = 'https://shared.steamstatic.com/store_item_assets/steam/apps';
+    const HASH = '480bd879ac737921bfa2529a6fea15961267ad21';
+
+    it('maps each listed app to its cover and header, and leaves out apps the store does not list', async () => {
+        const { adapter, drift } = setup({
+            storeItems: () =>
+                reply({
+                    response: {
+                        store_items: [
+                            {
+                                appid: 3527290,
+                                assets: {
+                                    asset_url_format: FORMAT('3527290'),
+                                    library_capsule: `${HASH}/library_600x900.jpg`,
+                                    header: `${HASH}/header.jpg`,
+                                },
+                            },
+                            { appid: 228980, assets: { asset_url_format: FORMAT('228980'), header: 'header.jpg' } },
+                            { appid: 999, assets: { asset_url_format: FORMAT('999'), header: 'header.jpg' } },
+                            { id: 480, success: 2 },
+                        ],
+                    },
+                }),
+        });
+        expect(await adapter.getArt(['3527290', '228980', '480'])).toEqual({
+            kind: 'ok',
+            data: {
+                '3527290': {
+                    cover: `${BASE}/3527290/${HASH}/library_600x900.jpg?t=1790591892`,
+                    header: `${BASE}/3527290/${HASH}/header.jpg?t=1790591892`,
+                },
+                '228980': { header: `${BASE}/228980/header.jpg?t=1790591892` },
+            },
+        });
+        expect(drift.reports).toEqual([]);
+    });
+
+    it('splits a long list into requests of at most 150 apps', async () => {
+        const { adapter, fake } = setup({ storeItems: () => reply({ response: { store_items: [] } }) });
+        await adapter.getArt(Array.from({ length: 151 }, (_, index) => String(index + 1)));
+        const sizes = fake.calls.map(
+            ({ url }) => (JSON.parse(url.searchParams.get('input_json')!) as { ids: unknown[] }).ids.length
+        );
+        expect(sizes).toEqual([150, 1]);
+    });
+
+    it('reads a throttle as rateLimited', async () => {
+        const { adapter } = setup({ storeItems: () => reply({ response: {} }, { status: 429, eresult: '84' }) });
+        expect(await adapter.getArt(['620'])).toEqual({ kind: 'rateLimited' });
+    });
+
+    it('skips a malformed entry and reports the drift', async () => {
+        const { adapter, drift } = setup({
+            storeItems: () => reply({ response: { store_items: [{ appid: 'nope' }] } }),
+        });
+        expect(await adapter.getArt(['620'])).toEqual({ kind: 'ok', data: {} });
+        expect(drift.reports[0]?.endpoint).toBe('IStoreBrowseService/GetItems/v1');
+    });
+});

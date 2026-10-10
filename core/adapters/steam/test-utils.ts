@@ -44,6 +44,7 @@ const PATHS = {
     vanity: '/ISteamUser/ResolveVanityURL/v1/',
     summaries: '/ISteamUser/GetPlayerSummaries/v2/',
     ownedGames: '/IPlayerService/GetOwnedGames/v1/',
+    storeItems: '/IStoreBrowseService/GetItems/v1/',
 } as const;
 
 type Route = keyof typeof PATHS;

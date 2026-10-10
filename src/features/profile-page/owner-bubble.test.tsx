@@ -22,7 +22,7 @@ const PAGE = {
     '/api/library/someone': { body: { kind: 'ok', data: LIBRARY } },
 };
 
-const bubble = () => screen.queryByRole('complementary', { name: 'Is it your library?' });
+const bubble = () => screen.queryByRole('complementary', { name: 'Is this library yours?' });
 
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.unstubAllGlobals());

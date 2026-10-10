@@ -28,6 +28,8 @@ describe('daily budget', () => {
         const store: CacheStore = {
             get: async () => null,
             set: async () => {},
+            getMany: async () => [],
+            setMany: async () => {},
             setIfAbsent: async () => null,
             increment: async (key) => {
                 seen.push(key);
@@ -45,6 +47,8 @@ describe('daily budget', () => {
         const store: CacheStore = {
             get: async () => null,
             set: async () => {},
+            getMany: async () => [],
+            setMany: async () => {},
             setIfAbsent: async () => null,
             increment: () => Promise.reject(new Error('down')),
         };

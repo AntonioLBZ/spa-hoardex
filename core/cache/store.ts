@@ -6,6 +6,9 @@ export interface CacheStore {
     // Null when missing or expired
     get(key: string): Promise<unknown>;
     set(key: string, value: unknown, ttlSeconds: number): Promise<void>;
+    // One round trip each: values in key order, null when missing
+    getMany(keys: readonly string[]): Promise<unknown[]>;
+    setMany(entries: readonly (readonly [string, unknown])[], ttlSeconds: number): Promise<void>;
     // Atomic: writes only when the key is free. Null when it wrote, the value already there otherwise
     setIfAbsent(key: string, value: unknown, ttlSeconds: number): Promise<unknown>;
     // Atomic counter; sets the expiry on creation
@@ -20,6 +23,16 @@ export function createUpstashStore(redis: Redis, namespace: string): CacheStore 
         },
         async set(key, value, ttlSeconds) {
             await redis.set(scoped(key), value, { ex: ttlSeconds });
+        },
+        async getMany(keys) {
+            if (keys.length === 0) return [];
+            return redis.mget<unknown[]>(...keys.map(scoped));
+        },
+        async setMany(entries, ttlSeconds) {
+            if (entries.length === 0) return;
+            const pipeline = redis.pipeline();
+            for (const [key, value] of entries) pipeline.set(scoped(key), value, { ex: ttlSeconds });
+            await pipeline.exec();
         },
         async setIfAbsent(key, value, ttlSeconds) {
             return redis.set<unknown>(scoped(key), value, { nx: true, get: true, ex: ttlSeconds });
@@ -56,6 +69,17 @@ export function createMemoryStore({ now = Date.now }: { now?: () => number } = {
         },
         async set(key, value, ttlSeconds) {
             entries.set(key, { value: JSON.stringify(value), expiresAt: now() + ttlSeconds * 1000 });
+        },
+        async getMany(keys) {
+            return keys.map((key) => {
+                const entry = live(key);
+                return entry === undefined ? null : JSON.parse(entry.value);
+            });
+        },
+        async setMany(pairs, ttlSeconds) {
+            for (const [key, value] of pairs) {
+                entries.set(key, { value: JSON.stringify(value), expiresAt: now() + ttlSeconds * 1000 });
+            }
         },
         async setIfAbsent(key, value, ttlSeconds) {
             const entry = live(key);

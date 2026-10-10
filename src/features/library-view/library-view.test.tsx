@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Game, Library, Profile } from '@core/domain';
+import { resetArt } from '@/lib/art';
 import { renderApp, stubApi } from '@/lib/test/render-app';
 
 const STEAM_ID = '76561198000000001';
@@ -49,7 +50,10 @@ const DEMO_ANSWERS = {
     '/api/demo/library': { body: { kind: 'ok', data: LIBRARY } },
 };
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+    localStorage.clear();
+    resetArt();
+});
 afterEach(() => vi.unstubAllGlobals());
 
 async function openLibrary(path: string) {
@@ -298,6 +302,8 @@ describe('covers', () => {
     };
     const PORTRAIT = 'https://cdn.cloudflare.steamstatic.com/steam/apps/40/library_600x900.jpg';
     const HEADER = 'https://cdn.cloudflare.steamstatic.com/steam/apps/40/header.jpg';
+    const HASHED =
+        'https://shared.steamstatic.com/store_item_assets/steam/apps/40/480bd879ac737921bfa2529a6fea15961267ad21/library_600x900.jpg';
 
     const coverFor = (region: HTMLElement, name: string) =>
         within(region).getByText(name).closest('li')?.querySelector('.cover') ?? null;
@@ -314,8 +320,29 @@ describe('covers', () => {
         expect(image?.getAttribute('alt')).toBe('');
     });
 
-    it('falls back to the header and then to a placeholder', async () => {
-        stubApi(STEAM_ANSWERS);
+    it('asks for the store paths of covers that fail together in one request, and uses them', async () => {
+        const art = `/api/art/${STEAM_ID}?appids=20,40`;
+        const fetchMock = stubApi({
+            ...STEAM_ANSWERS,
+            [art]: { body: { kind: 'ok', data: { '40': { cover: HASHED }, '20': {} } } },
+        });
+        renderApp('/p/someone');
+        const region = await screen.findByRole('region', { name: 'Library' });
+
+        fireEvent.error(coverFor(region, 'Délta Siege')!.querySelector('img')!);
+        fireEvent.error(coverFor(region, 'Beta Run')!.querySelector('img')!);
+        await waitFor(() =>
+            expect(coverFor(region, 'Délta Siege')?.querySelector('img')?.getAttribute('src')).toBe(HASHED)
+        );
+        expect(coverFor(region, 'Délta Siege')?.classList.contains('cover--landscape')).toBe(false);
+        expect(coverFor(region, 'Beta Run')?.querySelector('img')?.getAttribute('src')).toBe(
+            'https://cdn.cloudflare.steamstatic.com/steam/apps/20/header.jpg'
+        );
+        expect(fetchMock.mock.calls.filter(([path]) => String(path).startsWith('/api/art/'))).toHaveLength(1);
+    });
+
+    it('falls back to the header and then to a placeholder when the store has nothing better', async () => {
+        stubApi({ ...STEAM_ANSWERS, [`/api/art/${STEAM_ID}?appids=40`]: { body: { kind: 'ok', data: {} } } });
         renderApp('/p/someone');
         const region = await screen.findByRole('region', { name: 'Library' });
 
@@ -329,6 +356,17 @@ describe('covers', () => {
         await waitFor(() => expect(coverFor(region, 'Délta Siege')?.querySelector('img')).toBeNull());
         expect(coverFor(region, 'Délta Siege')?.textContent).toBe('DS');
         expect(coverFor(region, 'Beta Run')?.querySelector('img')).not.toBeNull();
+    });
+
+    it('still falls back to the header when the store paths cannot be fetched', async () => {
+        stubApi({ ...STEAM_ANSWERS, [`/api/art/${STEAM_ID}?appids=40`]: { status: 502, body: { error: 'upstream' } } });
+        renderApp('/p/someone');
+        const region = await screen.findByRole('region', { name: 'Library' });
+
+        fireEvent.error(coverFor(region, 'Délta Siege')!.querySelector('img')!);
+        await waitFor(() =>
+            expect(coverFor(region, 'Délta Siege')?.querySelector('img')?.getAttribute('src')).toBe(HEADER)
+        );
     });
 
     it('never asks Steam for the images of a demo library', async () => {

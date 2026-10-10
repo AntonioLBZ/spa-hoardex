@@ -21,6 +21,13 @@ function PolicySection({ heading, children }: { heading: string; children: React
     );
 }
 
+// Store image paths are per game, not about anyone
+const LONGEST_PERSONAL_TTL = Math.max(
+    ...Object.entries(CACHE_TTL)
+        .filter(([key]) => key !== 'art')
+        .map(([, seconds]) => seconds)
+);
+
 export function PolicyPage() {
     const t = useTranslations('policy');
     const tPrivacy = useTranslations('privacy');
@@ -36,6 +43,7 @@ export function PolicyPage() {
         { key: 'library', values: { duration: duration(CACHE_TTL.library) } },
         { key: 'misses', values: { missing: duration(CACHE_TTL.notFound), locked: duration(CACHE_TTL.private) } },
         { key: 'cooldown', values: { refresh: duration(CACHE_TTL.refresh), retry: duration(CACHE_TTL.refreshRetry) } },
+        { key: 'art', values: { duration: duration(CACHE_TTL.art) } },
     ] as const;
 
     return (
@@ -88,7 +96,7 @@ export function PolicyPage() {
             <PolicySection heading={t('rights.heading')}>
                 <p>
                     {t('rights.body', {
-                        longest: duration(Math.max(...Object.values(CACHE_TTL))),
+                        longest: duration(LONGEST_PERSONAL_TTL),
                         profile: duration(CACHE_TTL.profile),
                     })}
                 </p>

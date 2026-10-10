@@ -1,5 +1,5 @@
 import type { BacklogState, Overrides } from '@core/backlog';
-import type { Library, Profile, ProfileAccess } from '@core/domain';
+import type { GameArt, Library, Profile, ProfileAccess } from '@core/domain';
 
 // A non-200 answer from our API; access states are data, not errors
 export class ApiError extends Error {
@@ -48,6 +48,14 @@ export function fetchDemoLibrary(signal?: AbortSignal) {
 // Same input as the profile (vanity, id or URL), so both requests can go out together
 export function fetchLibrary(input: string, signal?: AbortSignal) {
     return getAccess<Library>(`/api/library/${encodeURIComponent(input)}`, signal);
+}
+
+// Store images of some games of that account's library, by appid
+export function fetchArt(owner: string, appids: readonly string[], signal?: AbortSignal) {
+    return getAccess<Record<string, GameArt>>(
+        `/api/art/${encodeURIComponent(owner)}?appids=${appids.join(',')}`,
+        signal
+    );
 }
 
 export type RefreshOutcome =

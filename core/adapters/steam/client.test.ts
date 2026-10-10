@@ -56,6 +56,30 @@ afterEach(() => {
 });
 
 describe('URL building', () => {
+    it('sends GetItems without the key, asking only for the assets of the given apps', async () => {
+        const { client, fake } = setup(() => reply({ response: { store_items: [] } }));
+        await client.getStoreItems(['620', '3527290']);
+        const { url } = fake.calls[0]!;
+        expect(url.host).toBe('api.steampowered.com');
+        expect(url.pathname).toBe('/IStoreBrowseService/GetItems/v1/');
+        expect([...url.searchParams.keys()]).toEqual(['input_json']);
+        expect(JSON.parse(url.searchParams.get('input_json')!)).toEqual({
+            ids: [{ appid: 620 }, { appid: 3527290 }],
+            context: { language: 'english', country_code: 'US' },
+            data_request: { include_assets: true },
+        });
+    });
+
+    it('refuses an empty, oversized or malformed list of appids before any request', async () => {
+        const { client, fake } = setup(() => reply({ response: {} }));
+        await expect(client.getStoreItems([])).rejects.toThrow(RangeError);
+        await expect(client.getStoreItems(Array.from({ length: 151 }, (_, i) => String(i)))).rejects.toThrow(
+            RangeError
+        );
+        await expect(client.getStoreItems(['620', '1&key=x'])).rejects.toThrow(RangeError);
+        expect(fake.calls).toHaveLength(0);
+    });
+
     it('sends ResolveVanityURL to the allowlisted host with the key and the vanity only', async () => {
         const { client, fake } = setup(() => fixtureReply('ResolveVanityURL.found'));
         await client.resolveVanityUrl('some-vanity_1');

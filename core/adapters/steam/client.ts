@@ -6,9 +6,11 @@ import {
     ownedGamesResponseSchema,
     playerSummariesResponseSchema,
     resolveVanityResponseSchema,
+    storeItemsResponseSchema,
     type RawOwnedGamesResponse,
     type RawPlayerSummariesResponse,
     type RawResolveVanityResponse,
+    type RawStoreItemsResponse,
 } from './schemas.js';
 
 // Closed allowlist: one host, fixed paths and parameter names
@@ -21,11 +23,18 @@ const ENDPOINTS = {
     resolveVanityUrl: { path: 'ISteamUser/ResolveVanityURL/v1', schema: resolveVanityResponseSchema },
     playerSummaries: { path: 'ISteamUser/GetPlayerSummaries/v2', schema: playerSummariesResponseSchema },
     ownedGames: { path: 'IPlayerService/GetOwnedGames/v1', schema: ownedGamesResponseSchema },
+    // Public store data: the key is not sent
+    storeItems: { path: 'IStoreBrowseService/GetItems/v1', schema: storeItemsResponseSchema, keyless: true },
 } as const;
+
+// GetItems takes the ids in the URL: 275 already gives 414 (verified)
+export const STORE_ITEMS_MAX = 150;
+const APPID = /^\d{1,10}$/;
 
 interface Endpoint<T> {
     path: string;
     schema: ZodType<T>;
+    keyless?: boolean;
 }
 
 export interface SteamClientOptions {
@@ -54,6 +63,8 @@ export interface SteamClient {
     resolveVanityUrl(vanity: string): Promise<SteamReply<RawResolveVanityResponse>>;
     getPlayerSummaries(steamid: string): Promise<SteamReply<RawPlayerSummariesResponse>>;
     getOwnedGames(steamid: string): Promise<SteamReply<RawOwnedGamesResponse>>;
+    // Store images of up to STORE_ITEMS_MAX apps
+    getStoreItems(appids: readonly string[]): Promise<SteamReply<RawStoreItemsResponse>>;
 }
 
 function transportFailure(error: unknown): UpstreamError {
@@ -78,7 +89,7 @@ export function createSteamClient(options: SteamClientOptions): SteamClient {
 
     async function call<T>(endpoint: Endpoint<T>, params: Record<string, string>): Promise<SteamReply<T>> {
         const url = new URL(`https://${API_HOST}/${endpoint.path}/`);
-        url.searchParams.set('key', apiKey);
+        if (endpoint.keyless !== true) url.searchParams.set('key', apiKey);
         for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
 
         let status: number;
@@ -127,6 +138,18 @@ export function createSteamClient(options: SteamClientOptions): SteamClient {
                 steamid,
                 include_appinfo: '1',
                 include_played_free_games: '1',
+            });
+        },
+        async getStoreItems(appids) {
+            if (appids.length === 0 || appids.length > STORE_ITEMS_MAX || !appids.every((id) => APPID.test(id))) {
+                throw new RangeError('Invalid appids');
+            }
+            return call(ENDPOINTS.storeItems, {
+                input_json: JSON.stringify({
+                    ids: appids.map((appid) => ({ appid: Number(appid) })),
+                    context: { language: 'english', country_code: 'US' },
+                    data_request: { include_assets: true },
+                }),
             });
         },
     };

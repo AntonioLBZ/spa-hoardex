@@ -5,6 +5,7 @@ import type { Overrides } from '@core/backlog';
 import { browseLibrary, classifyLibrary, countByFilter } from '@core/browse';
 import type { Library } from '@core/domain';
 import { Button } from '@/components/button';
+import { ArtOwnerContext } from '@/lib/art';
 import { useLocale } from '@/lib/i18n';
 import { STEP, riseStyle } from '@/lib/motion';
 import { Board } from './board';
@@ -68,48 +69,59 @@ export function LibraryView({
     // Typing in the search box does not fade the list on every keystroke
     const grid = useRef<HTMLUListElement>(null);
     useGridReveal(grid, `${settled.state ?? ''}|${order}`);
+    // Stable across refreshes, which bring a new owner object
+    const ownerId = library.owner.externalId;
+    const ownerSource = library.owner.source;
+    const artOwner = useMemo(
+        () => (withImages ? { source: ownerSource, externalId: ownerId } : null),
+        [withImages, ownerSource, ownerId]
+    );
 
     return (
-        <section aria-labelledby={titleId} className="library-view">
-            <h2 className="library-view__title rise-in" id={titleId} style={riseStyle(STEP.library)}>
-                {t('title')}
-            </h2>
-            <LibraryToolbar counts={counts} onChange={onSearchChange} search={search} total={entries.length} />
-            <p className="library-view__count" role="status">
-                {t('count', { shown: visible.length, total: entries.length })}
-            </p>
-            {editor?.failed ? (
-                <p className="library-view__failed" role="alert">
-                    {t('saveFailed')}
+        <ArtOwnerContext value={artOwner}>
+            <section aria-labelledby={titleId} className="library-view">
+                <h2 className="library-view__title rise-in" id={titleId} style={riseStyle(STEP.library)}>
+                    {t('title')}
+                </h2>
+                <LibraryToolbar counts={counts} onChange={onSearchChange} search={search} total={entries.length} />
+                <p className="library-view__count" role="status">
+                    {t('count', { shown: visible.length, total: entries.length })}
                 </p>
-            ) : null}
-            {board ? (
-                <Board editor={editor} entries={visible} key={`${order}|${settled.q ?? ''}`} />
-            ) : visible.length === 0 ? (
-                <div className="library-view__empty">
-                    <p>{t('empty')}</p>
-                    <Button onClick={() => onSearchChange({})}>{t('clear')}</Button>
-                </div>
-            ) : (
-                <ul className="library-view__grid" ref={grid}>
-                    {visible.slice(0, count).map((entry) => (
-                        <GameCard
-                            entry={entry}
-                            key={entry.game.id.externalId}
-                            onChange={editor?.change ?? null}
-                            withImages={withImages}
-                        />
-                    ))}
-                </ul>
-            )}
-            {!board && hasMore ? (
-                <div className="library-view__more">
-                    <p className="library-view__shown">{t('shownOf', { shown: count, matching: visible.length })}</p>
-                    <Button onClick={showMore}>
-                        {t('showMore', { next: Math.min(NEXT_BATCH, visible.length - count) })}
-                    </Button>
-                </div>
-            ) : null}
-        </section>
+                {editor?.failed ? (
+                    <p className="library-view__failed" role="alert">
+                        {t('saveFailed')}
+                    </p>
+                ) : null}
+                {board ? (
+                    <Board editor={editor} entries={visible} key={`${order}|${settled.q ?? ''}`} />
+                ) : visible.length === 0 ? (
+                    <div className="library-view__empty">
+                        <p>{t('empty')}</p>
+                        <Button onClick={() => onSearchChange({})}>{t('clear')}</Button>
+                    </div>
+                ) : (
+                    <ul className="library-view__grid" ref={grid}>
+                        {visible.slice(0, count).map((entry) => (
+                            <GameCard
+                                entry={entry}
+                                key={entry.game.id.externalId}
+                                onChange={editor?.change ?? null}
+                                withImages={withImages}
+                            />
+                        ))}
+                    </ul>
+                )}
+                {!board && hasMore ? (
+                    <div className="library-view__more">
+                        <p className="library-view__shown">
+                            {t('shownOf', { shown: count, matching: visible.length })}
+                        </p>
+                        <Button onClick={showMore}>
+                            {t('showMore', { next: Math.min(NEXT_BATCH, visible.length - count) })}
+                        </Button>
+                    </div>
+                ) : null}
+            </section>
+        </ArtOwnerContext>
     );
 }

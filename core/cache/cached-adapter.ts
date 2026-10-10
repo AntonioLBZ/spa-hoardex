@@ -1,7 +1,15 @@
 import type { ZodType } from 'zod';
 import type { ProfileInput, StoreAdapter } from '../adapters/types.js';
-import { entityKey, type EntityId, type Library, type Profile, type ProfileAccess } from '../domain/index.js';
-import { cachedAliasSchema, cachedLibrarySchema, cachedProfileSchema } from './schemas.js';
+import {
+    ART_BATCH_SIZE,
+    entityKey,
+    type EntityId,
+    type GameArt,
+    type Library,
+    type Profile,
+    type ProfileAccess,
+} from '../domain/index.js';
+import { cachedAliasSchema, cachedArtSchema, cachedLibrarySchema, cachedProfileSchema } from './schemas.js';
 import type { CacheStore } from './store.js';
 import { CACHE_TTL } from './ttl.js';
 
@@ -33,9 +41,11 @@ export interface CachedAdapter {
     resolveLibrary(input: ResolvableInput): Promise<ProfileAccess<Library>>;
     // Asks Steam again past the cache, at most once per cooldown per account
     refresh(input: ResolvableInput): Promise<RefreshResult>;
+    // Store images of games in that account's library only (no open proxy), at most ART_BATCH_SIZE
+    resolveArt(input: ResolvableInput, games: readonly string[]): Promise<ProfileAccess<Record<string, GameArt>>>;
 }
 
-// Caches a StoreAdapter. Keys: alias:, profile:, lib: + {source}:{id}
+// Caches a StoreAdapter. Keys: alias:, profile:, lib:, art: + {source}:{id}
 export function createCachedAdapter({
     adapter,
     store,
@@ -177,6 +187,56 @@ export function createCachedAdapter({
         return { kind: 'refreshed', profile, library, cooldownSeconds: CACHE_TTL.refresh };
     }
 
+    const artKey = (externalId: string) => `art:${adapter.source}:${externalId}`;
+
+    async function readArt(games: readonly string[]): Promise<(GameArt | null)[]> {
+        try {
+            const raw = await store.getMany(games.map(artKey));
+            return games.map((_, index) => {
+                const parsed = cachedArtSchema.safeParse(raw[index]);
+                return parsed.success ? parsed.data : null;
+            });
+        } catch (error) {
+            onStoreError?.('get', error);
+            return games.map(() => null);
+        }
+    }
+
+    async function writeArt(art: Record<string, GameArt>): Promise<void> {
+        try {
+            await store.setMany(
+                Object.entries(art).map(([externalId, value]) => [artKey(externalId), value] as const),
+                CACHE_TTL.art
+            );
+        } catch (error) {
+            onStoreError?.('set', error);
+        }
+    }
+
+    async function artFor(library: Library, games: readonly string[]): Promise<ProfileAccess<Record<string, GameArt>>> {
+        const owned = new Set(library.games.map((game) => game.id.externalId));
+        const wanted = [...new Set(games)].filter((externalId) => owned.has(externalId)).sort();
+        const asked = wanted.slice(0, ART_BATCH_SIZE);
+        if (asked.length === 0) return { kind: 'ok', data: {} };
+
+        const cached = await readArt(asked);
+        const art: Record<string, GameArt> = {};
+        const missing: string[] = [];
+        asked.forEach((externalId, index) => {
+            const known = cached[index];
+            if (known === null || known === undefined) missing.push(externalId);
+            else art[externalId] = known;
+        });
+        if (missing.length === 0) return { kind: 'ok', data: art };
+
+        const fresh = await adapter.getArt(missing);
+        if (fresh.kind === 'rateLimited') return fresh;
+        // A game the store does not list is remembered as having no images
+        const found = Object.fromEntries(missing.map((externalId) => [externalId, fresh.data[externalId] ?? {}]));
+        await writeArt(found);
+        return { kind: 'ok', data: { ...art, ...found } };
+    }
+
     return {
         parseInput: (input) => adapter.parseInput(input),
 
@@ -191,6 +251,16 @@ export function createCachedAdapter({
             if (input.kind === 'id') return libraryById(input.id);
             const resolved = await idByAlias(input.alias);
             return resolved.kind === 'ok' ? libraryById(resolved.data) : resolved;
+        },
+
+        async resolveArt(input, games) {
+            const library =
+                input.kind === 'id'
+                    ? await libraryById(input.id)
+                    : await idByAlias(input.alias).then((resolved) =>
+                          resolved.kind === 'ok' ? libraryById(resolved.data) : resolved
+                      );
+            return library.kind === 'ok' ? artFor(library.data, games) : library;
         },
 
         async refresh(input) {

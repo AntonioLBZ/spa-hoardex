@@ -1,8 +1,8 @@
-import type { EntityId, Profile, ProfileAccess } from '../../domain/index.js';
+import type { EntityId, GameArt, Profile, ProfileAccess } from '../../domain/index.js';
 import { UpstreamError, type AdapterCapabilities, type StoreAdapter } from '../types.js';
-import { createSteamClient, type SteamClientOptions, type SteamReply } from './client.js';
+import { STORE_ITEMS_MAX, createSteamClient, type SteamClientOptions, type SteamReply } from './client.js';
 import { warnDrift } from './drift.js';
-import { normalizeOwnedGames, normalizePlayer } from './normalize.js';
+import { normalizeOwnedGames, normalizePlayer, normalizeStoreItems } from './normalize.js';
 import { isSteamId64, parseProfileInput } from './profile-input.js';
 
 export interface SteamAdapterOptions extends SteamClientOptions {
@@ -14,6 +14,7 @@ export interface SteamAdapterOptions extends SteamClientOptions {
 const CAPABILITIES: AdapterCapabilities = { achievements: 'none', wishlist: false };
 
 const OWNED_GAMES_ENDPOINT = 'IPlayerService/GetOwnedGames/v1';
+const STORE_ITEMS_ENDPOINT = 'IStoreBrowseService/GetItems/v1';
 const VANITY_FOUND = 1;
 
 // Validated body or UpstreamError; 401/403 means a bad key, not an access state
@@ -106,6 +107,20 @@ export function createSteamAdapter(options: SteamAdapterOptions): StoreAdapter {
             const player = await lookupPlayer(owner.externalId);
             if (player.kind !== 'ok') return player;
             return { kind: player.data.visibility === 'public' ? 'libraryPrivate' : 'profilePrivate' };
+        },
+
+        async getArt(games) {
+            const art: Record<string, GameArt> = {};
+            for (let start = 0; start < games.length; start += STORE_ITEMS_MAX) {
+                const chunk = games.slice(start, start + STORE_ITEMS_MAX);
+                const reply = await client.getStoreItems(chunk);
+                if (reply.rateLimited) return { kind: 'rateLimited' };
+                const normalized = normalizeStoreItems(expectData(reply).response.store_items ?? [], chunk);
+                if (normalized.issues.length > 0)
+                    onDrift({ endpoint: STORE_ITEMS_ENDPOINT, issues: normalized.issues });
+                Object.assign(art, normalized.art);
+            }
+            return { kind: 'ok', data: art };
         },
     };
 }

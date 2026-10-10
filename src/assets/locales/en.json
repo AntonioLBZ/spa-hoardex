@@ -81,7 +81,9 @@
         },
         "owner": {
             "title": "Is it your library?",
-            "text": "Sign in with your Steam account to move games to Finished or Abandoned and keep a playtime history. Steam only tells us your SteamID, never your password.",
+            "bubbleTitle": "Is this library yours?",
+            "text": "Sign in with Steam to sort your backlog and keep your playtime history.",
+            "note": "We only get your SteamID, nothing else.",
             "action": "Continue with Steam",
             "dismiss": "Dismiss"
         }
@@ -233,7 +235,7 @@
     },
     "policy": {
         "title": "Privacy policy",
-        "updated": "Last updated: October 9, 2026.",
+        "updated": "Last updated: October 10, 2026.",
         "intro": "Hoardex is a personal, non-commercial portfolio project that shows the library and playing time of a Steam profile. Signing in is optional and there are no ads. This page explains what data it handles, where it is kept and for how long.",
         "input": {
             "heading": "What you send and what is shown",
@@ -247,9 +249,10 @@
                 "profile": "The profile: display name, avatar address, profile address, visibility and creation date: {duration}.",
                 "library": "The library: game names, hours played and last-played dates: {duration}.",
                 "misses": "A “not found” answer: {missing}. A “private” answer: {locked}.",
-                "cooldown": "After a manual refresh, the SteamID and the time: {refresh} ({retry} if the refresh failed), to limit how often a profile is refreshed."
+                "cooldown": "After a manual refresh, the SteamID and the time: {refresh} ({retry} if the refresh failed), to limit how often a profile is refreshed.",
+                "art": "If a game’s cover does not load, the addresses of its images in the Steam store: {duration}. They are kept per game, unrelated to any profile."
             },
-            "after": "Nothing is kept longer and there is no history. The site’s CDN may also hold an answer for a few minutes."
+            "after": "These copies are not kept any longer. Only what you save yourself after signing in lasts longer, as described below. The site’s CDN may also hold an answer for a few minutes."
         },
         "hosting": {
             "heading": "Hosting",
@@ -266,7 +269,7 @@
         },
         "snapshots": {
             "heading": "Playtime history (optional)",
-            "body": "Only if you turn it on in your account page: once a day, Hoardex asks Steam for your library and saves, for each game whose hours changed since the last time, its total hours and the date. It stops if you have not signed in to Hoardex for {days} days, and resumes when you sign in again. Turning it off deletes the whole history."
+            "body": "Only if you turn it on in your account page: once a day, Hoardex asks Steam for your library and saves, for each game whose hours changed since the last time, its total hours and the date, plus since when it is on. It stops if you have not signed in to Hoardex for {days} days, and resumes when you sign in again. Turning it off deletes the whole history."
         },
         "analytics": {
             "heading": "Analytics",

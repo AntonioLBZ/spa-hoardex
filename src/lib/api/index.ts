@@ -3,6 +3,7 @@ export {
     deleteAccount,
     deleteBacklogState,
     fetchAccount,
+    fetchArt,
     fetchBacklog,
     fetchDemoLibrary,
     fetchDemoProfile,

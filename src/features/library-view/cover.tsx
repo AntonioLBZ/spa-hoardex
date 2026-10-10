@@ -1,8 +1,9 @@
 import { clsx } from 'clsx';
-import { useState, type CSSProperties } from 'react';
+import { useContext, useState, type CSSProperties } from 'react';
 
-import type { EntityId } from '@core/domain';
-import { coverUrls } from '@/lib/covers';
+import type { EntityId, GameArt } from '@core/domain';
+import { ArtOwnerContext, requestArt } from '@/lib/art';
+import { coverSources } from '@/lib/covers';
 import { isBusy } from '@/lib/motion/busy';
 
 import './cover.scss';
@@ -31,12 +32,28 @@ interface CoverProps {
     withImages: boolean;
 }
 
-// Tries each candidate image in turn and ends on a coloured placeholder
+// Tries each candidate image in turn and ends on a coloured placeholder.
+// When the guessed portrait fails (recent games keep theirs under hashed paths), asks the store for its own paths
 export function Cover({ id, name, withImages }: CoverProps) {
+    const owner = useContext(ArtOwnerContext);
     const [failed, setFailed] = useState(0);
-    const url = withImages ? coverUrls(id)[failed] : undefined;
-    // Landscape fallback: shown whole, not cropped
-    const className = clsx('cover', failed > 0 && url !== undefined && 'cover--landscape');
+    // Undefined: not asked; 'asking': waiting for the answer
+    const [art, setArt] = useState<GameArt | null | 'asking'>();
+    const source = withImages && art !== 'asking' ? coverSources(id, art)[failed] : undefined;
+    const url = source?.url;
+    const className = clsx('cover', source?.landscape === true && 'cover--landscape');
+
+    function onError() {
+        if (art === undefined && failed === 0 && owner !== null) {
+            setArt('asking');
+            void requestArt(owner, id).then((answer) => {
+                setFailed(0);
+                setArt(answer);
+            });
+            return;
+        }
+        setFailed((count) => count + 1);
+    }
 
     return (
         <div className={className} style={{ '--hue': hueOf(id.externalId) } as CSSProperties}>
@@ -51,7 +68,7 @@ export function Cover({ id, name, withImages }: CoverProps) {
                     decoding="async"
                     height={900}
                     loading="lazy"
-                    onError={() => setFailed((count) => count + 1)}
+                    onError={onError}
                     onLoad={(event) => {
                         event.currentTarget.dataset.loaded = isBusy() ? 'instant' : 'fade';
                     }}
