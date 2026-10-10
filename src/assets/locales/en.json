@@ -31,6 +31,44 @@
             "cancel": "Cancel",
             "failed": "That change could not be saved. Try again."
         },
+        "categories": {
+            "heading": "Categories",
+            "body": "Each game is in one category. Backlog, Tried, In progress, Paused and Finished also fill themselves from your hours; when one of them is gone, its games go to Backlog. You can have up to {max, number} categories, and they are public like your manual states.",
+            "loading": "Loading your categories…",
+            "failed": "Your categories could not be loaded. Try again later.",
+            "games": "{count, plural, =0 {No games} one {# game} other {# games}}",
+            "builtIn": "Built in",
+            "rename": "Rename",
+            "renameLabel": "Rename {name}",
+            "delete": "Delete",
+            "deleteLabel": "Delete {name}",
+            "fixed": "Backlog cannot be deleted: every game needs a category to fall back on.",
+            "notEmpty": "{count, plural, one {Move its game} other {Move its # games}} to another category to delete it.",
+            "noLibrary": "Your library could not be loaded, so it is not known whether this category is empty.",
+            "confirm": "Delete {name}? {builtIn, select, true {A built-in category cannot be brought back.} other {This cannot be undone.}}",
+            "confirmAction": "Delete {name}",
+            "cancel": "Cancel",
+            "new": "New category",
+            "create": "Create category",
+            "save": "Save",
+            "name": "Name",
+            "nameHint": "Up to {max, number} characters.",
+            "color": "Colour",
+            "palette": "Colour {index, number}",
+            "customColor": "Custom",
+            "customColorLabel": "Pick a custom colour",
+            "limit": "You have the maximum of {max, number} categories. Delete one to make another.",
+            "errors": {
+                "categoryLimit": "You already have the maximum of {max, number} categories.",
+                "categoryName": "You already have a category with that name.",
+                "categoryNotEmpty": "That category has games now. Move them first.",
+                "fixedCategory": "Backlog cannot be deleted.",
+                "unknownCategory": "That category no longer exists. Reload the page.",
+                "library": "Your library could not be loaded. Try again later.",
+                "invalidInput": "Check the name and the colour.",
+                "other": "That change could not be saved. Try again."
+            }
+        },
         "sessions": {
             "heading": "Sessions",
             "body": "Sign out on every device where you signed in, this one included.",
@@ -39,7 +77,7 @@
         },
         "delete": {
             "heading": "Delete my account",
-            "body": "Deletes your account data on Hoardex: your manual states and your playtime history. Your Steam account is not touched.",
+            "body": "Deletes your account data on Hoardex: your manual states, your categories and your playtime history. Your Steam account is not touched.",
             "action": "Delete my account",
             "confirm": "This cannot be undone. Continue?",
             "confirmAction": "Confirm account deletion",
@@ -68,11 +106,11 @@
             },
             "backlog": {
                 "title": "A backlog that sorts itself",
-                "text": "Each game lands in Untouched, Tried, In progress, Paused or Finished from its hours and last session."
+                "text": "Each game lands in Backlog, Tried, In progress, Paused or Finished from its hours and last session."
             },
             "board": {
                 "title": "Yours to edit",
-                "text": "Sign in with Steam to drag games to Finished or Abandoned on a board. Visitors see it, read only."
+                "text": "Sign in with Steam to drag games onto a state and make categories of your own. Visitors see them, read only."
             },
             "history": {
                 "title": "Playtime history, if you want it",
@@ -168,7 +206,7 @@
         "states": {
             "title": "Backlog states",
             "total": "games",
-            "untouched": "Untouched",
+            "untouched": "Backlog",
             "tried": "Tried",
             "inProgress": "In progress",
             "paused": "Paused",
@@ -211,7 +249,6 @@
         },
         "stateLegend": "Filter by state",
         "all": "All",
-        "backlog": "Backlog",
         "count": "Showing {shown, number} of {total, plural, one {# game} other {# games}}",
         "empty": "No games match these filters.",
         "clear": "Clear filters",
@@ -223,16 +260,7 @@
         "playedSince": "Played since",
         "saveFailed": "That change could not be saved. Try again.",
         "demoEditing": "You can change any game’s state. In the demo, changes stay in this browser only.",
-        "view": {
-            "legend": "View",
-            "grid": "Grid",
-            "board": "Board"
-        },
-        "board": {
-            "hint": "Drag a game to another column, or pick its state in its menu.",
-            "empty": "No games",
-            "selectionHint": "Drag a selected game to move the whole selection to another column."
-        },
+        "dragHint": "Drag a game onto a state above to move it. While selecting, the whole selection goes with it.",
         "select": {
             "start": "Select",
             "label": "Selected games",
@@ -279,7 +307,7 @@
         },
         "manual": {
             "heading": "Your manual states",
-            "body": "If you sign in, Hoardex keeps an account in its database (Neon Postgres, on AWS in North Virginia, USA): your SteamID and when you first and last signed in. When you set a game’s state by hand, it also keeps the state, when you set it and your playtime for that game at that moment. These states are public: anyone who opens your profile sees them, signed in or not. A copy is kept in Upstash Redis for up to {backlog}, renewed with every change. They stay until you return each game to its automatic state or delete your account from your account page, which removes everything at once."
+            "body": "If you sign in, Hoardex keeps an account in its database (Neon Postgres, on AWS in North Virginia, USA): your SteamID and when you first and last signed in. When you set a game’s state by hand, it also keeps the state, when you set it and your playtime for that game at that moment. It also keeps the name and colour of each category you create and which built-in categories you deleted. These states and categories are public: anyone who opens your profile sees them, signed in or not. A copy is kept in Upstash Redis for up to {backlog}, renewed with every change. They stay until you return each game to its automatic state, delete each category, or delete your account from your account page, which removes everything at once."
         },
         "snapshots": {
             "heading": "Playtime history (optional)",

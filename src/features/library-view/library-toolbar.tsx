@@ -1,26 +1,32 @@
-import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react';
+import { clsx } from 'clsx';
+import { useEffect, useId, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 
-import { NATURAL_DIRECTION, SORTS, STATE_FILTERS, type Sort, type StateFilter } from '@core/browse';
+import { hasCategory, type CategoryCounts, type CategoryId } from '@core/backlog';
+import { NATURAL_DIRECTION, SORTS, type Sort } from '@core/browse';
 import { RadioChip } from '@/components/radio-chip';
-import { SegmentedButton, SegmentedControl, SegmentedTrack } from '@/components/segmented-control';
+import { SegmentedButton, SegmentedTrack } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
+import { useCategoryCatalog } from '@/lib/categories';
 import { STEP, riseStyle } from '@/lib/motion';
 import { isShownState } from '@/lib/shown-states';
-import { STATE_COLOR } from '@/lib/state-colors';
-import { DEFAULT_SORT, VIEWS, compactLibrarySearch, directionOf, type LibrarySearch } from './library-search';
+import { DRAG_TYPE } from './drag';
+import { DEFAULT_SORT, compactLibrarySearch, directionOf, type LibrarySearch } from './library-search';
 import { ToolbarIcon } from './toolbar-icon';
 
 import './library-toolbar.scss';
 
 interface LibraryToolbarProps {
     search: LibrarySearch;
-    counts: Record<StateFilter, number>;
+    counts: CategoryCounts;
     total: number;
     onChange: (next: LibrarySearch) => void;
-    // Absent for readers: only an editor selects
+    // Absent for readers: only an editor selects, and sees every category
     selecting?: boolean;
     onSelectingChange?: (selecting: boolean) => void;
+    // While a card is dragged, each category chip takes it
+    dragging?: boolean;
+    onDropOn?: (state: CategoryId, appid: string) => void;
 }
 
 function isSort(value: string): value is Sort {
@@ -34,13 +40,17 @@ export function LibraryToolbar({
     onChange,
     selecting = false,
     onSelectingChange,
+    dragging = false,
+    onDropOn,
 }: LibraryToolbarProps) {
     const t = useTranslations('library');
-    const states = useTranslations('dashboard.states');
+    const catalog = useCategoryCatalog();
     const format = useFormatter();
     const sortId = useId();
     const groupName = useId();
-    const view = search.view ?? 'grid';
+    const editing = onSelectingChange !== undefined;
+    // A category the account does not have filters nothing
+    const active = hasCategory(catalog.categories, search.state) ? search.state : undefined;
     const sort = search.sort ?? DEFAULT_SORT;
     const direction = directionOf(search);
     const reversed = direction !== NATURAL_DIRECTION[sort];
@@ -69,15 +79,11 @@ export function LibraryToolbar({
         onChange(compactLibrarySearch({ ...search, dir: direction === 'asc' ? 'desc' : 'asc' }));
     }
 
-    const options: { value: StateFilter | undefined; label: string; count: number }[] = [
+    const options: { value: CategoryId | undefined; label: string; count: number; color?: string }[] = [
         { value: undefined, label: t('all'), count: total },
-        ...STATE_FILTERS.filter(
-            (value) => value === 'backlog' || value === search.state || isShownState(value, counts[value])
-        ).map((value) => ({
-            value,
-            label: value === 'backlog' ? t('backlog') : states(value),
-            count: counts[value],
-        })),
+        ...catalog.list
+            .filter(({ id }) => editing || id === active || isShownState(id, counts[id] ?? 0))
+            .map(({ id, label, color }) => ({ value: id, label, count: counts[id] ?? 0, color })),
     ];
 
     return (
@@ -118,19 +124,6 @@ export function LibraryToolbar({
                     <span className="visually-hidden">{t('order.reverse')}</span>
                 </SegmentedButton>
             </SegmentedTrack>
-            <SegmentedControl
-                className="library-toolbar__views"
-                legend={t('view.legend')}
-                onChange={(option) =>
-                    onChange(compactLibrarySearch({ ...search, view: option === 'board' ? 'board' : undefined }))
-                }
-                options={VIEWS.map((option) => ({
-                    value: option,
-                    label: t(`view.${option}`),
-                    icon: <ToolbarIcon name={option} />,
-                }))}
-                value={view}
-            />
             {onSelectingChange === undefined ? null : (
                 <SegmentedTrack className="library-toolbar__selecting">
                     <SegmentedButton aria-pressed={selecting} onClick={() => onSelectingChange(!selecting)}>
@@ -139,22 +132,73 @@ export function LibraryToolbar({
                     </SegmentedButton>
                 </SegmentedTrack>
             )}
-            {view === 'board' ? null : (
-                <fieldset className="library-toolbar__filters">
-                    <legend className="visually-hidden">{t('stateLegend')}</legend>
-                    {options.map(({ value, label, count }) => (
+            <fieldset className="library-toolbar__filters">
+                <legend className="visually-hidden">{t('stateLegend')}</legend>
+                {options.map(({ value, label, count, color }) => {
+                    const chip = (
                         <RadioChip
-                            checked={search.state === value}
-                            color={value === undefined || value === 'backlog' ? undefined : STATE_COLOR[value]}
+                            checked={active === value}
+                            color={color}
                             count={format.number(count)}
                             key={value ?? 'all'}
                             label={label}
                             name={groupName}
                             onChange={() => onChange(compactLibrarySearch({ ...search, state: value }))}
                         />
-                    ))}
-                </fieldset>
-            )}
+                    );
+                    return value === undefined || onDropOn === undefined ? (
+                        chip
+                    ) : (
+                        <DropTarget accepts={dragging} key={value} onDrop={(appid) => onDropOn(value, appid)}>
+                            {chip}
+                        </DropTarget>
+                    );
+                })}
+            </fieldset>
         </div>
+    );
+}
+
+interface DropTargetProps {
+    accepts: boolean;
+    onDrop: (appid: string) => void;
+    children: ReactNode;
+}
+
+// Takes only a card of this library: other dragged things carry no appid of ours
+function DropTarget({ accepts, onDrop, children }: DropTargetProps) {
+    const [over, setOver] = useState(false);
+
+    function dragOver(event: DragEvent<HTMLElement>) {
+        if (!event.dataTransfer.types.includes(DRAG_TYPE)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        setOver(true);
+    }
+
+    function dragLeave(event: DragEvent<HTMLElement>) {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOver(false);
+    }
+
+    function drop(event: DragEvent<HTMLElement>) {
+        event.preventDefault();
+        setOver(false);
+        const appid = event.dataTransfer.getData(DRAG_TYPE);
+        if (appid !== '') onDrop(appid);
+    }
+
+    return (
+        <span
+            className={clsx(
+                'library-toolbar__drop',
+                accepts && 'library-toolbar__drop--ready',
+                accepts && over && 'library-toolbar__drop--over'
+            )}
+            onDragLeave={accepts ? dragLeave : undefined}
+            onDragOver={accepts ? dragOver : undefined}
+            onDrop={accepts ? drop : undefined}
+        >
+            {children}
+        </span>
     );
 }

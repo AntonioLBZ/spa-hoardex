@@ -468,7 +468,9 @@ describe('integration with the backlog classifier', () => {
 
         const counts = countByState(result.data.games, FIXTURE_NOW);
         expect(counts).toEqual(expectedCounts(LIBRARY_FIXTURE.games));
-        expect(Object.values(counts).reduce((total, count) => total + count, 0)).toBe(LIBRARY_FIXTURE.game_count);
+        expect(Object.values(counts).reduce<number>((total, count) => total + (count ?? 0), 0)).toBe(
+            LIBRARY_FIXTURE.game_count
+        );
         for (const state of ['untouched', 'tried', 'inProgress', 'paused', 'finished'] as const) {
             expect(counts[state]).toBeGreaterThan(0);
         }

@@ -18,6 +18,8 @@ import {
     type AccountSettings,
 } from '@/lib/api';
 
+import { CategoriesSection } from './categories-section';
+
 import './account-page.scss';
 
 export function AccountPage() {
@@ -72,6 +74,7 @@ function AccountContent({ steamId }: { steamId: string }) {
                     <SnapshotsToggle settings={settings.data} />
                 )}
             </section>
+            <CategoriesSection steamId={steamId} />
             <SessionsSection onDone={leave} />
             <DeleteSection onDone={leave} />
         </article>

@@ -1,5 +1,10 @@
+import { BACKLOG_STATES, type BacklogState, type CustomCategory } from '../backlog/index.js';
 import {
     accountRowSchema,
+    categoryCreateRowSchema,
+    categoryDeleteRowSchema,
+    categoryRowSchema,
+    categoryUpdateRowSchema,
     overrideRowSchema,
     settingsRowSchema,
     snapshotAccountRowSchema,
@@ -47,6 +52,58 @@ where backlog_overrides.state is distinct from excluded.state`;
 
 const CLEAR_OVERRIDES =
     'delete from backlog_overrides where user_id = $1 and game_source = $2 and game_id = any($3::text[])';
+
+const LIST_CATEGORIES = `
+select 'custom' as kind, c.category_id as id, c.name, c.color, c.created_at from backlog_categories c
+join identities i on i.user_id = c.user_id
+where i.source = $1 and i.external_id = $2
+union all
+select 'removed', r.state, null, null, null from removed_states r
+join identities i on i.user_id = r.user_id
+where i.source = $1 and i.external_id = $2
+order by created_at, id`;
+
+// Inserts only below the limit (built-in states still there plus own ones) and with a name of its own
+const CREATE_CATEGORY = `
+with total as (
+    select (select count(*) from backlog_categories where user_id = $1)
+        + $7 - (select count(*) from removed_states where user_id = $1) as n
+), taken as (
+    select exists (select 1 from backlog_categories where user_id = $1 and lower(name) = lower($3)) as taken
+), inserted as (
+    insert into backlog_categories (user_id, category_id, name, color, created_at)
+    select $1, $2, $3, $4, $5 from total, taken where total.n < $6 and not taken.taken
+    on conflict do nothing
+    returning 1
+)
+select (select count(*) from inserted)::int as inserted, (select n from total)::int as total,
+    (select taken from taken) as taken`;
+
+const UPDATE_CATEGORY = `
+with taken as (
+    select exists (
+        select 1 from backlog_categories where user_id = $1 and category_id <> $2 and lower(name) = lower($3)
+    ) as taken
+), updated as (
+    update backlog_categories set name = $3, color = $4
+    where user_id = $1 and category_id = $2 and not (select taken from taken)
+    returning 1
+)
+select exists (select 1 from backlog_categories where user_id = $1 and category_id = $2) as found,
+    (select taken from taken) as taken`;
+
+// Only while no manual state uses it; `found` sees the rows as they were before the delete
+const DELETE_CATEGORY = `
+with used as (
+    select exists (select 1 from backlog_overrides where user_id = $1 and state = $2) as used
+), deleted as (
+    delete from backlog_categories where user_id = $1 and category_id = $2 and not (select used from used)
+    returning 1
+)
+select exists (select 1 from backlog_categories where user_id = $1 and category_id = $2) as found,
+    (select used from used) as used`;
+
+const REMOVE_STATE = 'insert into removed_states (user_id, state) values ($1, $2) on conflict do nothing';
 
 const GET_SETTINGS = `
 select u.snapshots_opt_in_at, count(d.taken_on)::int as snapshot_days, max(d.taken_on)::text as last_snapshot_on
@@ -149,6 +206,60 @@ export function createSqlRepository(query: Query): AccountRepository {
 
         async clearOverrides(userId, gameSource, gameIds) {
             await run(CLEAR_OVERRIDES, [userId, gameSource, gameIds]);
+        },
+
+        async listCategories({ source, externalId }) {
+            const removed: BacklogState[] = [];
+            const custom: CustomCategory[] = [];
+            for (const row of await run(LIST_CATEGORIES, [source, externalId])) {
+                const parsed = categoryRowSchema.safeParse(row);
+                if (!parsed.success) throw new DatabaseError('Unexpected category row');
+                const category = parsed.data;
+                if (category.kind === 'removed') removed.push(category.id);
+                else custom.push({ id: category.id, name: category.name, color: category.color });
+            }
+            return { removed, custom };
+        },
+
+        async createCategory(userId, { id, name, color }, maxCategories, createdAt) {
+            const parsed = categoryCreateRowSchema.safeParse(
+                (
+                    await run(CREATE_CATEGORY, [
+                        userId,
+                        id,
+                        name,
+                        color,
+                        createdAt,
+                        maxCategories,
+                        BACKLOG_STATES.length,
+                    ])
+                )[0]
+            );
+            if (!parsed.success) throw new DatabaseError('Unexpected category result');
+            const { inserted, total, taken } = parsed.data;
+            if (inserted > 0) return 'created';
+            if (total >= maxCategories) return 'limit';
+            return taken ? 'name' : 'taken';
+        },
+
+        async updateCategory(userId, id, { name, color }) {
+            const parsed = categoryUpdateRowSchema.safeParse(
+                (await run(UPDATE_CATEGORY, [userId, id, name, color]))[0]
+            );
+            if (!parsed.success) throw new DatabaseError('Unexpected category result');
+            if (!parsed.data.found) return 'notFound';
+            return parsed.data.taken ? 'name' : 'updated';
+        },
+
+        async deleteCategory(userId, id) {
+            const parsed = categoryDeleteRowSchema.safeParse((await run(DELETE_CATEGORY, [userId, id]))[0]);
+            if (!parsed.success) throw new DatabaseError('Unexpected category result');
+            if (!parsed.data.found) return 'notFound';
+            return parsed.data.used ? 'notEmpty' : 'deleted';
+        },
+
+        async removeState(userId, state) {
+            await run(REMOVE_STATE, [userId, state]);
         },
 
         async getSettings(userId) {

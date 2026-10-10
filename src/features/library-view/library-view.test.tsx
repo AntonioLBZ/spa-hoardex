@@ -81,24 +81,24 @@ describe('library view', () => {
 
     it('filters by state from a chip and keeps the choice in the URL', async () => {
         const { region, router, user } = await openLibrary('/demo');
-        await user.click(within(region).getByRole('radio', { name: /^Backlog/ }));
+        await user.click(within(region).getByRole('radio', { name: /^Tried/ }));
 
-        await waitFor(() => expect(names(region)).toEqual(['Beta Run', 'Alpha Quest']));
-        expect(router.state.location.search).toEqual({ state: 'backlog' });
-        expect(within(region).getByRole('status').textContent).toBe('Showing 2 of 5 games');
+        await waitFor(() => expect(names(region)).toEqual(['Beta Run']));
+        expect(router.state.location.search).toEqual({ state: 'tried' });
+        expect(within(region).getByRole('status').textContent).toBe('Showing 1 of 5 games');
 
         await user.click(within(region).getByRole('radio', { name: /^All/ }));
         await waitFor(() => expect(names(region)).toHaveLength(5));
         expect(router.state.location.search).toEqual({});
     });
 
-    it('shows how many games each filter holds', async () => {
+    it('shows how many games each filter holds, and every category to an editor', async () => {
         const { region } = await openLibrary('/demo');
 
         expect(within(region).getByRole('radio', { name: 'All 5' })).toBeTruthy();
-        expect(within(region).getByRole('radio', { name: 'Backlog 2' })).toBeTruthy();
+        expect(within(region).getByRole('radio', { name: 'Backlog 1' })).toBeTruthy();
         expect(within(region).getByRole('radio', { name: 'Paused 1' })).toBeTruthy();
-        expect(within(region).queryByRole('radio', { name: /^Abandoned/ })).toBeNull();
+        expect(within(region).getByRole('radio', { name: 'Abandoned 0' })).toBeTruthy();
     });
 
     it('searches by name ignoring case and accents, and keeps a typed space', async () => {
@@ -178,6 +178,20 @@ describe('library view', () => {
         expect(within(region).getByRole('combobox', { name: 'Sort by' })).toHaveProperty('value', 'hours');
     });
 
+    it('filters nothing by a category the account does not have', async () => {
+        const { region } = await openLibrary('/demo?state=c-0a1b2c3d');
+
+        expect(names(region)).toHaveLength(5);
+        expect(within(region).getByRole('radio', { name: /^All/ })).toHaveProperty('checked', true);
+    });
+
+    it('reads the old backlog filter as the Backlog category', async () => {
+        const { region } = await openLibrary('/demo?state=backlog');
+
+        expect(names(region)).toEqual(['Alpha Quest']);
+        expect(within(region).getByRole('radio', { name: /^Backlog/ })).toHaveProperty('checked', true);
+    });
+
     it('explains an empty result and clears the filters', async () => {
         const { region, router, user } = await openLibrary('/demo?state=finished&q=alpha');
 
@@ -197,7 +211,7 @@ describe('library view', () => {
 
         const region = await screen.findByRole('region', { name: 'Biblioteca' });
         expect(within(region).getByRole('status').textContent).toBe('Mostrando 5 de 5 juegos');
-        expect(within(region).getByRole('radio', { name: /^Sin tocar/ })).toBeTruthy();
+        expect(within(region).getByRole('radio', { name: /^Probado/ })).toBeTruthy();
     });
 });
 

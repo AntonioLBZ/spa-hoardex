@@ -102,9 +102,9 @@ describe('manual states for the owner', () => {
         const fetchMock = stubOwner({ body: overrides({ '1': { state: 'finished', minutesAtSet: 0 } }) });
         const { user } = renderApp('/p/someone');
 
-        const button = await screen.findByRole('button', { name: 'State of Game One: Untouched' });
+        const button = await screen.findByRole('button', { name: 'State of Game One: Backlog' });
         await user.click(button);
-        expect(screen.getByRole('menuitemradio', { name: 'Automatic (Untouched)' }).getAttribute('aria-checked')).toBe(
+        expect(screen.getByRole('menuitemradio', { name: 'Automatic (Backlog)' }).getAttribute('aria-checked')).toBe(
             'true'
         );
 
@@ -124,11 +124,11 @@ describe('manual states for the owner', () => {
         stubOwner({ status: 503, body: { error: 'database' } });
         const { user } = renderApp('/p/someone');
 
-        await user.click(await screen.findByRole('button', { name: 'State of Game One: Untouched' }));
+        await user.click(await screen.findByRole('button', { name: 'State of Game One: Backlog' }));
         await user.click(screen.getByRole('menuitemradio', { name: 'Abandoned' }));
 
         expect((await screen.findByRole('alert')).textContent).toBe('That change could not be saved. Try again.');
-        expect(screen.getByRole('button', { name: 'State of Game One: Untouched' })).toBeTruthy();
+        expect(screen.getByRole('button', { name: 'State of Game One: Backlog' })).toBeTruthy();
     });
 });
 

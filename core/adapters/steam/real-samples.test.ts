@@ -73,7 +73,9 @@ describe.skipIf(!available)('real raw samples (spike 0B, public profile)', () =>
         expect(drift.reports).toEqual([]);
 
         const counts = countByState(result.data.games, new Date('2026-10-07T12:00:00Z'));
-        expect(Object.values(counts).reduce((total, count) => total + count, 0)).toBe(result.data.games.length);
+        expect(Object.values(counts).reduce<number>((total, count) => total + (count ?? 0), 0)).toBe(
+            result.data.games.length
+        );
     });
 
     it('serves the profile with only the domain fields and none of the personal ones', async () => {

@@ -1,4 +1,5 @@
 import type { Game } from '../domain/index.js';
+import type { CategoryId } from './categories.js';
 
 // The computed ones in evaluation order (first match wins), then `abandoned`, which only an owner sets
 export const BACKLOG_STATES = ['untouched', 'tried', 'inProgress', 'paused', 'finished', 'abandoned'] as const;
@@ -13,17 +14,12 @@ export function upgradeState(value: unknown): unknown {
     return typeof value === 'string' && Object.hasOwn(RETIRED_STATES, value) ? RETIRED_STATES[value] : value;
 }
 
-// What an owner can set by hand: every state
-export const MANUAL_STATES = BACKLOG_STATES;
-
-export type ManualState = BacklogState;
-
 // Games one request may change at once
 export const MAX_BULK_CHANGE = 1000;
 
-// A state set by hand; it wins over the computed one
+// A category set by hand; it wins over the computed state while that category exists
 export interface BacklogOverride {
-    state: BacklogState;
+    state: CategoryId;
     // ISO 8601
     setAt: string;
     // Playtime when it was set, to notice play since then
@@ -74,43 +70,4 @@ export function classifyGame(
     if (days <= thresholds.inProgressWithinDays) return 'inProgress';
     if (days <= thresholds.pausedWithinDays) return 'paused';
     return 'finished';
-}
-
-// An owner's choice first, then the computed state
-export function resolveState(
-    game: Game,
-    now: Date,
-    override?: BacklogOverride,
-    thresholds?: BacklogThresholds
-): BacklogState {
-    return override?.state ?? classifyGame(game, now, thresholds);
-}
-
-// Backlog = games never touched or barely tried
-export function isBacklog(state: BacklogState): boolean {
-    return state === 'untouched' || state === 'tried';
-}
-
-export interface StateOptions {
-    overrides?: Overrides;
-    thresholds?: BacklogThresholds;
-}
-
-export function countByState(
-    games: readonly Game[],
-    now: Date,
-    { overrides, thresholds }: StateOptions = {}
-): Record<BacklogState, number> {
-    const counts: Record<BacklogState, number> = {
-        untouched: 0,
-        tried: 0,
-        inProgress: 0,
-        paused: 0,
-        finished: 0,
-        abandoned: 0,
-    };
-    for (const game of games) {
-        counts[resolveState(game, now, overrides?.[game.id.externalId], thresholds)] += 1;
-    }
-    return counts;
 }

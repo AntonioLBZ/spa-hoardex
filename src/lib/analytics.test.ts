@@ -114,8 +114,8 @@ describe('startAnalytics', () => {
         const router = routerAt('/demo');
         startAnalytics(router);
         await router.load();
-        await router.navigate({ to: '/demo', search: { state: 'backlog' } });
-        await router.navigate({ to: '/demo', search: { state: 'backlog', q: 'zelda' } });
+        await router.navigate({ to: '/demo', search: { state: 'tried' } });
+        await router.navigate({ to: '/demo', search: { state: 'tried', q: 'zelda' } });
 
         expect(pageviews()).toHaveLength(1);
     });

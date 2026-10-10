@@ -1,7 +1,21 @@
-import type { BacklogOverride, ManualState, Overrides } from '../backlog/index.js';
+import type {
+    BacklogData,
+    BacklogOverride,
+    BacklogState,
+    Categories,
+    CategoryId,
+    CustomCategory,
+    CustomId,
+    Overrides,
+} from '../backlog/index.js';
 import type { EntityId } from '../domain/index.js';
 
-export type { BacklogOverride, Overrides };
+export type { BacklogData, BacklogOverride, Categories, Overrides };
+
+export interface CategoryFields {
+    name: string;
+    color: string;
+}
 
 export interface Account {
     userId: string;
@@ -39,10 +53,23 @@ export interface AccountRepository {
         userId: string,
         gameSource: string,
         games: readonly GameMinutes[],
-        state: ManualState,
+        state: CategoryId,
         setAt: string
     ): Promise<void>;
     clearOverrides(userId: string, gameSource: string, gameIds: readonly string[]): Promise<void>;
+    // Defaults for an identity without an account
+    listCategories(identity: EntityId): Promise<Categories>;
+    // `limit` past MAX_CATEGORIES, `name` when another of its own has it, `taken` if the id exists
+    createCategory(
+        userId: string,
+        category: CustomCategory,
+        maxCategories: number,
+        createdAt: string
+    ): Promise<'created' | 'limit' | 'name' | 'taken'>;
+    updateCategory(userId: string, id: CustomId, fields: CategoryFields): Promise<'updated' | 'notFound' | 'name'>;
+    // Only while no manual state uses it
+    deleteCategory(userId: string, id: CustomId): Promise<'deleted' | 'notFound' | 'notEmpty'>;
+    removeState(userId: string, state: Exclude<BacklogState, 'untouched'>): Promise<void>;
     getSettings(userId: string): Promise<AccountSettings>;
     // Turning them off deletes the history
     setSnapshots(userId: string, on: boolean, now: Date): Promise<void>;

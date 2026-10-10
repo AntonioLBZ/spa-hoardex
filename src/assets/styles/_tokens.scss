@@ -47,6 +47,16 @@
     --color-state-finished: #0d9488;
     --color-state-abandoned: #e11d48;
 
+    /* Palette for an owner's own categories */
+    --color-category-p1: #16a34a;
+    --color-category-p2: #0284c7;
+    --color-category-p3: #ea580c;
+    --color-category-p4: #db2777;
+    --color-category-p5: #65a30d;
+    --color-category-p6: #4f46e5;
+    --color-category-p7: #0891b2;
+    --color-category-p8: #c026d3;
+
     color-scheme: light dark;
 }
 
@@ -66,5 +76,13 @@
         --color-state-paused: #a78bfa;
         --color-state-finished: #2dd4bf;
         --color-state-abandoned: #fb7185;
+        --color-category-p1: #4ade80;
+        --color-category-p2: #38bdf8;
+        --color-category-p3: #fb923c;
+        --color-category-p4: #f472b6;
+        --color-category-p5: #a3e635;
+        --color-category-p6: #818cf8;
+        --color-category-p7: #22d3ee;
+        --color-category-p8: #e879f9;
     }
 }

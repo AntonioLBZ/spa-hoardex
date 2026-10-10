@@ -11,9 +11,9 @@ import {
 } from 'react';
 import { useTranslations } from 'use-intl';
 
-import { BACKLOG_STATES, type BacklogState } from '@core/backlog';
+import type { CategoryId } from '@core/backlog';
 import type { BrowseEntry } from '@core/browse';
-import { STATE_COLOR } from '@/lib/state-colors';
+import { useCategoryCatalog } from '@/lib/categories';
 import type { StateEditor } from './state-editor';
 
 import './state-chip.scss';
@@ -34,8 +34,9 @@ interface StateChipProps {
 // The state of a game, with a pencil when set by hand; for an editor, the button of its state menu
 export function StateChip({ entry, onChange, variant }: StateChipProps) {
     const t = useTranslations('library');
-    const states = useTranslations('dashboard.states');
+    const catalog = useCategoryCatalog();
     const { game, state, manual } = entry;
+    const shown = catalog.get(state);
     const note =
         manual === null
             ? null
@@ -46,8 +47,8 @@ export function StateChip({ entry, onChange, variant }: StateChipProps) {
     const className = `state-chip state-chip--${variant}`;
     const face = (
         <>
-            <span aria-hidden="true" className="state-chip__swatch" style={{ backgroundColor: STATE_COLOR[state] }} />
-            <span className="state-chip__label">{states(state)}</span>
+            <span aria-hidden="true" className="state-chip__swatch" style={{ backgroundColor: shown.color }} />
+            <span className="state-chip__label">{shown.label}</span>
             {note === null ? null : (
                 <>
                     <PencilIcon />
@@ -68,7 +69,7 @@ export function StateChip({ entry, onChange, variant }: StateChipProps) {
         <StateMenu
             className={className}
             entry={entry}
-            label={`${t('stateOf', { name: game.name })}: ${states(state)}${note === null ? '' : ` · ${note}`}`}
+            label={`${t('stateOf', { name: game.name })}: ${shown.label}${note === null ? '' : ` · ${note}`}`}
             onChange={onChange}
             title={note ?? undefined}
         >
@@ -87,12 +88,11 @@ interface StateMenuProps {
     children: ReactNode;
 }
 
-// Null: back to the computed state
-const OPTIONS: readonly (BacklogState | null)[] = [null, ...BACKLOG_STATES];
-
 function StateMenu({ entry: { game, computed, manual }, onChange, className, label, title, children }: StateMenuProps) {
     const t = useTranslations('library');
-    const states = useTranslations('dashboard.states');
+    const catalog = useCategoryCatalog();
+    // Null: back to the computed state
+    const options: readonly (CategoryId | null)[] = [null, ...catalog.list.map((category) => category.id)];
     const menuId = useId();
     const button = useRef<HTMLButtonElement>(null);
     const menu = useRef<HTMLDivElement>(null);
@@ -100,11 +100,11 @@ function StateMenu({ entry: { game, computed, manual }, onChange, className, lab
     const current = manual?.state ?? null;
     const [active, setActive] = useState(0);
 
-    const labelOf = (option: BacklogState | null) =>
-        option === null ? t('automaticOption', { state: states(computed) }) : states(option);
+    const labelOf = (option: CategoryId | null) =>
+        option === null ? t('automaticOption', { state: catalog.get(computed).label }) : catalog.get(option).label;
 
     const show = () => {
-        setActive(Math.max(OPTIONS.indexOf(current), 0));
+        setActive(Math.max(options.indexOf(current), 0));
         setOpen(true);
     };
 
@@ -113,7 +113,7 @@ function StateMenu({ entry: { game, computed, manual }, onChange, className, lab
         if (returnFocus) button.current?.focus();
     }, []);
 
-    function choose(option: BacklogState | null) {
+    function choose(option: CategoryId | null) {
         close(true);
         if (option !== current) onChange(game, option);
     }
@@ -157,7 +157,7 @@ function StateMenu({ entry: { game, computed, manual }, onChange, className, lab
     }
 
     function onMenuKey(event: KeyboardEvent<HTMLDivElement>) {
-        const last = OPTIONS.length - 1;
+        const last = options.length - 1;
         const move = (index: number) => {
             event.preventDefault();
             setActive(index);
@@ -178,16 +178,16 @@ function StateMenu({ entry: { game, computed, manual }, onChange, className, lab
                 return close(false);
             case 'Enter':
                 event.preventDefault();
-                return choose(OPTIONS[active] ?? null);
+                return choose(options[active] ?? null);
             // Picked on release, or the button that gets the focus back would take the release as a click
             case ' ':
                 return event.preventDefault();
         }
         if (event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) {
             const key = event.key.toLocaleLowerCase();
-            const ordered = [...OPTIONS.keys()].map((offset) => (active + 1 + offset) % OPTIONS.length);
+            const ordered = [...options.keys()].map((offset) => (active + 1 + offset) % options.length);
             const match = ordered.find((index) =>
-                labelOf(OPTIONS[index] ?? null)
+                labelOf(options[index] ?? null)
                     .toLocaleLowerCase()
                     .startsWith(key)
             );
@@ -222,13 +222,13 @@ function StateMenu({ entry: { game, computed, manual }, onChange, className, lab
                     }}
                     onKeyDown={onMenuKey}
                     onKeyUp={(event) => {
-                        if (event.key === ' ') choose(OPTIONS[active] ?? null);
+                        if (event.key === ' ') choose(options[active] ?? null);
                     }}
                     popover={POPOVER ? 'manual' : undefined}
                     ref={menu}
                     role="menu"
                 >
-                    {OPTIONS.map((option, index) => (
+                    {options.map((option, index) => (
                         <div
                             aria-checked={option === current}
                             className={
@@ -247,7 +247,7 @@ function StateMenu({ entry: { game, computed, manual }, onChange, className, lab
                             <span
                                 aria-hidden="true"
                                 className="state-chip__swatch"
-                                style={{ backgroundColor: STATE_COLOR[option ?? computed] }}
+                                style={{ backgroundColor: catalog.get(option ?? computed).color }}
                             />
                             <span className="state-chip__option-label">{labelOf(option)}</span>
                             <CheckIcon />

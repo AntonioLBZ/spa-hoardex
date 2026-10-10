@@ -1,4 +1,4 @@
-import type { BacklogState, Overrides } from '@core/backlog';
+import type { BacklogData, CategoryId, CustomId } from '@core/backlog';
 import type { GameArt, Library, Profile, ProfileAccess } from '@core/domain';
 
 // A non-200 answer from our API; access states are data, not errors
@@ -120,9 +120,7 @@ export function loginHref(returnTo: string): string {
     return `/api/auth/steam/login?returnTo=${encodeURIComponent(returnTo)}`;
 }
 
-export interface BacklogData {
-    overrides: Overrides;
-}
+export type { BacklogData };
 
 // Anyone's manual states, cached by the CDN like the library
 export function fetchBacklog(input: string, signal?: AbortSignal) {
@@ -134,34 +132,49 @@ export function fetchMyBacklog(signal?: AbortSignal) {
     return getAccess<BacklogData>('/api/me/backlog', signal);
 }
 
-async function writeBacklog(path: string, init: RequestInit): Promise<Overrides> {
+// Answers with every manual state and category after the change
+async function writeBacklog(path: string, init: RequestInit): Promise<BacklogData> {
     const response = await fetch(path, init);
     const body: unknown = await response.json().catch(() => null);
     if (!response.ok) throw new ApiError(response.status, errorCode(body));
     if (!isAccess(body) || body.kind !== 'ok') throw new ApiError(response.status, 'badResponse');
-    return (body as { data: BacklogData }).data.overrides;
+    return (body as { data: BacklogData }).data;
 }
 
-// Answers with every manual state after the change
-export function putBacklogState(appid: string, state: BacklogState): Promise<Overrides> {
-    return writeBacklog(`/api/me/backlog/${encodeURIComponent(appid)}`, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ state }),
-    });
+function jsonBody(method: string, body: unknown): RequestInit {
+    return { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
 }
 
-export function deleteBacklogState(appid: string): Promise<Overrides> {
+export function putBacklogState(appid: string, state: CategoryId): Promise<BacklogData> {
+    return writeBacklog(`/api/me/backlog/${encodeURIComponent(appid)}`, jsonBody('PUT', { state }));
+}
+
+export function deleteBacklogState(appid: string): Promise<BacklogData> {
     return writeBacklog(`/api/me/backlog/${encodeURIComponent(appid)}`, { method: 'DELETE' });
 }
 
 // Up to MAX_BULK_CHANGE games; null sends them back to the computed state
-export function putBacklogStates(appids: readonly string[], state: BacklogState | null): Promise<Overrides> {
-    return writeBacklog('/api/me/backlog', {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ appids, state }),
-    });
+export function putBacklogStates(appids: readonly string[], state: CategoryId | null): Promise<BacklogData> {
+    return writeBacklog('/api/me/backlog', jsonBody('PUT', { appids, state }));
+}
+
+export interface CategoryFields {
+    name: string;
+    // A palette token or #rrggbb
+    color: string;
+}
+
+export function postCategory(fields: CategoryFields): Promise<BacklogData> {
+    return writeBacklog('/api/me/categories', jsonBody('POST', fields));
+}
+
+export function patchCategory(id: CustomId, fields: CategoryFields): Promise<BacklogData> {
+    return writeBacklog(`/api/me/categories/${encodeURIComponent(id)}`, jsonBody('PATCH', fields));
+}
+
+// Only while no game is in it; the Backlog never
+export function deleteCategory(id: CategoryId): Promise<BacklogData> {
+    return writeBacklog(`/api/me/categories/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
 export interface AccountSettings {

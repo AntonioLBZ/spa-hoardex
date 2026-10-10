@@ -1,17 +1,17 @@
 import {
-    BACKLOG_STATES,
-    classifyGame,
-    isBacklog,
+    DEFAULT_CATEGORIES,
+    categoryIds,
+    computedState,
+    hasCategory,
     type BacklogOverride,
     type BacklogState,
     type BacklogThresholds,
+    type Categories,
+    type CategoryCounts,
+    type CategoryId,
     type Overrides,
 } from '../backlog/index.js';
 import type { Game } from '../domain/index.js';
-
-// "backlog" is untouched plus tried
-export const STATE_FILTERS = ['backlog', ...BACKLOG_STATES] as const;
-export type StateFilter = (typeof STATE_FILTERS)[number];
 
 export const SORTS = ['hours', 'recent', 'name'] as const;
 export type Sort = (typeof SORTS)[number];
@@ -24,16 +24,17 @@ export const NATURAL_DIRECTION: Record<Sort, Direction> = { hours: 'desc', recen
 
 export interface BrowseEntry {
     game: Game;
-    // What the page shows: the manual state if there is one
-    state: BacklogState;
-    // What the library alone gives
+    // What the page shows: the manual category if it still exists
+    state: CategoryId;
+    // What the library alone gives, after the fallback for removed categories
     computed: BacklogState;
+    // Null when absent or when its category is gone
     manual: BacklogOverride | null;
 }
 
 export interface BrowseOptions {
-    // Absent: every state
-    state?: StateFilter;
+    // Absent: every category
+    state?: CategoryId;
     // Matched against the name, ignoring case, accents and punctuation
     query?: string;
     sort: Sort;
@@ -45,31 +46,29 @@ export interface BrowseOptions {
 
 export interface ClassifyOptions {
     overrides?: Overrides;
+    categories?: Categories;
     thresholds?: BacklogThresholds;
 }
 
 export function classifyLibrary(
     games: readonly Game[],
     now: Date,
-    { overrides, thresholds }: ClassifyOptions = {}
+    { overrides, categories = DEFAULT_CATEGORIES, thresholds }: ClassifyOptions = {}
 ): BrowseEntry[] {
     return games.map((game) => {
-        const computed = classifyGame(game, now, thresholds);
-        const manual = overrides?.[game.id.externalId] ?? null;
+        const computed = computedState(game, now, categories, thresholds);
+        const stored = overrides?.[game.id.externalId];
+        const manual = stored !== undefined && hasCategory(categories, stored.state) ? stored : null;
         return { game, state: manual?.state ?? computed, computed, manual };
     });
 }
 
-function matchesState(state: BacklogState, filter: StateFilter): boolean {
-    return filter === 'backlog' ? isBacklog(state) : state === filter;
-}
-
-export function countByFilter(entries: readonly BrowseEntry[]): Record<StateFilter, number> {
-    const counts = Object.fromEntries(STATE_FILTERS.map((filter) => [filter, 0])) as Record<StateFilter, number>;
-    for (const { state } of entries) {
-        counts[state] += 1;
-        if (isBacklog(state)) counts.backlog += 1;
-    }
+// Every category of the account, at zero when empty
+export function countByCategory(entries: readonly BrowseEntry[], categories: Categories): CategoryCounts {
+    const counts: Partial<Record<CategoryId, number>> = Object.fromEntries(
+        categoryIds(categories).map((id) => [id, 0])
+    );
+    for (const { state } of entries) counts[state] = (counts[state] ?? 0) + 1;
     return counts;
 }
 
@@ -129,18 +128,8 @@ export function browseLibrary(entries: readonly BrowseEntry[], options: BrowseOp
     return entries
         .filter(
             (entry) =>
-                (state === undefined || matchesState(entry.state, state)) &&
+                (state === undefined || entry.state === state) &&
                 (needle === '' || fold(entry.game.name).includes(needle))
         )
         .sort(comparator(sort, direction, locale));
-}
-
-// One list per state, each in the order given
-export function groupByState(entries: readonly BrowseEntry[]): Record<BacklogState, BrowseEntry[]> {
-    const groups = Object.fromEntries(BACKLOG_STATES.map((state) => [state, []])) as unknown as Record<
-        BacklogState,
-        BrowseEntry[]
-    >;
-    for (const entry of entries) groups[entry.state].push(entry);
-    return groups;
 }

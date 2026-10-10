@@ -1,0 +1,90 @@
+.category-form {
+    display: grid;
+    gap: var(--size-75);
+}
+
+.category-form__colors {
+    align-items: center;
+    border: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-50);
+    margin: 0;
+    min-inline-size: 0;
+    padding: 0;
+}
+
+.category-form__legend {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-block-end: var(--size-50);
+    padding: 0;
+}
+
+.category-form__swatch {
+    align-items: center;
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-border-radius-pill);
+    cursor: pointer;
+    display: inline-flex;
+    gap: var(--size-50);
+    justify-content: center;
+    min-block-size: 2.5rem;
+    min-inline-size: 2.5rem;
+    padding: var(--size-25);
+}
+
+.category-form__swatch--custom {
+    padding-inline: var(--size-50) var(--size-75);
+}
+
+.category-form__dot {
+    block-size: 1.5rem;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-content) 20%, transparent);
+    flex: none;
+    forced-color-adjust: none;
+    inline-size: 1.5rem;
+}
+
+.category-form__custom-text {
+    color: var(--color-content-muted);
+    font-size: 0.875rem;
+}
+
+.category-form__swatch:has(.category-form__radio:checked) {
+    border-color: var(--color-content);
+    box-shadow: 0 0 0 1px var(--color-content);
+}
+
+.category-form__swatch:has(.category-form__radio:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+.category-form__picker {
+    background: none;
+    block-size: 2.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--size-border-radius);
+    cursor: pointer;
+    inline-size: 3rem;
+    padding: var(--size-25);
+}
+
+.category-form__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-50);
+}
+
+.category-form__error {
+    color: var(--color-danger);
+    font-size: 0.875rem;
+}
+
+@media (forced-colors: active) {
+    .category-form__swatch:has(.category-form__radio:checked) {
+        outline: 2px solid Highlight;
+    }
+}

@@ -120,7 +120,20 @@
     opacity: 1;
 }
 
+/* Picked up to drop on a state chip */
+.game-card__frame--draggable {
+    cursor: grab;
+}
+
+.game-card__frame--dragging {
+    opacity: 0.45;
+}
+
 @media (prefers-reduced-motion: no-preference) {
+    .game-card__frame {
+        transition: opacity var(--motion-swift) var(--ease-standard);
+    }
+
     .game-card__frame::after {
         transition: opacity var(--motion-swift) var(--ease-standard);
     }

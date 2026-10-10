@@ -63,3 +63,8 @@
     gap: var(--size-100);
     justify-items: start;
 }
+
+.library-view__hint {
+    color: var(--color-content-muted);
+    font-size: 0.8125rem;
+}

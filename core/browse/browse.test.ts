@@ -1,14 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Game } from '../domain/index.js';
-import { BACKLOG_STATES } from '../backlog/index.js';
-import {
-    browseLibrary,
-    classifyLibrary,
-    countByFilter,
-    groupByState,
-    STATE_FILTERS,
-    type BrowseOptions,
-} from './index.js';
+import { BACKLOG_STATES, DEFAULT_CATEGORIES, type Categories } from '../backlog/index.js';
+import { browseLibrary, classifyLibrary, countByCategory, type BrowseOptions } from './index.js';
 
 const NOW = new Date('2026-10-07T12:00:00.000Z');
 
@@ -51,16 +44,48 @@ describe('classifyLibrary', () => {
         expect(echo).toMatchObject({ state: 'abandoned', computed: 'finished', manual });
 
         const withManual = classifyLibrary(GAMES, NOW, { overrides: { '5': manual } });
-        expect(countByFilter(withManual)).toMatchObject({ abandoned: 1, finished: 0 });
+        expect(countByCategory(withManual, DEFAULT_CATEGORIES)).toMatchObject({ abandoned: 1, finished: 0 });
         const abandoned = browseLibrary(withManual, { state: 'abandoned', sort: 'name' });
         expect(abandoned.map((entry) => entry.game.name)).toEqual(['Echo Harbor']);
     });
 });
 
-describe('countByFilter', () => {
-    it('counts every state and the backlog', () => {
-        expect(countByFilter(entries)).toEqual({
-            backlog: 2,
+describe('classifyLibrary with categories', () => {
+    const categories: Categories = {
+        removed: ['tried', 'paused'],
+        custom: [{ id: 'c-12345678', name: 'Co-op', color: '#ff0000' }],
+    };
+    const manual = { state: 'c-12345678', setAt: '2026-10-01T00:00:00Z', minutesAtSet: 0 } as const;
+    const gone = { state: 'paused', setAt: '2026-10-01T00:00:00Z', minutesAtSet: 0 } as const;
+    const classified = classifyLibrary(GAMES, NOW, { categories, overrides: { '4': manual, '5': gone } });
+
+    it('sends games of removed categories to the fallback and drops overrides whose category is gone', () => {
+        expect(classified.map((entry) => [entry.game.name, entry.state, entry.manual?.state ?? null])).toEqual([
+            ['Echo Harbor', 'finished', null],
+            ['Álamo Run', 'untouched', null],
+            ['Delta Forge', 'c-12345678', 'c-12345678'],
+            ['Bright Tide', 'untouched', null],
+            ['Crimson Orbit', 'untouched', null],
+        ]);
+    });
+
+    it('counts every category of the account', () => {
+        expect(countByCategory(classified, categories)).toEqual({
+            untouched: 3,
+            inProgress: 0,
+            finished: 1,
+            abandoned: 0,
+            'c-12345678': 1,
+        });
+        expect(browseLibrary(classified, { state: 'c-12345678', sort: 'name' }).map((e) => e.game.name)).toEqual([
+            'Delta Forge',
+        ]);
+    });
+});
+
+describe('countByCategory', () => {
+    it('counts every state', () => {
+        expect(countByCategory(entries, DEFAULT_CATEGORIES)).toEqual({
             untouched: 1,
             tried: 1,
             inProgress: 1,
@@ -70,8 +95,8 @@ describe('countByFilter', () => {
         });
     });
 
-    it('has a count for every filter, empty library included', () => {
-        expect(Object.keys(countByFilter([])).sort()).toEqual([...STATE_FILTERS].sort());
+    it('has a count for every category, empty library included', () => {
+        expect(Object.keys(countByCategory([], DEFAULT_CATEGORIES))).toEqual([...BACKLOG_STATES]);
     });
 });
 
@@ -83,10 +108,6 @@ describe('browseLibrary filters', () => {
     it('filters by one state', () => {
         expect(names({ sort: 'name', state: 'paused' })).toEqual(['Crimson Orbit']);
         expect(names({ sort: 'name', state: 'abandoned' })).toEqual([]);
-    });
-
-    it('treats the backlog as untouched plus tried', () => {
-        expect(names({ sort: 'name', state: 'backlog' })).toEqual(['Álamo Run', 'Bright Tide']);
     });
 
     it('searches the name ignoring case, accents and punctuation', () => {
@@ -111,7 +132,7 @@ describe('browseLibrary filters', () => {
     });
 
     it('combines the state filter and the search', () => {
-        expect(names({ sort: 'name', state: 'backlog', query: 'bright' })).toEqual(['Bright Tide']);
+        expect(names({ sort: 'name', state: 'tried', query: 'bright' })).toEqual(['Bright Tide']);
         expect(names({ sort: 'name', state: 'finished', query: 'bright' })).toEqual([]);
     });
 
@@ -217,15 +238,5 @@ describe('browseLibrary sorting', () => {
             'Dated',
             'Broken Date',
         ]);
-    });
-});
-
-describe('groupByState', () => {
-    it('puts each game in its state’s list, keeping the order, with every state present', () => {
-        const groups = groupByState(browseLibrary(entries, { sort: 'name' }));
-        expect(Object.keys(groups)).toEqual([...BACKLOG_STATES]);
-        expect(groups.untouched.map((entry) => entry.game.name)).toEqual(['Álamo Run']);
-        expect(groups.abandoned).toEqual([]);
-        expect(Object.values(groups).flat()).toHaveLength(GAMES.length);
     });
 });

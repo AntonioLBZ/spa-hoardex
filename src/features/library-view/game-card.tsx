@@ -1,11 +1,12 @@
 import { clsx } from 'clsx';
-import { memo, type CSSProperties } from 'react';
+import { memo, type CSSProperties, type DragEvent } from 'react';
 import { useTranslations } from 'use-intl';
 
 import type { BrowseEntry } from '@core/browse';
-import { STATE_COLOR } from '@/lib/state-colors';
+import { useCategoryCatalog } from '@/lib/categories';
 import { useHours } from '@/lib/use-hours';
 import { Cover } from './cover';
+import { DRAG_TYPE } from './drag';
 import type { StateEditor } from './state-editor';
 import { StateChip } from './state-chip';
 
@@ -19,14 +20,35 @@ interface GameCardProps {
     // Null outside selection
     selected: boolean | null;
     onToggle: (appid: string) => void;
+    // Null: not draggable
+    onDragStart: ((appid: string) => void) | null;
+    onDragEnd: () => void;
+    dragging: boolean;
 }
 
-// The `li` belongs to GSAP's reveal; everything visual, hover included, lives in the frame
-export const GameCard = memo(function GameCard({ entry, withImages, onChange, selected, onToggle }: GameCardProps) {
+// The `li` belongs to GSAP's reveal; everything visual, hover and drag included, lives in the frame
+export const GameCard = memo(function GameCard({
+    entry,
+    withImages,
+    onChange,
+    selected,
+    onToggle,
+    onDragStart,
+    onDragEnd,
+    dragging,
+}: GameCardProps) {
     const t = useTranslations('library.select');
     const { game, state } = entry;
+    const color = useCategoryCatalog().get(state).color;
     const hours = useHours();
     const selecting = selected !== null;
+    const draggable = onDragStart !== null;
+
+    function startDrag(event: DragEvent<HTMLDivElement>) {
+        event.dataTransfer.setData(DRAG_TYPE, game.id.externalId);
+        event.dataTransfer.effectAllowed = 'move';
+        onDragStart?.(game.id.externalId);
+    }
 
     return (
         <li className="game-card">
@@ -34,9 +56,14 @@ export const GameCard = memo(function GameCard({ entry, withImages, onChange, se
                 className={clsx(
                     'game-card__frame',
                     selecting && 'game-card__frame--selecting',
-                    selected === true && 'game-card__frame--selected'
+                    selected === true && 'game-card__frame--selected',
+                    draggable && 'game-card__frame--draggable',
+                    dragging && 'game-card__frame--dragging'
                 )}
-                style={{ '--state-color': STATE_COLOR[state] } as CSSProperties}
+                draggable={draggable}
+                onDragEnd={draggable ? onDragEnd : undefined}
+                onDragStart={draggable ? startDrag : undefined}
+                style={{ '--state-color': color } as CSSProperties}
             >
                 <Cover id={game.id} name={game.name} withImages={withImages} />
                 <div className="game-card__caption">

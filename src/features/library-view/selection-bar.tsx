@@ -1,9 +1,10 @@
 import { useId, useState, type FormEvent } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 
-import { BACKLOG_STATES, type BacklogState } from '@core/backlog';
+import type { CategoryId } from '@core/backlog';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
+import { useCategoryCatalog, type CategoryCatalog } from '@/lib/categories';
 import { ToolbarIcon } from './toolbar-icon';
 
 import './selection-bar.scss';
@@ -19,13 +20,13 @@ interface SelectionBarProps {
     onSelectAll: () => void;
     onClear: () => void;
     // Null: back to the computed state
-    onMove: (state: BacklogState | null) => void;
+    onMove: (state: CategoryId | null) => void;
     onDone: () => void;
 }
 
-function targetOf(value: string): BacklogState | null | undefined {
+function targetOf(catalog: CategoryCatalog, value: string): CategoryId | null | undefined {
     if (value === AUTOMATIC) return null;
-    return BACKLOG_STATES.find((state) => state === value);
+    return catalog.list.find((category) => category.id === value)?.id;
 }
 
 // Sticky at the end of the library: it floats while scrolling through the cards
@@ -39,11 +40,11 @@ export function SelectionBar({
     onDone,
 }: SelectionBarProps) {
     const t = useTranslations('library.select');
-    const states = useTranslations('dashboard.states');
+    const catalog = useCategoryCatalog();
     const format = useFormatter();
     const targetId = useId();
     const [value, setValue] = useState('');
-    const target = targetOf(value);
+    const target = targetOf(catalog, value);
 
     function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -88,9 +89,9 @@ export function SelectionBar({
                             {t('choose')}
                         </option>
                         <option value={AUTOMATIC}>{t('automatic')}</option>
-                        {BACKLOG_STATES.map((state) => (
-                            <option key={state} value={state}>
-                                {states(state)}
+                        {catalog.list.map((category) => (
+                            <option key={category.id} value={category.id}>
+                                {category.label}
                             </option>
                         ))}
                     </select>

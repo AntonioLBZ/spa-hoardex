@@ -26,7 +26,7 @@ export function LibrarySection({ source, profileId, library }: LibrarySectionPro
     const search = useMemo(() => parseLibrarySearch(rawSearch), [rawSearch]);
     const navigate = useNavigate();
     const content = useProfileContent();
-    const { overrides, editor } = useBacklog(source, profileId);
+    const { overrides, categories, editor } = useBacklog(source, profileId);
     // Filters are not navigation: replace the entry and keep the scroll position
     const onSearchChange = useCallback(
         (next: LibrarySearch) => void navigate({ to: '.', search: next, replace: true, resetScroll: false }),
@@ -47,8 +47,14 @@ export function LibrarySection({ source, profileId, library }: LibrarySectionPro
 
     return (
         <>
-            <Dashboard games={library.data.data.games} overrides={overrides} settingsUrl={settingsUrlFor(source)} />
+            <Dashboard
+                categories={categories}
+                games={library.data.data.games}
+                overrides={overrides}
+                settingsUrl={settingsUrlFor(source)}
+            />
             <LibraryView
+                categories={categories}
                 editor={editor}
                 library={library.data.data}
                 onSearchChange={onSearchChange}

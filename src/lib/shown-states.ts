@@ -1,8 +1,6 @@
-import type { BacklogState } from '@core/backlog';
+import { isCustomId, type CategoryId } from '@core/backlog';
 
-// Only an owner sets these, so a 0 would wrongly read as "none"
-const ONLY_WHEN_PRESENT: ReadonlySet<BacklogState> = new Set(['abandoned']);
-
-export function isShownState(state: BacklogState, count: number): boolean {
-    return !ONLY_WHEN_PRESENT.has(state) || count > 0;
+// Only an owner puts games in these, so a 0 would wrongly read as "none"
+export function isShownState(state: CategoryId, count: number): boolean {
+    return (state !== 'abandoned' && !isCustomId(state)) || count > 0;
 }

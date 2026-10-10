@@ -41,7 +41,7 @@ describe('summarizeLibrary', () => {
         expect(summary).toMatchObject({ gameCount: 3, playedCount: 2, totalMinutes: 630, recentMinutes: 120 });
     });
 
-    it('counts the backlog as untouched plus tried', () => {
+    it('counts the backlog as the untouched games', () => {
         const summary = summarizeLibrary(
             [
                 makeGame('1', 0, null),
@@ -53,7 +53,16 @@ describe('summarizeLibrary', () => {
         );
 
         expect(summary.stateCounts).toMatchObject({ untouched: 2, tried: 1, inProgress: 1 });
-        expect(summary.backlogCount).toBe(3);
+        expect(summary.backlogCount).toBe(2);
+    });
+
+    it('counts games of removed categories in the backlog', () => {
+        const summary = summarizeLibrary([makeGame('1', 0, null), makeGame('2', 30, '2026-10-01T00:00:00Z')], NOW, {
+            categories: { removed: ['tried'], custom: [] },
+        });
+
+        expect(summary.stateCounts).not.toHaveProperty('tried');
+        expect(summary.backlogCount).toBe(2);
     });
 
     it('honours custom thresholds', () => {
@@ -63,7 +72,7 @@ describe('summarizeLibrary', () => {
         expect(
             summarizeLibrary(games, NOW, {
                 thresholds: { triedBelowMinutes: 120, inProgressWithinDays: 90, pausedWithinDays: 365 },
-            }).backlogCount
+            }).stateCounts.tried
         ).toBe(1);
     });
 

@@ -66,6 +66,7 @@ export function Cover({ id, name, withImages }: CoverProps) {
                     alt=""
                     className="cover__image"
                     decoding="async"
+                    draggable={false}
                     height={900}
                     loading="lazy"
                     onError={onError}

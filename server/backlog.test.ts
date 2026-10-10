@@ -13,6 +13,7 @@ const ID = '76561198000000001';
 const SECRET = 'a'.repeat(48);
 const NOW = new Date('2026-10-09T16:00:00Z');
 const OWNED = '220';
+const DEFAULTS = { removed: [], custom: [] };
 
 let database: Awaited<ReturnType<typeof createTestDatabase>>;
 
@@ -76,15 +77,15 @@ describe('PUT /api/me/backlog/:appid', () => {
         expect(put.response.status).toBe(200);
         expect(put.response.headers.get('cache-control')).toBe('no-store');
         const overrides = { [OWNED]: { state: 'abandoned', minutesAtSet: 1840, setAt: NOW.toISOString() } };
-        expect(put.body).toEqual({ kind: 'ok', data: { overrides } });
+        expect(put.body).toEqual({ kind: 'ok', data: { overrides, categories: DEFAULTS } });
 
         const mine = await call('GET', '/api/me/backlog', { cookie, origin: null });
         expect(mine.response.headers.get('cache-control')).toBe('no-store');
-        expect(mine.body).toEqual({ kind: 'ok', data: { overrides } });
+        expect(mine.body).toEqual({ kind: 'ok', data: { overrides, categories: DEFAULTS } });
 
         const visitor = await call('GET', `/api/backlog/${ID}`, { origin: null });
         expect(visitor.response.headers.get('cache-control')).toBe('public, s-maxage=60, stale-while-revalidate=300');
-        expect(visitor.body).toEqual({ kind: 'ok', data: { overrides } });
+        expect(visitor.body).toEqual({ kind: 'ok', data: { overrides, categories: DEFAULTS } });
     });
 
     it('stores the retired completed state as finished', async () => {
@@ -144,10 +145,10 @@ describe('PUT /api/me/backlog', () => {
             [OWNED]: { state: 'paused', minutesAtSet: 1840, setAt: NOW.toISOString() },
             '620': { state: 'paused', minutesAtSet: 59, setAt: NOW.toISOString() },
         };
-        expect(put.body).toEqual({ kind: 'ok', data: { overrides } });
+        expect(put.body).toEqual({ kind: 'ok', data: { overrides, categories: DEFAULTS } });
         expect((await call('GET', `/api/backlog/${ID}`, { origin: null })).body).toEqual({
             kind: 'ok',
-            data: { overrides },
+            data: { overrides, categories: DEFAULTS },
         });
     });
 
@@ -170,7 +171,7 @@ describe('PUT /api/me/backlog', () => {
         expect(put.response.status).toBe(404);
         expect((await call('GET', '/api/me/backlog', { cookie, origin: null })).body).toEqual({
             kind: 'ok',
-            data: { overrides: {} },
+            data: { overrides: {}, categories: DEFAULTS },
         });
     });
 
@@ -206,10 +207,10 @@ describe('DELETE /api/me/backlog/:appid', () => {
         await call('PUT', `/api/me/backlog/${OWNED}`, { cookie, body: { state: 'finished' } });
 
         const removed = await call('DELETE', `/api/me/backlog/${OWNED}`, { cookie });
-        expect(removed.body).toEqual({ kind: 'ok', data: { overrides: {} } });
+        expect(removed.body).toEqual({ kind: 'ok', data: { overrides: {}, categories: DEFAULTS } });
         expect((await call('GET', `/api/backlog/${ID}`, { origin: null })).body).toEqual({
             kind: 'ok',
-            data: { overrides: {} },
+            data: { overrides: {}, categories: DEFAULTS },
         });
     });
 });
@@ -218,7 +219,7 @@ describe('GET /api/backlog/:input', () => {
     it('answers empty for a profile without an account, and serves the repeat from Redis', async () => {
         const { call, listOverrides } = setup();
         const first = await call('GET', `/api/backlog/${ID}`, { origin: null });
-        expect(first.body).toEqual({ kind: 'ok', data: { overrides: {} } });
+        expect(first.body).toEqual({ kind: 'ok', data: { overrides: {}, categories: DEFAULTS } });
         await call('GET', `/api/backlog/${ID}`, { origin: null });
         expect(listOverrides).toHaveBeenCalledOnce();
     });
@@ -237,5 +238,116 @@ describe('GET /api/me/backlog', () => {
         const response = await call('GET', '/api/me/backlog', { origin: null });
         expect(response.response.status).toBe(401);
         expect(response.body).toEqual({ error: 'signedOut' });
+    });
+});
+
+describe('categories', () => {
+    it('creates, renames and deletes one, and visitors see it', async () => {
+        const { call, session } = setup();
+        const cookie = await session();
+
+        const created = await call('POST', '/api/me/categories', {
+            cookie,
+            body: { name: '  Co-op  night ', color: '#AA00FF' },
+        });
+        expect(created.response.status).toBe(200);
+        expect(created.response.headers.get('cache-control')).toBe('no-store');
+        const [category] = (created.body as { data: { categories: { custom: { id: string }[] } } }).data.categories
+            .custom;
+        expect(category).toEqual({
+            id: expect.stringMatching(/^c-[0-9a-f]{8}$/),
+            name: 'Co-op night',
+            color: '#aa00ff',
+        });
+        const id = category?.id ?? '';
+
+        const renamed = await call('PATCH', `/api/me/categories/${id}`, {
+            cookie,
+            body: { name: 'Co-op', color: 'p4' },
+        });
+        expect(renamed.body).toMatchObject({ data: { categories: { custom: [{ id, name: 'Co-op', color: 'p4' }] } } });
+
+        const moved = await call('PUT', `/api/me/backlog/${OWNED}`, { cookie, body: { state: id } });
+        expect(moved.body).toMatchObject({ data: { overrides: { [OWNED]: { state: id } } } });
+        expect((await call('GET', `/api/backlog/${ID}`, { origin: null })).body).toMatchObject({
+            data: { overrides: { [OWNED]: { state: id } }, categories: { custom: [{ id, name: 'Co-op' }] } },
+        });
+
+        const busy = await call('DELETE', `/api/me/categories/${id}`, { cookie });
+        expect(busy.response.status).toBe(409);
+        expect(busy.body).toEqual({ error: 'categoryNotEmpty' });
+        await call('DELETE', `/api/me/backlog/${OWNED}`, { cookie });
+        const deleted = await call('DELETE', `/api/me/categories/${id}`, { cookie });
+        expect(deleted.body).toEqual({ kind: 'ok', data: { overrides: {}, categories: DEFAULTS } });
+        expect((await call('DELETE', `/api/me/categories/${id}`, { cookie })).body).toEqual({
+            error: 'unknownCategory',
+        });
+    });
+
+    it('refuses a repeated name, a bad colour and a category past the limit', async () => {
+        const { call, session } = setup();
+        const cookie = await session();
+        await call('POST', '/api/me/categories', { cookie, body: { name: 'Shelf 0', color: 'p1' } });
+
+        const repeated = await call('POST', '/api/me/categories', { cookie, body: { name: 'SHELF 0', color: 'p1' } });
+        expect(repeated.response.status).toBe(409);
+        expect(repeated.body).toEqual({ error: 'categoryName' });
+        for (const body of [
+            { name: 'Red', color: 'red' },
+            { name: '', color: 'p1' },
+            { name: 'x'.repeat(25), color: 'p1' },
+        ]) {
+            expect((await call('POST', '/api/me/categories', { cookie, body })).response.status).toBe(400);
+        }
+
+        for (let i = 1; i < 6; i++)
+            await call('POST', '/api/me/categories', { cookie, body: { name: `Shelf ${i}`, color: 'p1' } });
+        const full = await call('POST', '/api/me/categories', { cookie, body: { name: 'One more', color: 'p1' } });
+        expect(full.response.status).toBe(409);
+        expect(full.body).toEqual({ error: 'categoryLimit' });
+    });
+
+    it('removes a built-in state only while empty, never the Backlog, and a game can no longer go there', async () => {
+        const { call, session } = setup();
+        const cookie = await session();
+
+        expect((await call('DELETE', '/api/me/categories/untouched', { cookie })).body).toEqual({
+            error: 'fixedCategory',
+        });
+        expect((await call('DELETE', '/api/me/categories/tried', { cookie })).body).toEqual({
+            error: 'categoryNotEmpty',
+        });
+        const removed = await call('DELETE', '/api/me/categories/abandoned', { cookie });
+        expect(removed.body).toEqual({
+            kind: 'ok',
+            data: { overrides: {}, categories: { removed: ['abandoned'], custom: [] } },
+        });
+
+        const put = await call('PUT', `/api/me/backlog/${OWNED}`, { cookie, body: { state: 'abandoned' } });
+        expect(put.response.status).toBe(404);
+        expect(put.body).toEqual({ error: 'unknownCategory' });
+        const bulk = await call('PUT', '/api/me/backlog', { cookie, body: { appids: [OWNED], state: 'c-00000000' } });
+        expect(bulk.body).toEqual({ error: 'unknownCategory' });
+    });
+
+    it('cannot rename a built-in state or an unknown id', async () => {
+        const { call, session } = setup();
+        const cookie = await session();
+        const body = { name: 'Mine', color: 'p1' };
+        expect((await call('PATCH', '/api/me/categories/paused', { cookie, body })).response.status).toBe(404);
+        expect((await call('PATCH', '/api/me/categories/c-00000000', { cookie, body })).response.status).toBe(404);
+        expect((await call('DELETE', '/api/me/categories/nope', { cookie })).response.status).toBe(404);
+    });
+
+    it('needs a session from our own pages', async () => {
+        const { call, session } = setup();
+        const body = { name: 'Mine', color: 'p1' };
+        expect((await call('POST', '/api/me/categories', { body })).response.status).toBe(401);
+        const foreign = await call('POST', '/api/me/categories', {
+            cookie: await session(),
+            body,
+            origin: 'https://evil.example',
+        });
+        expect(foreign.response.status).toBe(403);
     });
 });

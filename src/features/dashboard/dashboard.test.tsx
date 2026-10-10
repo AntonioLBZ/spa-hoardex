@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Categories } from '@core/backlog';
 import type { Game, Library } from '@core/domain';
 import { LocaleProvider } from '@/lib/i18n';
 import { Dashboard } from './dashboard';
@@ -50,7 +51,7 @@ function renderDashboard(library: Library = LIBRARY, settingsUrl?: string | null
 }
 
 function kpi(label: string): HTMLElement {
-    const item = screen.getByText(label).closest('div');
+    const item = screen.getByText(label, { selector: 'dt' }).closest('div');
     if (item === null) throw new Error(`No KPI for ${label}`);
     return item;
 }
@@ -69,20 +70,44 @@ describe('Dashboard', () => {
         expect(kpi('Games').textContent).toContain('5');
         expect(kpi('Games').textContent).toContain('4 played');
         expect(kpi('Hours played').textContent).toContain('171 h');
-        expect(kpi('Backlog').textContent).toContain('2');
-        expect(kpi('Backlog').textContent).toContain('40% of the library');
+        expect(kpi('Backlog').textContent).toContain('1');
+        expect(kpi('Backlog').textContent).toContain('20% of the library');
         expect(kpi('Last two weeks').textContent).toContain('2.5 h');
     });
 
     it('lists every shown state with its count and share, leaving out Abandoned', () => {
         renderDashboard();
 
-        for (const name of ['Untouched', 'Tried', 'In progress', 'Paused', 'Finished']) {
-            const row = screen.getByText(name).closest('li');
+        const states = within(screen.getByRole('region', { name: 'Backlog states' }));
+        for (const name of ['Backlog', 'Tried', 'In progress', 'Paused', 'Finished']) {
+            const row = states.getByText(name).closest('li');
             expect(row?.textContent).toContain('1');
             expect(row?.textContent).toContain('20%');
         }
         expect(screen.queryByText('Abandoned')).toBeNull();
+    });
+
+    it('shows the owner’s categories with their colours and counts removed ones in the Backlog', () => {
+        const categories: Categories = {
+            removed: ['tried'],
+            custom: [{ id: 'c-12345678', name: 'Co-op', color: '#123456' }],
+        };
+        const overrides = { '3': { state: 'c-12345678', setAt: NOW.toISOString(), minutesAtSet: 6000 } } as const;
+        render(
+            <LocaleProvider>
+                <Dashboard categories={categories} games={LIBRARY.games} overrides={overrides} />
+            </LocaleProvider>
+        );
+
+        const states = within(screen.getByRole('region', { name: 'Backlog states' }));
+        expect(states.queryByText('Tried')).toBeNull();
+        expect(states.getByText('Backlog').closest('li')?.textContent).toContain('40%');
+        const coop = states.getByText('Co-op').closest('li');
+        expect(coop?.textContent).toContain('20%');
+        expect(coop?.querySelector<HTMLElement>('.state-breakdown__swatch')?.style.backgroundColor).toBe(
+            'rgb(18, 52, 86)'
+        );
+        expect(kpi('Backlog').textContent).toContain('2');
     });
 
     it('ranks the most played games with their hours', () => {
@@ -167,6 +192,6 @@ describe('Dashboard', () => {
         renderDashboard();
 
         expect(screen.getByText('Horas jugadas')).toBeTruthy();
-        expect(screen.getByText('Sin tocar')).toBeTruthy();
+        expect(screen.getByText('Probado')).toBeTruthy();
     });
 });

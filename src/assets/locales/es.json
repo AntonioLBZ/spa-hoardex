@@ -31,6 +31,44 @@
             "cancel": "Cancelar",
             "failed": "No se pudo guardar ese cambio. Inténtalo de nuevo."
         },
+        "categories": {
+            "heading": "Categorías",
+            "body": "Cada juego está en una categoría. Backlog, Probado, En curso, Pausado y Completado además se rellenan solas según tus horas; si borras una, sus juegos pasan a Backlog. Puedes tener hasta {max, number} categorías, y son públicas como tus estados manuales.",
+            "loading": "Cargando tus categorías…",
+            "failed": "No se pudieron cargar tus categorías. Inténtalo más tarde.",
+            "games": "{count, plural, =0 {Ningún juego} one {# juego} other {# juegos}}",
+            "builtIn": "De serie",
+            "rename": "Renombrar",
+            "renameLabel": "Renombrar {name}",
+            "delete": "Borrar",
+            "deleteLabel": "Borrar {name}",
+            "fixed": "Backlog no se puede borrar: todo juego necesita una categoría a la que volver.",
+            "notEmpty": "{count, plural, one {Mueve su juego} other {Mueve sus # juegos}} a otra categoría para poder borrarla.",
+            "noLibrary": "No se pudo cargar tu biblioteca, así que no se sabe si esta categoría está vacía.",
+            "confirm": "¿Borrar {name}? {builtIn, select, true {Una categoría de serie no se puede recuperar.} other {No se puede deshacer.}}",
+            "confirmAction": "Borrar {name}",
+            "cancel": "Cancelar",
+            "new": "Nueva categoría",
+            "create": "Crear categoría",
+            "save": "Guardar",
+            "name": "Nombre",
+            "nameHint": "Hasta {max, number} caracteres.",
+            "color": "Color",
+            "palette": "Color {index, number}",
+            "customColor": "Personalizado",
+            "customColorLabel": "Elige un color personalizado",
+            "limit": "Tienes el máximo de {max, number} categorías. Borra una para crear otra.",
+            "errors": {
+                "categoryLimit": "Ya tienes el máximo de {max, number} categorías.",
+                "categoryName": "Ya tienes una categoría con ese nombre.",
+                "categoryNotEmpty": "Esa categoría ahora tiene juegos. Muévelos antes.",
+                "fixedCategory": "Backlog no se puede borrar.",
+                "unknownCategory": "Esa categoría ya no existe. Recarga la página.",
+                "library": "No se pudo cargar tu biblioteca. Inténtalo más tarde.",
+                "invalidInput": "Revisa el nombre y el color.",
+                "other": "No se pudo guardar ese cambio. Inténtalo de nuevo."
+            }
+        },
         "sessions": {
             "heading": "Sesiones",
             "body": "Cierra la sesión en todos los dispositivos donde la iniciaste, también en este.",
@@ -39,7 +77,7 @@
         },
         "delete": {
             "heading": "Eliminar mi cuenta",
-            "body": "Borra los datos de tu cuenta en Hoardex: tus estados manuales y tu historial de tiempo de juego. Tu cuenta de Steam no se toca.",
+            "body": "Borra los datos de tu cuenta en Hoardex: tus estados manuales, tus categorías y tu historial de tiempo de juego. Tu cuenta de Steam no se toca.",
             "action": "Eliminar mi cuenta",
             "confirm": "No se puede deshacer. ¿Continuar?",
             "confirmAction": "Confirmar eliminar cuenta",
@@ -68,11 +106,11 @@
             },
             "backlog": {
                 "title": "Un backlog que se ordena solo",
-                "text": "Cada juego cae en Sin tocar, Probado, En curso, Pausado o Completado según sus horas y su última sesión."
+                "text": "Cada juego cae en Backlog, Probado, En curso, Pausado o Completado según sus horas y su última sesión."
             },
             "board": {
                 "title": "Tuyo para editar",
-                "text": "Entra con Steam y arrastra juegos a Completado o Abandonado en un tablero. Las visitas lo ven, sin poder cambiarlo."
+                "text": "Entra con Steam para arrastrar juegos a un estado y crear tus propias categorías. Las visitas las ven, sin poder cambiarlas."
             },
             "history": {
                 "title": "Historial de horas, si lo quieres",
@@ -168,7 +206,7 @@
         "states": {
             "title": "Estados del backlog",
             "total": "juegos",
-            "untouched": "Sin tocar",
+            "untouched": "Backlog",
             "tried": "Probado",
             "inProgress": "En curso",
             "paused": "Pausado",
@@ -211,7 +249,6 @@
         },
         "stateLegend": "Filtrar por estado",
         "all": "Todos",
-        "backlog": "Backlog",
         "count": "Mostrando {shown, number} de {total, plural, one {# juego} other {# juegos}}",
         "empty": "Ningún juego coincide con estos filtros.",
         "clear": "Quitar filtros",
@@ -223,16 +260,7 @@
         "playedSince": "Jugado desde entonces",
         "saveFailed": "No se pudo guardar ese cambio. Inténtalo de nuevo.",
         "demoEditing": "Puedes cambiar el estado de cualquier juego. En la demo, los cambios solo se guardan en este navegador.",
-        "view": {
-            "legend": "Vista",
-            "grid": "Cuadrícula",
-            "board": "Tablero"
-        },
-        "board": {
-            "hint": "Arrastra un juego a otra columna, o elige su estado en su menú.",
-            "empty": "Ningún juego",
-            "selectionHint": "Arrastra un juego seleccionado para mover toda la selección a otra columna."
-        },
+        "dragHint": "Arrastra un juego a un estado de arriba para moverlo. Si estás seleccionando, se mueve toda la selección.",
         "select": {
             "start": "Seleccionar",
             "label": "Juegos seleccionados",
@@ -279,7 +307,7 @@
         },
         "manual": {
             "heading": "Tus estados manuales",
-            "body": "Si inicias sesión, Hoardex guarda una cuenta en su base de datos (Neon Postgres, en AWS en Virginia del Norte, EE. UU.): tu SteamID y cuándo iniciaste sesión por primera y por última vez. Cuando pones a mano el estado de un juego, guarda también ese estado, cuándo lo pusiste y tu tiempo de juego en ese juego en ese momento. Estos estados son públicos: cualquiera que abra tu perfil los ve, haya iniciado sesión o no. Se guarda una copia en Upstash Redis durante {backlog} como mucho, que se renueva con cada cambio. Se mantienen hasta que devuelvas cada juego a su estado automático o borres tu cuenta desde la página de tu cuenta, que lo borra todo de una vez."
+            "body": "Si inicias sesión, Hoardex guarda una cuenta en su base de datos (Neon Postgres, en AWS en Virginia del Norte, EE. UU.): tu SteamID y cuándo iniciaste sesión por primera y por última vez. Cuando pones a mano el estado de un juego, guarda también ese estado, cuándo lo pusiste y tu tiempo de juego en ese juego en ese momento. También guarda el nombre y el color de cada categoría que crees y qué categorías de serie borraste. Estos estados y categorías son públicos: cualquiera que abra tu perfil los ve, haya iniciado sesión o no. Se guarda una copia en Upstash Redis durante {backlog} como mucho, que se renueva con cada cambio. Se mantienen hasta que devuelvas cada juego a su estado automático, borres cada categoría o borres tu cuenta desde la página de tu cuenta, que lo borra todo de una vez."
         },
         "snapshots": {
             "heading": "Historial de tiempo de juego (opcional)",

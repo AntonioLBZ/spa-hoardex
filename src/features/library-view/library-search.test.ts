@@ -28,6 +28,15 @@ describe('parseLibrarySearch', () => {
         expect(parseLibrarySearch({ state: 'completed' })).toEqual({ state: 'finished' });
     });
 
+    it('reads the old backlog filter as the Backlog category', () => {
+        expect(parseLibrarySearch({ state: 'backlog' })).toEqual({ state: 'untouched' });
+    });
+
+    it('keeps an owner’s own category by its shape', () => {
+        expect(parseLibrarySearch({ state: 'c-0a1b2c3d' })).toEqual({ state: 'c-0a1b2c3d' });
+        expect(parseLibrarySearch({ state: 'c-nothex00' })).toEqual({});
+    });
+
     it('trims the query, drops it when blank and caps its length', () => {
         expect(parseLibrarySearch({ q: '  hollow  ' })).toEqual({ q: 'hollow' });
         expect(parseLibrarySearch({ q: '   ' })).toEqual({});
@@ -41,7 +50,7 @@ describe('parseLibrarySearch', () => {
 
 describe('compactLibrarySearch', () => {
     it('leaves the default sort and an empty query out', () => {
-        expect(compactLibrarySearch({ sort: 'hours', q: '  ', state: 'backlog' })).toEqual({ state: 'backlog' });
+        expect(compactLibrarySearch({ sort: 'hours', q: '  ', state: 'tried' })).toEqual({ state: 'tried' });
     });
 
     it('keeps a non-default sort', () => {
@@ -65,10 +74,8 @@ describe('the sort direction', () => {
     });
 });
 
-describe('the board view', () => {
-    it('is kept in the URL, and the grid is left out as the default', () => {
-        expect(parseLibrarySearch({ view: 'board' })).toEqual({ view: 'board' });
-        expect(parseLibrarySearch({ view: 'grid' })).toEqual({});
-        expect(parseLibrarySearch({ view: 'list' })).toEqual({});
+describe('the retired board view', () => {
+    it('is dropped from the URL', () => {
+        expect(parseLibrarySearch({ view: 'board', state: 'paused' })).toEqual({ state: 'paused' });
     });
 });

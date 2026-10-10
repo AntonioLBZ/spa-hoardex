@@ -5,7 +5,6 @@ import {
     DEFAULT_BACKLOG_THRESHOLDS,
     classifyGame,
     countByState,
-    isBacklog,
     resolveState,
     upgradeState,
     type BacklogState,
@@ -181,21 +180,6 @@ describe('classifyGame', () => {
     });
 });
 
-describe('isBacklog', () => {
-    const expected: Record<BacklogState, boolean> = {
-        untouched: true,
-        tried: true,
-        inProgress: false,
-        paused: false,
-        finished: false,
-        abandoned: false,
-    };
-
-    it.each(BACKLOG_STATES)('%s', (state) => {
-        expect(isBacklog(state)).toBe(expected[state]);
-    });
-});
-
 describe('countByState', () => {
     it('returns every key at zero for an empty library', () => {
         expect(countByState([], NOW)).toEqual({
@@ -234,7 +218,7 @@ describe('countByState', () => {
             finished: 2,
             abandoned: 0,
         });
-        expect(Object.values(counts).reduce((sum, n) => sum + n, 0)).toBe(games.length);
+        expect(Object.values(counts).reduce<number>((sum, n) => sum + (n ?? 0), 0)).toBe(games.length);
     });
 
     it('passes custom thresholds through', () => {
@@ -252,13 +236,6 @@ describe('countByState', () => {
             finished: 0,
             abandoned: 0,
         });
-    });
-
-    it('sums untouched and tried into the backlog size', () => {
-        const games = [makeGame(0, null, '1'), makeGame(10, daysAgo(2), '2'), makeGame(600, daysAgo(2), '3')];
-        const counts = countByState(games, NOW);
-        const backlog = BACKLOG_STATES.filter(isBacklog).reduce((sum, state) => sum + counts[state], 0);
-        expect(backlog).toBe(2);
     });
 });
 
@@ -278,10 +255,6 @@ describe('manual states', () => {
         });
         expect(counts).toMatchObject({ untouched: 0, inProgress: 1, finished: 1, abandoned: 1 });
         expect(countByState(games, NOW).abandoned).toBe(0);
-    });
-
-    it('do not make abandoned a backlog state', () => {
-        expect(isBacklog('abandoned')).toBe(false);
     });
 });
 

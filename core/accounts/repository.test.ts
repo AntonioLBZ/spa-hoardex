@@ -107,6 +107,87 @@ describe('createSqlRepository', () => {
         ).rejects.toBeInstanceOf(DatabaseError);
     });
 
+    it('starts with the default categories, also for a profile without an account', async () => {
+        const repository = createSqlRepository(database.query);
+        expect(await repository.listCategories(ME)).toEqual({ removed: [], custom: [] });
+        await repository.recordLogin(ME, NOW);
+        expect(await repository.listCategories(ME)).toEqual({ removed: [], custom: [] });
+    });
+
+    it('creates categories in order, with a name of their own, up to the limit', async () => {
+        const repository = createSqlRepository(database.query);
+        const { userId } = await repository.recordLogin(ME, NOW);
+        const create = (id: `c-${string}`, name: string, at = NOW) =>
+            repository.createCategory(userId, { id, name, color: '#ff8800' }, 8, at.toISOString());
+
+        expect(await create('c-0000000b', 'Co-op')).toBe('created');
+        expect(await create('c-0000000a', 'Later', LATER)).toBe('created');
+        expect(await create('c-0000000c', 'CO-OP')).toBe('limit');
+        await repository.removeState(userId, 'paused');
+        expect(await create('c-0000000c', 'CO-OP')).toBe('name');
+        expect(await create('c-0000000a', 'Other')).toBe('taken');
+        expect(await create('c-0000000c', 'Other')).toBe('created');
+
+        expect(await repository.listCategories(ME)).toEqual({
+            removed: ['paused'],
+            custom: [
+                { id: 'c-0000000b', name: 'Co-op', color: '#ff8800' },
+                { id: 'c-0000000c', name: 'Other', color: '#ff8800' },
+                { id: 'c-0000000a', name: 'Later', color: '#ff8800' },
+            ],
+        });
+        expect(await repository.listCategories(OTHER)).toEqual({ removed: [], custom: [] });
+    });
+
+    it('renames a category unless another has that name', async () => {
+        const repository = createSqlRepository(database.query);
+        const { userId } = await repository.recordLogin(ME, NOW);
+        await repository.createCategory(userId, { id: 'c-00000001', name: 'One', color: 'p1' }, 12, NOW.toISOString());
+        await repository.createCategory(userId, { id: 'c-00000002', name: 'Two', color: 'p2' }, 12, NOW.toISOString());
+
+        expect(await repository.updateCategory(userId, 'c-00000001', { name: 'ONE', color: 'p3' })).toBe('updated');
+        expect(await repository.updateCategory(userId, 'c-00000001', { name: 'two', color: 'p3' })).toBe('name');
+        expect(await repository.updateCategory(userId, 'c-00000009', { name: 'Nine', color: 'p3' })).toBe('notFound');
+        expect((await repository.listCategories(ME)).custom[0]).toEqual({ id: 'c-00000001', name: 'ONE', color: 'p3' });
+    });
+
+    it('deletes a category only while no game is in it', async () => {
+        const repository = createSqlRepository(database.query);
+        const { userId } = await repository.recordLogin(ME, NOW);
+        await repository.createCategory(userId, { id: 'c-00000001', name: 'One', color: 'p1' }, 12, NOW.toISOString());
+        await repository.setOverrides(userId, 'steam', [GAME], 'c-00000001', NOW.toISOString());
+
+        expect(await repository.deleteCategory(userId, 'c-00000001')).toBe('notEmpty');
+        await repository.clearOverrides(userId, 'steam', ['620']);
+        expect(await repository.deleteCategory(userId, 'c-00000001')).toBe('deleted');
+        expect(await repository.deleteCategory(userId, 'c-00000001')).toBe('notFound');
+        expect((await repository.listCategories(ME)).custom).toEqual([]);
+    });
+
+    it('never stores the Backlog as removed, nor a malformed category', async () => {
+        const repository = createSqlRepository(database.query);
+        const { userId } = await repository.recordLogin(ME, NOW);
+        await expect(repository.removeState(userId, 'untouched' as never)).rejects.toBeInstanceOf(DatabaseError);
+        await expect(
+            repository.createCategory(userId, { id: 'c-1', name: 'Bad', color: 'p1' } as never, 12, NOW.toISOString())
+        ).rejects.toBeInstanceOf(DatabaseError);
+        await expect(
+            repository.setOverrides(userId, 'steam', [GAME], 'c-xyz' as never, NOW.toISOString())
+        ).rejects.toBeInstanceOf(DatabaseError);
+    });
+
+    it('drops the categories with the account', async () => {
+        const repository = createSqlRepository(database.query);
+        const { userId } = await repository.recordLogin(ME, NOW);
+        await repository.createCategory(userId, { id: 'c-00000001', name: 'One', color: 'p1' }, 12, NOW.toISOString());
+        await repository.removeState(userId, 'tried');
+        await repository.deleteAccount(userId);
+        const { rows } = await database.db.query<{ n: number }>(
+            'select (select count(*) from backlog_categories) + (select count(*) from removed_states) as n'
+        );
+        expect(Number(rows[0]?.n)).toBe(0);
+    });
+
     it('reports a failing database without the query or its values', async () => {
         const repository = createSqlRepository(() => Promise.reject(new Error(`password=${'x'.repeat(8)}`)));
         const failure = await repository.findAccount(ME).catch((error: unknown) => error);

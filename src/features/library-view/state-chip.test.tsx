@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BACKLOG_STATES } from '@core/backlog';
@@ -38,7 +38,7 @@ async function openDemo(path = '/demo') {
         '/api/demo/library': { body: { kind: 'ok', data: LIBRARY } },
     });
     const app = renderApp(path);
-    const button = await screen.findByRole('button', { name: 'State of Alpha Quest: Untouched' });
+    const button = await screen.findByRole('button', { name: 'State of Alpha Quest: Backlog' });
     return { ...app, button };
 }
 
@@ -63,7 +63,7 @@ describe('state menu', () => {
         expect(button.getAttribute('aria-expanded')).toBe('true');
         expect(button.getAttribute('aria-controls')).toBe(menu.id);
         expect(items().map((item) => item.textContent)).toEqual([
-            'Automatic (Untouched)',
+            'Automatic (Backlog)',
             ...BACKLOG_STATES.map((state) => en.dashboard.states[state]),
         ]);
         expect(items().filter((item) => item.getAttribute('aria-checked') === 'true')).toEqual([items()[0]]);
@@ -154,13 +154,5 @@ describe('state menu', () => {
 
         expect(screen.getByRole('button', { name: 'State of Alpha Quest: Abandoned · Set by hand' })).toBe(button);
         expect(button.getAttribute('title')).toBe('Set by hand');
-    });
-
-    it('works the same from a board card', async () => {
-        const { user } = await openDemo('/demo?view=board');
-        await user.click(screen.getByRole('button', { name: 'State of Alpha Quest: Untouched' }));
-        await user.click(screen.getByRole('menuitemradio', { name: 'Paused' }));
-
-        expect(within(screen.getByRole('region', { name: 'Paused' })).getByText('Alpha Quest')).toBeTruthy();
     });
 });

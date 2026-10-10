@@ -112,13 +112,17 @@ describe('DELETE /api/me', () => {
         const { call, signedIn, repository } = setup();
         const { cookie } = await signedIn();
         await call('PUT', '/api/me/backlog/220', { cookie, body: { state: 'abandoned' } });
+        await call('POST', '/api/me/categories', { cookie, body: { name: 'Co-op', color: 'p1' } });
         await call('PUT', '/api/me/settings', { cookie, body: { snapshots: true } });
 
         const deleted = await call('DELETE', '/api/me', { cookie });
         expect(deleted.body).toEqual({ user: null });
         expect(await repository.findAccount({ source: 'steam', externalId: ID })).toBeNull();
         expect(await snapshotCount()).toBe(0);
-        expect((await call('GET', `/api/backlog/${ID}`)).body).toEqual({ kind: 'ok', data: { overrides: {} } });
+        expect((await call('GET', `/api/backlog/${ID}`)).body).toEqual({
+            kind: 'ok',
+            data: { overrides: {}, categories: { removed: [], custom: [] } },
+        });
     });
 });
 

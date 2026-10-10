@@ -91,6 +91,33 @@
     padding: 0;
 }
 
+/* Each category chip takes a dragged card */
+.library-toolbar__drop {
+    border-radius: var(--size-border-radius-pill);
+    display: inline-flex;
+    flex: none;
+}
+
+.library-toolbar__drop--ready {
+    outline: 1px dashed var(--color-content-muted);
+    outline-offset: 2px;
+}
+
+.library-toolbar__drop--over {
+    outline: 2px dashed var(--color-accent);
+}
+
+/* Stays at the top while the cards scroll under it; not on phones, where it would take a third of the screen */
+@container (width >= 42rem) {
+    .library-toolbar {
+        background-color: var(--color-bg);
+        padding-block: var(--size-50);
+        position: sticky;
+        top: 0;
+        z-index: 4;
+    }
+}
+
 /* Phones: the chips scroll sideways instead of stacking three rows deep */
 @container (width < 42rem) {
     /* Pressed looks like a chosen segment */
@@ -124,7 +151,6 @@
 
 @container (width < 26rem) {
     .library-toolbar__sort-label,
-    .library-toolbar__views .segmented__text,
     .library-toolbar__selecting .segmented__text {
         block-size: 1px;
         clip-path: inset(50%);

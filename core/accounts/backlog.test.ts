@@ -2,9 +2,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { createMemoryStore } from '../cache/store.js';
 import { createBacklogService } from './backlog.js';
 import { createSqlRepository } from './repository.js';
+import type { Game } from '../domain/index.js';
 import { createTestDatabase } from './test-db.js';
 
 const ME = { source: 'steam', externalId: '76561198000000001' } as const;
+const EMPTY = { overrides: {}, categories: { removed: [], custom: [] } };
 const GAME = { gameId: '620', minutes: 42 } as const;
 const NOW = new Date('2026-10-09T16:00:00Z');
 
@@ -27,8 +29,8 @@ function setup() {
 describe('createBacklogService', () => {
     it('serves repeat reads from Redis, also for a profile without an account', async () => {
         const { listOverrides, service } = setup();
-        expect(await service.read(ME)).toEqual({});
-        expect(await service.read(ME)).toEqual({});
+        expect(await service.read(ME)).toEqual(EMPTY);
+        expect(await service.read(ME)).toEqual(EMPTY);
         expect(listOverrides).toHaveBeenCalledOnce();
     });
 
@@ -37,35 +39,45 @@ describe('createBacklogService', () => {
         const account = await repository.recordLogin(ME, NOW);
         await service.read(ME);
 
-        const expected = { '620': { state: 'abandoned', minutesAtSet: 42, setAt: NOW.toISOString() } };
+        const expected = {
+            ...EMPTY,
+            overrides: { '620': { state: 'abandoned', minutesAtSet: 42, setAt: NOW.toISOString() } },
+        };
         expect(await service.set(account, ME, [GAME], 'abandoned')).toEqual(expected);
         expect(await service.read(ME)).toEqual(expected);
 
-        expect(await service.clear(account, ME, ['620'])).toEqual({});
-        expect(await service.read(ME)).toEqual({});
+        expect(await service.clear(account, ME, ['620'])).toEqual(EMPTY);
+        expect(await service.read(ME)).toEqual(EMPTY);
         expect(listOverrides).toHaveBeenCalledTimes(3);
     });
 
     it('changes a game given twice once', async () => {
         const { repository, service } = setup();
         const account = await repository.recordLogin(ME, NOW);
-        const overrides = await service.set(account, ME, [GAME, { gameId: '620', minutes: 50 }], 'paused');
+        const { overrides } = await service.set(account, ME, [GAME, { gameId: '620', minutes: 50 }], 'paused');
         expect(overrides).toEqual({ '620': { state: 'paused', minutesAtSet: 50, setAt: NOW.toISOString() } });
-        expect(await service.clear(account, ME, ['620', '620'])).toEqual({});
+        expect(await service.clear(account, ME, ['620', '620'])).toEqual(EMPTY);
     });
 
     it('treats a copy with another shape as missing', async () => {
         const { listOverrides, store, service } = setup();
-        await store.set('bl:steam:76561198000000001', { overrides: { '620': { state: 'nope' } } }, 60);
-        expect(await service.read(ME)).toEqual({});
+        await store.set('bl:steam:76561198000000001', { ...EMPTY, overrides: { '620': { state: 'nope' } } }, 60);
+        expect(await service.read(ME)).toEqual(EMPTY);
+        expect(listOverrides).toHaveBeenCalledOnce();
+    });
+
+    it('treats a copy from before categories as missing', async () => {
+        const { listOverrides, store, service } = setup();
+        await store.set('bl:steam:76561198000000001', { overrides: {} }, 60);
+        expect(await service.read(ME)).toEqual(EMPTY);
         expect(listOverrides).toHaveBeenCalledOnce();
     });
 
     it('reads a completed state in the copy as finished', async () => {
         const { listOverrides, store, service } = setup();
         const stored = { state: 'completed', minutesAtSet: 42, setAt: NOW.toISOString() };
-        await store.set('bl:steam:76561198000000001', { overrides: { '620': stored } }, 60);
-        expect(await service.read(ME)).toEqual({ '620': { ...stored, state: 'finished' } });
+        await store.set('bl:steam:76561198000000001', { ...EMPTY, overrides: { '620': stored } }, 60);
+        expect(await service.read(ME)).toEqual({ ...EMPTY, overrides: { '620': { ...stored, state: 'finished' } } });
         expect(listOverrides).not.toHaveBeenCalled();
     });
 
@@ -78,7 +90,81 @@ describe('createBacklogService', () => {
         };
         const onStoreError = vi.fn();
         const service = createBacklogService({ repository, store: broken, onStoreError });
-        expect(await service.read(ME)).toEqual({});
+        expect(await service.read(ME)).toEqual(EMPTY);
         expect(onStoreError.mock.calls.map(([operation]) => operation)).toEqual(['get', 'set']);
+    });
+
+    it('creates, renames and deletes a category, writing the copy through', async () => {
+        const { repository, store } = setup();
+        const ids: `c-${string}`[] = ['c-00000001', 'c-00000001', 'c-00000002'];
+        const service = createBacklogService({
+            repository,
+            store,
+            now: () => NOW,
+            newCategoryId: () => ids.shift() ?? 'c-ffffffff',
+        });
+        const account = await repository.recordLogin(ME, NOW);
+
+        const created = await service.createCategory(account, ME, { name: 'Co-op', color: 'p2' });
+        expect(created).toEqual({
+            kind: 'ok',
+            data: { ...EMPTY, categories: { removed: [], custom: [{ id: 'c-00000001', name: 'Co-op', color: 'p2' }] } },
+        });
+        expect(await service.createCategory(account, ME, { name: 'co-op', color: 'p3' })).toEqual({ kind: 'name' });
+        expect((await service.createCategory(account, ME, { name: 'Later', color: 'p3' })).kind).toBe('ok');
+        expect((await service.read(ME)).categories.custom.map((category) => category.id)).toEqual([
+            'c-00000001',
+            'c-00000002',
+        ]);
+
+        expect(
+            (await service.updateCategory(account, ME, 'c-00000001', { name: 'Friends', color: '#123456' })).kind
+        ).toBe('ok');
+        expect((await service.read(ME)).categories.custom[0]).toEqual({
+            id: 'c-00000001',
+            name: 'Friends',
+            color: '#123456',
+        });
+
+        await service.set(account, ME, [GAME], 'c-00000002');
+        expect(await service.deleteCategory(account, ME, 'c-00000002')).toEqual({ kind: 'notEmpty' });
+        await service.clear(account, ME, ['620']);
+        expect((await service.deleteCategory(account, ME, 'c-00000002')).kind).toBe('ok');
+        expect((await service.read(ME)).categories.custom).toHaveLength(1);
+    });
+
+    it('stops at the category limit', async () => {
+        const { repository, store } = setup();
+        let next = 0;
+        const service = createBacklogService({
+            repository,
+            store,
+            newCategoryId: () => `c-${String(next++).padStart(8, '0')}`,
+        });
+        const account = await repository.recordLogin(ME, NOW);
+        for (let i = 0; i < 6; i++) await service.createCategory(account, ME, { name: `Shelf ${i}`, color: 'p1' });
+        expect(await service.createCategory(account, ME, { name: 'One more', color: 'p1' })).toEqual({ kind: 'limit' });
+    });
+
+    it('removes a built-in state only when no game lands in it, and never the Backlog', async () => {
+        const { repository, service } = setup();
+        const account = await repository.recordLogin(ME, NOW);
+        const tried: Game = {
+            id: { source: 'steam', externalId: '620' },
+            name: 'Portal 2',
+            iconUrl: null,
+            hasVisibleStats: true,
+            playtime: { totalMinutes: 20, recentMinutes: 0, lastPlayedAt: '2026-10-01T00:00:00Z', platforms: null },
+        };
+
+        expect(await service.removeState(account, ME, 'untouched', [])).toEqual({ kind: 'fixed' });
+        expect(await service.removeState(account, ME, 'tried', [tried])).toEqual({ kind: 'notEmpty' });
+        await service.set(account, ME, [GAME], 'finished');
+        const removed = await service.removeState(account, ME, 'tried', [tried]);
+        expect(removed.kind === 'ok' && removed.data.categories.removed).toEqual(['tried']);
+        expect(await service.removeState(account, ME, 'tried', [tried])).toEqual({ kind: 'notFound' });
+
+        await service.set(account, ME, [GAME], 'abandoned');
+        expect(await service.removeState(account, ME, 'abandoned', [tried])).toEqual({ kind: 'notEmpty' });
     });
 });

@@ -1,8 +1,9 @@
 import {
+    FALLBACK_STATE,
     countByState,
-    isBacklog,
-    type BacklogState,
     type BacklogThresholds,
+    type Categories,
+    type CategoryCounts,
     type Overrides,
 } from '../backlog/index.js';
 import type { EntityId, Game } from '../domain/index.js';
@@ -25,9 +26,9 @@ export interface LibrarySummary {
     totalMinutes: number;
     // Last two weeks
     recentMinutes: number;
-    // Never touched or barely tried
+    // Games in the Backlog category (never touched, or fallen there from a removed category)
     backlogCount: number;
-    stateCounts: Record<BacklogState, number>;
+    stateCounts: CategoryCounts;
     topGames: TopGame[];
     // Minutes by year of last play, ascending; games without a last-played date are left out
     minutesByYear: YearMinutes[];
@@ -38,6 +39,7 @@ export interface SummaryOptions {
     thresholds?: BacklogThresholds;
     // An owner's manual states win over the computed ones
     overrides?: Overrides;
+    categories?: Categories;
 }
 
 const DEFAULT_TOP_COUNT = 10;
@@ -62,17 +64,15 @@ function minutesByYear(games: readonly Game[]): YearMinutes[] {
 }
 
 export function summarizeLibrary(games: readonly Game[], now: Date, options: SummaryOptions = {}): LibrarySummary {
-    const stateCounts = countByState(games, now, { overrides: options.overrides, thresholds: options.thresholds });
+    const { overrides, categories, thresholds } = options;
+    const stateCounts = countByState(games, now, { overrides, categories, thresholds });
 
     return {
         gameCount: games.length,
         playedCount: games.filter((game) => game.playtime.totalMinutes > 0).length,
         totalMinutes: games.reduce((sum, game) => sum + game.playtime.totalMinutes, 0),
         recentMinutes: games.reduce((sum, game) => sum + game.playtime.recentMinutes, 0),
-        backlogCount: (Object.keys(stateCounts) as BacklogState[]).reduce(
-            (sum, state) => sum + (isBacklog(state) ? stateCounts[state] : 0),
-            0
-        ),
+        backlogCount: stateCounts[FALLBACK_STATE] ?? 0,
         stateCounts,
         topGames: topGames(games, options.topCount ?? DEFAULT_TOP_COUNT),
         minutesByYear: minutesByYear(games),
