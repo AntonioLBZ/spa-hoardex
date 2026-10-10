@@ -189,6 +189,21 @@
             "recent": "Recently played",
             "name": "Name"
         },
+        "order": {
+            "reverse": "Reverse order",
+            "hours": {
+                "desc": "Most played first",
+                "asc": "Least played first"
+            },
+            "recent": {
+                "desc": "Most recent first",
+                "asc": "Oldest first"
+            },
+            "name": {
+                "asc": "A to Z",
+                "desc": "Z to A"
+            }
+        },
         "stateLegend": "Filter by state",
         "all": "All",
         "backlog": "Backlog",

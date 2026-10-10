@@ -15,12 +15,30 @@
     grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr));
 }
 
+/* Rows of three, so a lone column never sits far below the rest; one row once six fit a state chip with its pencil */
+@container (width >= 42rem) {
+    .board__columns {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@container (width >= 75rem) {
+    .board__columns {
+        grid-auto-columns: minmax(0, 1fr);
+        grid-auto-flow: column;
+        grid-template-columns: none;
+    }
+}
+
 .board__column {
     background-color: var(--color-bg-raised);
     border: 1px solid var(--color-border);
     border-radius: 0.75rem;
     display: grid;
     gap: var(--size-50);
+
+    /* An auto track would grow to the card's min-content and push it out of the column */
+    grid-template-columns: minmax(0, 1fr);
     padding: var(--size-75);
 }
 
@@ -60,6 +78,7 @@
 .board__list {
     display: grid;
     gap: var(--size-50);
+    grid-template-columns: minmax(0, 1fr);
     list-style: none;
     margin: 0;
     padding: 0;

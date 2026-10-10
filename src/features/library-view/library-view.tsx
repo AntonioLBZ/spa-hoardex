@@ -9,7 +9,7 @@ import { useLocale } from '@/lib/i18n';
 import { STEP, riseStyle } from '@/lib/motion';
 import { Board } from './board';
 import { GameCard } from './game-card';
-import { DEFAULT_SORT, type LibrarySearch } from './library-search';
+import { DEFAULT_SORT, directionOf, type LibrarySearch } from './library-search';
 import { LibraryToolbar } from './library-toolbar';
 import type { StateEditor } from './state-editor';
 import { useGridReveal } from './use-grid-reveal';
@@ -56,16 +56,18 @@ export function LibraryView({
                 state: board ? undefined : settled.state,
                 query: settled.q,
                 sort: settled.sort ?? DEFAULT_SORT,
+                direction: directionOf(settled),
                 locale,
             }),
         [entries, settled, locale, board]
     );
 
-    const resetKey = `${settled.state ?? ''}|${settled.sort ?? ''}|${settled.q ?? ''}`;
+    const order = `${settled.sort ?? ''}|${settled.dir ?? ''}`;
+    const resetKey = `${settled.state ?? ''}|${order}|${settled.q ?? ''}`;
     const { count, hasMore, showMore } = useRevealedCount(visible.length, resetKey);
     // Typing in the search box does not fade the list on every keystroke
     const grid = useRef<HTMLUListElement>(null);
-    useGridReveal(grid, `${settled.state ?? ''}|${settled.sort ?? ''}`);
+    useGridReveal(grid, `${settled.state ?? ''}|${order}`);
 
     return (
         <section aria-labelledby={titleId} className="library-view">
@@ -82,7 +84,7 @@ export function LibraryView({
                 </p>
             ) : null}
             {board ? (
-                <Board editor={editor} entries={visible} key={`${settled.sort ?? ''}|${settled.q ?? ''}`} />
+                <Board editor={editor} entries={visible} key={`${order}|${settled.q ?? ''}`} />
             ) : visible.length === 0 ? (
                 <div className="library-view__empty">
                     <p>{t('empty')}</p>

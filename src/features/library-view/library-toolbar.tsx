@@ -1,10 +1,12 @@
-import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useId, useRef, useState, type ChangeEvent, type CSSProperties } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 
-import { SORTS, STATE_FILTERS, type Sort, type StateFilter } from '@core/browse';
+import { NATURAL_DIRECTION, SORTS, STATE_FILTERS, type Sort, type StateFilter } from '@core/browse';
 import { STEP, riseStyle } from '@/lib/motion';
 import { isShownState } from '@/lib/shown-states';
-import { DEFAULT_SORT, VIEWS, compactLibrarySearch, type LibrarySearch } from './library-search';
+import { STATE_COLOR } from '@/lib/state-colors';
+import { DEFAULT_SORT, VIEWS, compactLibrarySearch, directionOf, type LibrarySearch } from './library-search';
+import { ToolbarIcon } from './toolbar-icon';
 
 import './library-toolbar.scss';
 
@@ -28,6 +30,9 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
     const groupName = useId();
     const viewName = useId();
     const view = search.view ?? 'grid';
+    const sort = search.sort ?? DEFAULT_SORT;
+    const direction = directionOf(search);
+    const reversed = direction !== NATURAL_DIRECTION[sort];
     const [text, setText] = useState(search.q ?? '');
 
     const searchRef = useRef<HTMLInputElement>(null);
@@ -43,8 +48,14 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
         onChange(compactLibrarySearch({ ...search, q: event.target.value }));
     }
 
+    // A new sort starts in its natural direction
     function onSortChange(event: ChangeEvent<HTMLSelectElement>) {
-        if (isSort(event.target.value)) onChange(compactLibrarySearch({ ...search, sort: event.target.value }));
+        if (isSort(event.target.value))
+            onChange(compactLibrarySearch({ ...search, sort: event.target.value, dir: undefined }));
+    }
+
+    function onReverse() {
+        onChange(compactLibrarySearch({ ...search, dir: direction === 'asc' ? 'desc' : 'asc' }));
     }
 
     const options: { value: StateFilter | undefined; label: string; count: number }[] = [
@@ -60,44 +71,54 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
 
     return (
         <div className="library-toolbar rise-in" style={riseStyle(STEP.library)}>
-            <div className="library-toolbar__field library-toolbar__field--search">
-                <label className="library-toolbar__label" htmlFor={searchId}>
+            <div className="library-toolbar__search">
+                <label className="visually-hidden" htmlFor={searchId}>
                     {t('search')}
                 </label>
+                <ToolbarIcon className="library-toolbar__search-icon" name="search" />
                 <input
                     autoComplete="off"
                     className="library-toolbar__input"
                     id={searchId}
                     onChange={onTextChange}
+                    placeholder={t('search')}
                     ref={searchRef}
                     type="search"
                     value={text}
                 />
             </div>
-            <div className="library-toolbar__field">
-                <label className="library-toolbar__label" htmlFor={sortId}>
+            <div className="library-toolbar__group library-toolbar__sort">
+                <label className="library-toolbar__sort-label" htmlFor={sortId}>
                     {t('sortLabel')}
                 </label>
-                <select
-                    className="library-toolbar__select"
-                    id={sortId}
-                    onChange={onSortChange}
-                    value={search.sort ?? DEFAULT_SORT}
+                <span className="library-toolbar__select-wrap">
+                    <select className="library-toolbar__select" id={sortId} onChange={onSortChange} value={sort}>
+                        {SORTS.map((option) => (
+                            <option key={option} value={option}>
+                                {t(`sort.${option}`)}
+                            </option>
+                        ))}
+                    </select>
+                    <ToolbarIcon className="library-toolbar__chevron" name="chevron" />
+                </span>
+                <button
+                    aria-pressed={reversed}
+                    className="library-toolbar__segment library-toolbar__reverse"
+                    onClick={onReverse}
+                    title={t(`order.${sort}.${direction}`)}
+                    type="button"
                 >
-                    {SORTS.map((sort) => (
-                        <option key={sort} value={sort}>
-                            {t(`sort.${sort}`)}
-                        </option>
-                    ))}
-                </select>
+                    <ToolbarIcon name={direction === 'asc' ? 'up' : 'down'} />
+                    <span className="visually-hidden">{t('order.reverse')}</span>
+                </button>
             </div>
-            <fieldset className="library-toolbar__views">
+            <fieldset className="library-toolbar__group library-toolbar__views">
                 <legend className="visually-hidden">{t('view.legend')}</legend>
                 {VIEWS.map((option) => (
-                    <label className="library-toolbar__chip" key={option}>
+                    <label className="library-toolbar__view" key={option}>
                         <input
                             checked={view === option}
-                            className="library-toolbar__chip-input visually-hidden"
+                            className="library-toolbar__view-input visually-hidden"
                             name={viewName}
                             onChange={() =>
                                 onChange(
@@ -106,7 +127,10 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
                             }
                             type="radio"
                         />
-                        <span className="library-toolbar__chip-label">{t(`view.${option}`)}</span>
+                        <span className="library-toolbar__segment">
+                            <ToolbarIcon name={option} />
+                            <span className="library-toolbar__view-text">{t(`view.${option}`)}</span>
+                        </span>
                     </label>
                 ))}
             </fieldset>
@@ -122,7 +146,10 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
                                 onChange={() => onChange(compactLibrarySearch({ ...search, state: value }))}
                                 type="radio"
                             />
-                            <span className="library-toolbar__chip-label">
+                            <span className="library-toolbar__chip-label" style={chipStyle(value)}>
+                                {value === undefined || value === 'backlog' ? null : (
+                                    <span aria-hidden="true" className="library-toolbar__swatch" />
+                                )}
                                 {label} <span className="library-toolbar__chip-count">{format.number(count)}</span>
                             </span>
                         </label>
@@ -131,4 +158,9 @@ export function LibraryToolbar({ search, counts, total, onChange }: LibraryToolb
             )}
         </div>
     );
+}
+
+function chipStyle(value: StateFilter | undefined): CSSProperties | undefined {
+    if (value === undefined || value === 'backlog') return undefined;
+    return { '--chip-color': STATE_COLOR[value] } as CSSProperties;
 }

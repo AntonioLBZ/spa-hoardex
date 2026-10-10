@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { compactLibrarySearch, parseLibrarySearch } from './library-search';
+import { compactLibrarySearch, directionOf, parseLibrarySearch } from './library-search';
 
 describe('parseLibrarySearch', () => {
     it('keeps valid values', () => {
@@ -46,6 +46,22 @@ describe('compactLibrarySearch', () => {
 
     it('keeps a non-default sort', () => {
         expect(compactLibrarySearch({ sort: 'recent' })).toEqual({ sort: 'recent' });
+    });
+});
+
+describe('the sort direction', () => {
+    it('is kept only when it reverses the sort', () => {
+        expect(parseLibrarySearch({ dir: 'asc' })).toEqual({ dir: 'asc' });
+        expect(parseLibrarySearch({ dir: 'desc' })).toEqual({});
+        expect(parseLibrarySearch({ sort: 'name', dir: 'desc' })).toEqual({ sort: 'name', dir: 'desc' });
+        expect(parseLibrarySearch({ sort: 'name', dir: 'asc' })).toEqual({ sort: 'name' });
+        expect(parseLibrarySearch({ dir: 'up' })).toEqual({});
+    });
+
+    it('falls back to the natural direction of the sort', () => {
+        expect(directionOf({})).toBe('desc');
+        expect(directionOf({ sort: 'name' })).toBe('asc');
+        expect(directionOf({ sort: 'recent', dir: 'asc' })).toBe('asc');
     });
 });
 

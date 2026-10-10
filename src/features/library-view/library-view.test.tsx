@@ -136,6 +136,29 @@ describe('library view', () => {
         expect(router.state.location.search).toEqual({});
     });
 
+    it('reverses the order, and a new sort starts in its own direction', async () => {
+        const { region, router, user } = await openLibrary('/demo');
+        const reverse = within(region).getByRole('button', { name: 'Reverse order' });
+        expect(reverse.getAttribute('aria-pressed')).toBe('false');
+        expect(reverse.getAttribute('title')).toBe('Most played first');
+
+        await user.click(reverse);
+        await waitFor(() =>
+            expect(names(region)).toEqual(['Alpha Quest', 'Beta Run', 'Gamma Tactics', 'Délta Siege', 'Epsilon Saga'])
+        );
+        expect(router.state.location.search).toEqual({ dir: 'asc' });
+        expect(reverse.getAttribute('aria-pressed')).toBe('true');
+        expect(reverse.getAttribute('title')).toBe('Least played first');
+
+        await user.selectOptions(within(region).getByRole('combobox', { name: 'Sort by' }), 'name');
+        await waitFor(() => expect(names(region)[0]).toBe('Alpha Quest'));
+        expect(router.state.location.search).toEqual({ sort: 'name' });
+
+        await user.click(reverse);
+        await waitFor(() => expect(names(region)[0]).toBe('Gamma Tactics'));
+        expect(router.state.location.search).toEqual({ sort: 'name', dir: 'desc' });
+    });
+
     it('starts from the filters in the URL', async () => {
         const { region } = await openLibrary('/demo?state=paused&sort=name');
 

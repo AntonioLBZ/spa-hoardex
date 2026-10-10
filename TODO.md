@@ -16,8 +16,6 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 ### UI (owner, 2026-10-09)
 
-- Bug: on desktop the board view leaves one column out of view.
-- Edit the filters and the sort order (the library toolbar).
 - One set of corner radii across the app: the redesign mixed `--size-border-radius`, `--size-border-radius-large` and literal values.
 - Better copy and look for the "Is this your library?" bubble on profiles.
 - Extract styled, parametrizable components into `src/components/`: buttons (primary, secondary…), switch, radio button, form fields, cards. Then replace the ad hoc styles with them.

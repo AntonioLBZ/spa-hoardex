@@ -189,6 +189,21 @@
             "recent": "Jugados recientemente",
             "name": "Nombre"
         },
+        "order": {
+            "reverse": "Invertir orden",
+            "hours": {
+                "desc": "Más jugados primero",
+                "asc": "Menos jugados primero"
+            },
+            "recent": {
+                "desc": "Más recientes primero",
+                "asc": "Más antiguos primero"
+            },
+            "name": {
+                "asc": "De la A a la Z",
+                "desc": "De la Z a la A"
+            }
+        },
         "stateLegend": "Filtrar por estado",
         "all": "Todos",
         "backlog": "Backlog",

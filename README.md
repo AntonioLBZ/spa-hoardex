@@ -31,7 +31,7 @@ You need Node.js 24 and pnpm.
 ```bash
 pnpm install
 cp .env.example .env.local   # then put your Steam API key in it
-pnpm dlx vercel@62.7.0 dev   # the API on :3000; the first run asks to link a Vercel project
+pnpm dev:api                 # the API on :3000; the first run asks to link a Vercel project
 pnpm dev                     # the app on :5173, with /api sent to :3000
 ```
 

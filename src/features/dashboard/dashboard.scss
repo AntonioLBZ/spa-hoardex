@@ -6,7 +6,9 @@
 .dashboard__panels {
     display: grid;
     gap: var(--size-100);
-    grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
+
+    /* One or two columns, never three: the donut and the top games would leave the third empty */
+    grid-template-columns: repeat(auto-fit, minmax(min(max(20rem, calc((100% - var(--size-100)) / 2)), 100%), 1fr));
 }
 
 .dashboard__panel--years {

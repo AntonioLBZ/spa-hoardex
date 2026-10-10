@@ -5,6 +5,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
+        "dev:api": "pnpm dlx vercel@62.7.0 dev",
         "build": "tsc --noEmit && vite build",
         "db:migrate": "node scripts/migrate.ts",
         "preview": "vite preview",

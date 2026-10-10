@@ -174,6 +174,39 @@ describe('browseLibrary sorting', () => {
         ]);
     });
 
+    it('reverses each sort, keeping never played last', () => {
+        expect(names({ sort: 'hours', direction: 'asc' })).toEqual([
+            'Álamo Run',
+            'Bright Tide',
+            'Delta Forge',
+            'Crimson Orbit',
+            'Echo Harbor',
+        ]);
+        expect(names({ sort: 'recent', direction: 'asc' })).toEqual([
+            'Echo Harbor',
+            'Crimson Orbit',
+            'Delta Forge',
+            'Bright Tide',
+            'Álamo Run',
+        ]);
+        expect(names({ sort: 'name', direction: 'desc' })).toEqual([
+            'Echo Harbor',
+            'Delta Forge',
+            'Crimson Orbit',
+            'Bright Tide',
+            'Álamo Run',
+        ]);
+    });
+
+    it('keeps ties by name in reverse', () => {
+        const tied = classifyLibrary([makeGame('1', 'Beta', 60, null), makeGame('2', 'Alpha', 60, null)], NOW);
+
+        expect(browseLibrary(tied, { sort: 'hours', direction: 'asc' }).map((entry) => entry.game.name)).toEqual([
+            'Alpha',
+            'Beta',
+        ]);
+    });
+
     it('treats an unparsable last-played date as never played', () => {
         const broken = classifyLibrary(
             [makeGame('1', 'Broken Date', 120, 'not a date'), makeGame('2', 'Dated', 120, '2026-01-01T00:00:00Z')],

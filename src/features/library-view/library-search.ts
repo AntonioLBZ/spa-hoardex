@@ -1,5 +1,13 @@
 import { upgradeState } from '@core/backlog';
-import { SORTS, STATE_FILTERS, type Sort, type StateFilter } from '@core/browse';
+import {
+    DIRECTIONS,
+    NATURAL_DIRECTION,
+    SORTS,
+    STATE_FILTERS,
+    type Direction,
+    type Sort,
+    type StateFilter,
+} from '@core/browse';
 
 export const DEFAULT_SORT: Sort = 'hours';
 
@@ -13,6 +21,8 @@ const MAX_QUERY_LENGTH = 100;
 export interface LibrarySearch {
     state?: StateFilter;
     sort?: Sort;
+    // Only when it differs from the sort's natural direction
+    dir?: Direction;
     // Trimmed, never empty
     q?: string;
     view?: 'board';
@@ -22,6 +32,7 @@ export interface LibrarySearch {
 export function parseLibrarySearch(raw: Record<string, unknown>): LibrarySearch {
     const state = STATE_FILTERS.find((filter) => filter === upgradeState(raw.state));
     const sort = SORTS.find((candidate) => candidate === raw.sort);
+    const dir = DIRECTIONS.find((candidate) => candidate === raw.dir);
     // A numeric query such as "2077" arrives as a number
     const text = typeof raw.q === 'string' || typeof raw.q === 'number' ? String(raw.q).trim() : '';
     const q = text.slice(0, MAX_QUERY_LENGTH).trim();
@@ -29,6 +40,7 @@ export function parseLibrarySearch(raw: Record<string, unknown>): LibrarySearch 
     return {
         ...(state === undefined ? {} : { state }),
         ...(sort === undefined ? {} : { sort }),
+        ...(dir === undefined || dir === NATURAL_DIRECTION[sort ?? DEFAULT_SORT] ? {} : { dir }),
         ...(q === '' ? {} : { q }),
         ...(raw.view === 'board' ? { view: 'board' as const } : {}),
     };
@@ -36,6 +48,10 @@ export function parseLibrarySearch(raw: Record<string, unknown>): LibrarySearch 
 
 // The default sort and an empty query are left out of the URL
 export function compactLibrarySearch(search: LibrarySearch): LibrarySearch {
-    const { state, sort, q, view } = search;
-    return parseLibrarySearch({ state, sort: sort === DEFAULT_SORT ? undefined : sort, q, view });
+    const { state, sort, dir, q, view } = search;
+    return parseLibrarySearch({ state, sort: sort === DEFAULT_SORT ? undefined : sort, dir, q, view });
+}
+
+export function directionOf(search: LibrarySearch): Direction {
+    return search.dir ?? NATURAL_DIRECTION[search.sort ?? DEFAULT_SORT];
 }

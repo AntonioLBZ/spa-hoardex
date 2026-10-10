@@ -16,6 +16,12 @@ export type StateFilter = (typeof STATE_FILTERS)[number];
 export const SORTS = ['hours', 'recent', 'name'] as const;
 export type Sort = (typeof SORTS)[number];
 
+export const DIRECTIONS = ['asc', 'desc'] as const;
+export type Direction = (typeof DIRECTIONS)[number];
+
+// The direction each sort starts in
+export const NATURAL_DIRECTION: Record<Sort, Direction> = { hours: 'desc', recent: 'desc', name: 'asc' };
+
 export interface BrowseEntry {
     game: Game;
     // What the page shows: the manual state if there is one
@@ -31,6 +37,8 @@ export interface BrowseOptions {
     // Matched against the name, ignoring case, accents and punctuation
     query?: string;
     sort: Sort;
+    // Absent: the sort's natural direction
+    direction?: Direction;
     // BCP 47 tag used to order names
     locale?: string;
 }
@@ -85,32 +93,37 @@ function lastPlayedMs(game: Game): number | null {
     return Number.isNaN(ms) ? null : ms;
 }
 
-function comparator(sort: Sort, locale: string | undefined): (a: BrowseEntry, b: BrowseEntry) => number {
+function comparator(
+    sort: Sort,
+    direction: Direction,
+    locale: string | undefined
+): (a: BrowseEntry, b: BrowseEntry) => number {
     const collator = new Intl.Collator(locale, { numeric: true, sensitivity: 'base' });
     // Same name: the appid keeps the order stable
     const byName = (a: BrowseEntry, b: BrowseEntry) =>
         collator.compare(a.game.name, b.game.name) || compareText(a.game.id.externalId, b.game.id.externalId);
+    const sign = direction === NATURAL_DIRECTION[sort] ? 1 : -1;
 
     switch (sort) {
         case 'name':
-            return byName;
+            return (a, b) => sign * byName(a, b);
         case 'hours':
-            return (a, b) => b.game.playtime.totalMinutes - a.game.playtime.totalMinutes || byName(a, b);
+            return (a, b) => sign * (b.game.playtime.totalMinutes - a.game.playtime.totalMinutes) || byName(a, b);
         case 'recent':
-            // Never played goes last
+            // Never played goes last either way
             return (a, b) => {
                 const left = lastPlayedMs(a.game);
                 const right = lastPlayedMs(b.game);
                 if (left === right) return byName(a, b);
                 if (left === null) return 1;
                 if (right === null) return -1;
-                return right - left || byName(a, b);
+                return sign * (right - left) || byName(a, b);
             };
     }
 }
 
 export function browseLibrary(entries: readonly BrowseEntry[], options: BrowseOptions): BrowseEntry[] {
-    const { state, query, sort, locale } = options;
+    const { state, query, sort, direction = NATURAL_DIRECTION[sort], locale } = options;
     const needle = query === undefined ? '' : fold(query);
 
     return entries
@@ -119,7 +132,7 @@ export function browseLibrary(entries: readonly BrowseEntry[], options: BrowseOp
                 (state === undefined || matchesState(entry.state, state)) &&
                 (needle === '' || fold(entry.game.name).includes(needle))
         )
-        .sort(comparator(sort, locale));
+        .sort(comparator(sort, direction, locale));
 }
 
 // One list per state, each in the order given
