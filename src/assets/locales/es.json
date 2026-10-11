@@ -105,7 +105,7 @@
         "features": {
             "dashboard": {
                 "title": "Las cifras de un vistazo",
-                "text": "Horas totales, juegos sin empezar, horas por año y tus juegos más jugados."
+                "text": "Horas totales, juegos sin empezar, horas por juego, juegos por año y tus juegos más jugados."
             },
             "backlog": {
                 "title": "Un backlog que se ordena solo",
@@ -202,7 +202,10 @@
             "hours": "Horas jugadas",
             "backlog": "Backlog",
             "backlogDetail": "{share} de la biblioteca",
-            "recent": "Últimas dos semanas"
+            "recent": "Últimas dos semanas",
+            "hoursDays": "≈ {days, plural, one {# día} other {# días}}",
+            "hoursMedian": "mediana de {hours} por juego",
+            "recentDetail": "en {count, plural, one {# juego} other {# juegos}}"
         },
         "unit": {
             "hours": "{hours} h"
@@ -218,13 +221,31 @@
             "abandoned": "Abandonado"
         },
         "top": {
-            "title": "Más jugados"
+            "title": "Más jugados",
+            "share": "Tus {count} más jugados suman el {share} de tus horas.",
+            "half": "La mitad de tus horas está en {count, plural, one {un solo juego} other {# juegos}}."
         },
         "years": {
-            "title": "Horas por año de la última partida",
+            "title": "Juegos por año de la última partida",
             "year": "Año",
-            "hours": "Horas",
+            "games": "Juegos",
             "locked": "Steam no ha compartido cuándo se jugó por última vez cada juego, así que no hay nada que dibujar. Si es tu perfil, puedes revisar tus ajustes de privacidad."
+        },
+        "playtime": {
+            "title": "Horas por juego",
+            "showUnplayed": "Mostrar sin jugar",
+            "range": "Tiempo jugado",
+            "games": "Juegos",
+            "hours": "Horas",
+            "tooltip": "{games, plural, one {# juego} other {# juegos}} · {hours}",
+            "buckets": {
+                "unplayed": "Sin jugar",
+                "under1": "< 1 h",
+                "to10": "1–10 h",
+                "to50": "10–50 h",
+                "to100": "50–100 h",
+                "over100": "100+ h"
+            }
         }
     },
     "library": {

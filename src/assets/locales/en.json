@@ -105,7 +105,7 @@
         "features": {
             "dashboard": {
                 "title": "The numbers at a glance",
-                "text": "Total hours, games never started, hours by year and your most played games."
+                "text": "Total hours, games never started, hours per game, games by year and your most played games."
             },
             "backlog": {
                 "title": "A backlog that sorts itself",
@@ -202,7 +202,10 @@
             "hours": "Hours played",
             "backlog": "Backlog",
             "backlogDetail": "{share} of the library",
-            "recent": "Last two weeks"
+            "recent": "Last two weeks",
+            "hoursDays": "≈ {days, plural, one {# day} other {# days}}",
+            "hoursMedian": "median {hours} a game",
+            "recentDetail": "in {count, plural, one {# game} other {# games}}"
         },
         "unit": {
             "hours": "{hours} h"
@@ -218,13 +221,31 @@
             "abandoned": "Abandoned"
         },
         "top": {
-            "title": "Most played"
+            "title": "Most played",
+            "share": "Your top {count} add up to {share} of your hours.",
+            "half": "Half your hours went into {count, plural, one {a single game} other {# games}}."
         },
         "years": {
-            "title": "Hours by year of last play",
+            "title": "Games by year of last play",
             "year": "Year",
-            "hours": "Hours",
+            "games": "Games",
             "locked": "Steam did not share when these games were last played, so there is nothing to chart. If this is your profile, you can review your privacy settings."
+        },
+        "playtime": {
+            "title": "Hours per game",
+            "showUnplayed": "Show unplayed",
+            "range": "Playtime",
+            "games": "Games",
+            "hours": "Hours",
+            "tooltip": "{games, plural, one {# game} other {# games}} · {hours}",
+            "buckets": {
+                "unplayed": "Unplayed",
+                "under1": "< 1 h",
+                "to10": "1–10 h",
+                "to50": "10–50 h",
+                "to100": "50–100 h",
+                "over100": "100+ h"
+            }
         }
     },
     "library": {

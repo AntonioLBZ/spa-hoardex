@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Categories } from '@core/backlog';
@@ -50,6 +51,13 @@ function renderDashboard(library: Library = LIBRARY, settingsUrl?: string | null
     );
 }
 
+function cells(region: string): string[][] {
+    const rows = within(screen.getByRole('region', { name: region }))
+        .getAllByRole<HTMLTableRowElement>('row')
+        .slice(1);
+    return rows.map((row) => Array.from(row.cells, (cell) => cell.textContent ?? ''));
+}
+
 function kpi(label: string): HTMLElement {
     const item = screen.getByText(label, { selector: 'dt' }).closest('div');
     if (item === null) throw new Error(`No KPI for ${label}`);
@@ -70,9 +78,18 @@ describe('Dashboard', () => {
         expect(kpi('Games').textContent).toContain('5');
         expect(kpi('Games').textContent).toContain('4 played');
         expect(kpi('Hours played').textContent).toContain('171 h');
+        expect(kpi('Hours played').textContent).toContain('≈ 7.1 days · median 35 h a game');
         expect(kpi('Backlog').textContent).toContain('1');
         expect(kpi('Backlog').textContent).toContain('20% of the library');
         expect(kpi('Last two weeks').textContent).toContain('2.5 h');
+        expect(kpi('Last two weeks').textContent).toContain('in 2 games');
+    });
+
+    it('leaves out the details that have nothing to say', () => {
+        renderDashboard({ ...LIBRARY, games: [makeGame('1', 0, null), makeGame('2', 90, '2026-01-01T00:00:00Z')] });
+
+        expect(kpi('Hours played').textContent).toBe('Hours played1.5 hmedian 1.5 h a game');
+        expect(kpi('Last two weeks').textContent).toBe('Last two weeks0 h');
     });
 
     it('lists every shown state with its count and share, leaving out Abandoned', () => {
@@ -126,12 +143,48 @@ describe('Dashboard', () => {
         expect(ranked).toEqual(['Game 3100 h', 'Game 450 h', 'Game 521 h', 'Game 20.5 h']);
     });
 
-    it('gives the hours by year as a table', () => {
+    it('says how few games hold half the hours', () => {
         renderDashboard();
 
-        const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
+        const panel = screen.getByRole('region', { name: 'Most played' });
+        expect(within(panel).getByText('Half your hours went into a single game.')).toBeTruthy();
+    });
 
-        expect(rows.map((row) => row.textContent)).toEqual(['202421', '2026151']);
+    it('gives the share of the top ten when the library has more played games', () => {
+        const games = Array.from({ length: 12 }, (_, index) => makeGame(String(index), (index + 1) * 60, null));
+        renderDashboard({ ...LIBRARY, games });
+
+        const panel = screen.getByRole('region', { name: 'Most played' });
+        expect(
+            within(panel).getByText('Your top 10 add up to 96% of your hours. Half your hours went into 4 games.')
+        ).toBeTruthy();
+    });
+
+    it('gives the games by year as a table', () => {
+        renderDashboard();
+
+        expect(cells('Games by year of last play')).toEqual([
+            ['2024', '1'],
+            ['2026', '3'],
+        ]);
+    });
+
+    it('buckets the played games by hours and shows the unplayed ones on demand', async () => {
+        const user = userEvent.setup();
+        renderDashboard();
+        const played = [
+            ['< 1 h', '1', '0.5 h'],
+            ['1–10 h', '0', '0 h'],
+            ['10–50 h', '1', '21 h'],
+            ['50–100 h', '1', '50 h'],
+            ['100+ h', '1', '100 h'],
+        ];
+
+        expect(cells('Hours per game')).toEqual(played);
+
+        await user.click(screen.getByRole('switch', { name: 'Show unplayed' }));
+
+        expect(cells('Hours per game')).toEqual([['Unplayed', '1', '0 h'], ...played]);
     });
 
     describe('when Steam sends no last-played dates', () => {
@@ -141,10 +194,10 @@ describe('Dashboard', () => {
         };
         const SETTINGS = 'https://steamcommunity.com/id/someone/edit/settings';
 
-        it('keeps the hours-by-year panel and explains why it is empty', () => {
+        it('keeps the games-by-year panel and explains why it is empty', () => {
             renderDashboard(UNDATED, SETTINGS);
 
-            const panel = screen.getByRole('region', { name: 'Hours by year of last play' });
+            const panel = screen.getByRole('region', { name: 'Games by year of last play' });
             expect(within(panel).getByText(/did not share when these games were last played/)).toBeTruthy();
             expect(within(panel).queryByRole('table')).toBeNull();
             expect(
@@ -157,21 +210,29 @@ describe('Dashboard', () => {
         it('offers no link when there is no profile to point to', () => {
             renderDashboard(UNDATED, null);
 
-            const panel = screen.getByRole('region', { name: 'Hours by year of last play' });
+            const panel = screen.getByRole('region', { name: 'Games by year of last play' });
             expect(within(panel).queryByRole('link')).toBeNull();
         });
 
         it('stays out of the way when nobody has played anything', () => {
             renderDashboard({ ...LIBRARY, games: [makeGame('1', 0, null), makeGame('2', 0, null)] }, SETTINGS);
 
-            expect(screen.queryByRole('region', { name: 'Hours by year of last play' })).toBeNull();
+            expect(screen.queryByRole('region', { name: 'Games by year of last play' })).toBeNull();
+            expect(screen.queryByRole('region', { name: 'Hours per game' })).toBeNull();
+        });
+
+        it('still buckets the hours, which need no dates', () => {
+            renderDashboard(UNDATED, SETTINGS);
+
+            expect(cells('Hours per game')).toHaveLength(5);
         });
 
         it('does not lock the panel when some games do have a date', () => {
             renderDashboard(LIBRARY, SETTINGS);
 
             expect(screen.queryByText(/did not share when/)).toBeNull();
-            expect(screen.getByRole('table')).toBeTruthy();
+            const panel = screen.getByRole('region', { name: 'Games by year of last play' });
+            expect(within(panel).getByRole('table')).toBeTruthy();
         });
     });
 

@@ -9,6 +9,14 @@ import { hoursDigits, useHours } from '@/lib/use-hours';
 
 import './kpi-grid.scss';
 
+const DAY_MINUTES = 1440;
+
+// One decimal under ten days, like the hours
+function roundDays(minutes: number): number {
+    const days = minutes / DAY_MINUTES;
+    return days < 10 ? Math.round(days * 10) / 10 : Math.round(days);
+}
+
 export function KpiGrid({ summary }: { summary: LibrarySummary }) {
     const t = useTranslations('dashboard.kpi');
     const format = useFormatter();
@@ -16,6 +24,10 @@ export function KpiGrid({ summary }: { summary: LibrarySummary }) {
 
     const backlogShare = summary.gameCount === 0 ? 0 : summary.backlogCount / summary.gameCount;
     const integer = (value: number) => format.number(Math.round(value));
+    const hoursDetail = [
+        summary.totalMinutes >= DAY_MINUTES ? t('hoursDays', { days: roundDays(summary.totalMinutes) }) : null,
+        summary.playedCount > 0 ? t('hoursMedian', { hours: hours(summary.medianMinutes) }) : null,
+    ].filter((part) => part !== null);
     const items = [
         {
             key: 'games',
@@ -32,7 +44,7 @@ export function KpiGrid({ summary }: { summary: LibrarySummary }) {
             value: summary.totalMinutes,
             // The decimals follow the final figure, so the number does not change width while it counts
             text: (minutes: number) => hours(minutes, hoursDigits(summary.totalMinutes)),
-            detail: null,
+            detail: hoursDetail.length === 0 ? null : hoursDetail.join(' · '),
         },
         {
             key: 'backlog',
@@ -50,7 +62,7 @@ export function KpiGrid({ summary }: { summary: LibrarySummary }) {
             label: t('recent'),
             value: summary.recentMinutes,
             text: (minutes: number) => hours(minutes, 1),
-            detail: null,
+            detail: summary.recentGameCount > 0 ? t('recentDetail', { count: summary.recentGameCount }) : null,
         },
     ];
 

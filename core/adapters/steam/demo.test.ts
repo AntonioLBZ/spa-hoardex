@@ -68,7 +68,7 @@ describe('createDemoData', () => {
             expect(summary.stateCounts[state]).toBeGreaterThan(0);
         }
         expect(summary.stateCounts.abandoned).toBe(0);
-        expect(summary.minutesByYear.length).toBeGreaterThanOrEqual(5);
+        expect(summary.gamesByYear.length).toBeGreaterThanOrEqual(5);
         expect(summary.topGames).toHaveLength(10);
         expect(summary.recentMinutes).toBeGreaterThan(0);
     });

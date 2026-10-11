@@ -9,37 +9,30 @@ import { PrivacySettingsLink } from '@/components/privacy-settings-link';
 import { ChartSkeleton } from '@/components/skeleton';
 import { STEP, useChartMotion } from '@/lib/motion';
 import { useAfterPaint } from '@/lib/use-after-paint';
+import { TOOLTIP_CURSOR, TOOLTIP_STYLE } from './chart-style';
 
-import './hours-by-year.scss';
-
-const TOOLTIP_STYLE = {
-    backgroundColor: 'var(--color-bg-raised)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 'var(--size-border-radius)',
-    color: 'var(--color-content)',
-};
+import './games-by-year.scss';
 
 const PANEL_CLASS = 'dashboard__panel dashboard__panel--years';
 
-interface HoursByYearProps {
+interface GamesByYearProps {
     summary: LibrarySummary;
     // Where the owner can review privacy; null when there is none to point to
     settingsUrl: string | null;
 }
 
-export function HoursByYear({ summary, settingsUrl }: HoursByYearProps) {
+export function GamesByYear({ summary, settingsUrl }: GamesByYearProps) {
     const t = useTranslations('dashboard.years');
     const format = useFormatter();
     const chartMotion = useChartMotion(STEP.years);
     const ready = useAfterPaint();
     // Recharts restarts its animation when the data array is a new reference
     const data = useMemo(
-        () =>
-            summary.minutesByYear.map(({ year, minutes }) => ({ year: String(year), hours: Math.round(minutes / 60) })),
-        [summary.minutesByYear]
+        () => summary.gamesByYear.map(({ year, games }) => ({ year: String(year), games })),
+        [summary.gamesByYear]
     );
 
-    if (summary.minutesByYear.length === 0) {
+    if (summary.gamesByYear.length === 0) {
         // Played games but no last-played date at all: Steam did not send them
         if (summary.playedCount === 0) return null;
         return (
@@ -51,12 +44,13 @@ export function HoursByYear({ summary, settingsUrl }: HoursByYearProps) {
 
     return (
         <Panel className={PANEL_CLASS} index={STEP.years} title={t('title')}>
-            <div aria-hidden="true" className="hours-by-year__chart">
+            <div aria-hidden="true" className="games-by-year__chart">
                 {ready ? (
                     <ResponsiveContainer height={220} width="100%">
                         <BarChart data={data}>
                             <XAxis axisLine={false} dataKey="year" tickLine={false} />
                             <YAxis
+                                allowDecimals={false}
                                 axisLine={false}
                                 tickFormatter={(value: number) => format.number(value)}
                                 tickLine={false}
@@ -64,10 +58,10 @@ export function HoursByYear({ summary, settingsUrl }: HoursByYearProps) {
                             />
                             <Tooltip
                                 contentStyle={TOOLTIP_STYLE}
-                                cursor={{ fill: 'var(--color-border)', opacity: 0.4 }}
-                                formatter={(value) => [format.number(Number(value)), t('hours')]}
+                                cursor={TOOLTIP_CURSOR}
+                                formatter={(value) => [format.number(Number(value)), t('games')]}
                             />
-                            <Bar dataKey="hours" fill="var(--color-accent)" {...chartMotion} radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="games" fill="var(--color-accent)" {...chartMotion} radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 ) : (
@@ -78,14 +72,14 @@ export function HoursByYear({ summary, settingsUrl }: HoursByYearProps) {
                 <thead>
                     <tr>
                         <th scope="col">{t('year')}</th>
-                        <th scope="col">{t('hours')}</th>
+                        <th scope="col">{t('games')}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {data.map((row) => (
                         <tr key={row.year}>
                             <th scope="row">{row.year}</th>
-                            <td>{format.number(row.hours)}</td>
+                            <td>{format.number(row.games)}</td>
                         </tr>
                     ))}
                 </tbody>

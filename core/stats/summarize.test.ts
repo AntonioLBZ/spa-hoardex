@@ -21,10 +21,22 @@ describe('summarizeLibrary', () => {
             playedCount: 0,
             totalMinutes: 0,
             recentMinutes: 0,
+            recentGameCount: 0,
             backlogCount: 0,
             stateCounts: { untouched: 0, tried: 0, inProgress: 0, paused: 0, finished: 0, abandoned: 0 },
             topGames: [],
-            minutesByYear: [],
+            topShare: 0,
+            halfHoursGameCount: 0,
+            medianMinutes: 0,
+            gamesByYear: [],
+            playtimeBuckets: [
+                { bucket: 'unplayed', games: 0, minutes: 0 },
+                { bucket: 'under1', games: 0, minutes: 0 },
+                { bucket: 'to10', games: 0, minutes: 0 },
+                { bucket: 'to50', games: 0, minutes: 0 },
+                { bucket: 'to100', games: 0, minutes: 0 },
+                { bucket: 'over100', games: 0, minutes: 0 },
+            ],
         });
     });
 
@@ -38,7 +50,13 @@ describe('summarizeLibrary', () => {
             NOW
         );
 
-        expect(summary).toMatchObject({ gameCount: 3, playedCount: 2, totalMinutes: 630, recentMinutes: 120 });
+        expect(summary).toMatchObject({
+            gameCount: 3,
+            playedCount: 2,
+            totalMinutes: 630,
+            recentMinutes: 120,
+            recentGameCount: 2,
+        });
     });
 
     it('counts the backlog as the untouched games', () => {
@@ -101,20 +119,20 @@ describe('summarizeLibrary', () => {
         });
     });
 
-    describe('minutesByYear', () => {
-        it('adds up minutes by year of last play, ascending', () => {
+    describe('gamesByYear', () => {
+        it('counts the games by year of last play, ascending', () => {
             const summary = summarizeLibrary(
                 [
                     makeGame('1', 100, '2026-03-01T00:00:00Z'),
                     makeGame('2', 200, '2024-06-01T00:00:00Z'),
-                    makeGame('3', 50, '2026-09-01T00:00:00Z'),
+                    makeGame('3', 5000, '2026-09-01T00:00:00Z'),
                 ],
                 NOW
             );
 
-            expect(summary.minutesByYear).toEqual([
-                { year: 2024, minutes: 200 },
-                { year: 2026, minutes: 150 },
+            expect(summary.gamesByYear).toEqual([
+                { year: 2024, games: 1 },
+                { year: 2026, games: 2 },
             ]);
         });
 
@@ -124,7 +142,7 @@ describe('summarizeLibrary', () => {
                 NOW
             );
 
-            expect(summary.minutesByYear).toEqual([]);
+            expect(summary.gamesByYear).toEqual([]);
             expect(summary.totalMinutes).toBe(200);
         });
 
@@ -134,7 +152,78 @@ describe('summarizeLibrary', () => {
                 NOW
             );
 
-            expect(summary.minutesByYear.map((entry) => entry.year)).toEqual([2025, 2026]);
+            expect(summary.gamesByYear.map((entry) => entry.year)).toEqual([2025, 2026]);
+        });
+    });
+
+    describe('playtimeBuckets', () => {
+        it('puts each game in the bucket of its hours, lower bound included', () => {
+            const minutes = [0, 1, 59, 60, 599, 600, 2999, 3000, 5999, 6000, 90_000];
+            const summary = summarizeLibrary(
+                minutes.map((value, index) => makeGame(String(index), value, null)),
+                NOW
+            );
+
+            expect(summary.playtimeBuckets).toEqual([
+                { bucket: 'unplayed', games: 1, minutes: 0 },
+                { bucket: 'under1', games: 2, minutes: 60 },
+                { bucket: 'to10', games: 2, minutes: 659 },
+                { bucket: 'to50', games: 2, minutes: 3599 },
+                { bucket: 'to100', games: 2, minutes: 8999 },
+                { bucket: 'over100', games: 2, minutes: 96_000 },
+            ]);
+        });
+
+        it('counts every unplayed game, whatever its state', () => {
+            const summary = summarizeLibrary([makeGame('1', 0, null), makeGame('2', 0, null)], NOW, {
+                overrides: { '1': { state: 'finished', setAt: NOW.toISOString(), minutesAtSet: 0 } },
+            });
+
+            expect(summary.playtimeBuckets[0]).toEqual({ bucket: 'unplayed', games: 2, minutes: 0 });
+        });
+    });
+
+    describe('medianMinutes', () => {
+        it('takes the middle played game', () => {
+            const summary = summarizeLibrary(
+                [makeGame('1', 0, null), makeGame('2', 300, null), makeGame('3', 10, null), makeGame('4', 40, null)],
+                NOW
+            );
+
+            expect(summary.medianMinutes).toBe(40);
+        });
+
+        it('averages the two middle games of an even count', () => {
+            const summary = summarizeLibrary([makeGame('1', 10, null), makeGame('2', 50, null)], NOW);
+
+            expect(summary.medianMinutes).toBe(30);
+        });
+
+        it('is zero when nothing was played', () => {
+            expect(summarizeLibrary([makeGame('1', 0, null)], NOW).medianMinutes).toBe(0);
+        });
+    });
+
+    describe('concentration', () => {
+        it('gives the share of the hours in the top games', () => {
+            const games = Array.from({ length: 4 }, (_, index) => makeGame(String(index), 100, null));
+
+            expect(summarizeLibrary(games, NOW, { topCount: 3 }).topShare).toBe(0.75);
+            expect(summarizeLibrary(games, NOW).topShare).toBe(1);
+        });
+
+        it('counts the fewest games that hold half the hours', () => {
+            const dominant = [makeGame('1', 900, null), makeGame('2', 50, null), makeGame('3', 50, null)];
+            const even = Array.from({ length: 6 }, (_, index) => makeGame(String(index), 100, null));
+
+            expect(summarizeLibrary(dominant, NOW).halfHoursGameCount).toBe(1);
+            expect(summarizeLibrary(even, NOW).halfHoursGameCount).toBe(3);
+        });
+
+        it('is zero without hours', () => {
+            const summary = summarizeLibrary([makeGame('1', 0, null)], NOW);
+
+            expect(summary).toMatchObject({ topShare: 0, halfHoursGameCount: 0 });
         });
     });
 });

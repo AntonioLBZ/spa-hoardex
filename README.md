@@ -9,7 +9,7 @@ Hoardex is a personal portfolio project and it is still in progress: achievement
 ## Features
 
 - Enter a Steam profile as a URL, a custom name or a SteamID64 (SteamID2 and SteamID3 work too).
-- A dashboard with the number of games and hours, the games by state (backlog, tried, in progress, paused, finished), the most played games and the hours by year of last play.
+- A dashboard with the number of games and hours, the games by state (backlog, tried, in progress, paused, finished), the most played games and how much of the hours they hold, the games by year of last play and the games by hours played (under 1 h up to 100+ h).
 - A library view: a cover grid with state filters, search and sorting, all kept in the URL.
 - Optional sign-in with Steam: set a game's state by hand (drag it onto a state chip or pick it from its card), create, edit and delete your own categories, recolour or bring back the built-in ones, and turn on a daily playtime history from your account page.
 - A manual refresh with a cooldown, so one profile cannot drain the Steam API.

@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { useTranslations } from 'use-intl';
+import { useFormatter, useTranslations } from 'use-intl';
 
 import type { LibrarySummary } from '@core/stats';
 import { Panel } from '@/components/panel';
@@ -10,8 +10,21 @@ import './top-games.scss';
 
 export function TopGames({ summary }: { summary: LibrarySummary }) {
     const t = useTranslations('dashboard.top');
+    const format = useFormatter();
     const hours = useHours();
     const longest = summary.topGames[0]?.minutes ?? 0;
+    // The share only says something when the list leaves some played games out
+    const note = [
+        summary.playedCount > summary.topGames.length
+            ? t('share', {
+                  count: summary.topGames.length,
+                  share: format.number(summary.topShare, { style: 'percent', maximumFractionDigits: 0 }),
+              })
+            : null,
+        t('half', { count: summary.halfHoursGameCount }),
+    ]
+        .filter((sentence) => sentence !== null)
+        .join(' ');
 
     return (
         <Panel className="dashboard__panel dashboard__panel--top" index={STEP.top} title={t('title')}>
@@ -28,6 +41,7 @@ export function TopGames({ summary }: { summary: LibrarySummary }) {
                     </li>
                 ))}
             </ol>
+            {summary.totalMinutes > 0 ? <p className="top-games__note">{note}</p> : null}
         </Panel>
     );
 }

@@ -6,11 +6,6 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 - `libraryPrivate` and `wishlistPrivate` (needs another account).
 
-### Dashboard
-
-- Replace "Hours by year of last play" with games by year of last play: count games instead of summing their hours (`minutesByYear` in `core/stats`), same chart and `LockedChart`. The hours chart put all of a game's hours in its last year (`ARCHITECTURE.md` §7).
-- Extra: a chart of hours per game in buckets (< 1 h, 1–10, 10–50, 50–100, > 100 h).
-
 ### Later phases
 
 - 2: achievements and rarity. Review the WAF rate limit (60 requests per minute per IP) when the achievement batches arrive (`ARCHITECTURE.md` §11).

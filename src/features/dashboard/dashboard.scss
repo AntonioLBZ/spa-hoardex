@@ -11,17 +11,13 @@
     grid-template-columns: repeat(auto-fit, minmax(min(max(20rem, calc((100% - var(--size-100)) / 2)), 100%), 1fr));
 }
 
-.dashboard__panel--years {
-    grid-column: 1 / -1;
-}
-
-/* Wide: the long top-games list runs beside the donut and the years */
+/* Wide: the long top-games list runs beside the donut and the two bar charts, which share its width */
 @media (width >= 72rem) {
     .dashboard__panels {
         grid-template-areas:
-            'states top'
-            'years top';
-        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+            'states states top'
+            'years playtime top';
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1fr);
     }
 
     .dashboard__panel--states {
@@ -34,5 +30,9 @@
 
     .dashboard__panel--years {
         grid-area: years;
+    }
+
+    .dashboard__panel--playtime {
+        grid-area: playtime;
     }
 }

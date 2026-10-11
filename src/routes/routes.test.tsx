@@ -270,7 +270,7 @@ describe('locked panels', () => {
         expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Test Person');
     });
 
-    it('locks only the hours-by-year chart when the library comes without last-played dates', async () => {
+    it('locks only the games-by-year chart when the library comes without last-played dates', async () => {
         const played = LIBRARY.games.map((game) => ({
             ...game,
             playtime: { ...game.playtime, totalMinutes: 600 },
@@ -281,7 +281,7 @@ describe('locked panels', () => {
         });
         renderApp('/p/someone');
 
-        const panel = await screen.findByRole('region', { name: 'Hours by year of last play' });
+        const panel = await screen.findByRole('region', { name: 'Games by year of last play' });
         expect(
             within(panel)
                 .getByRole('link', { name: /^Open Steam privacy settings/ })

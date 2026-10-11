@@ -4,8 +4,9 @@ import { DEFAULT_CATEGORIES, type Categories, type Overrides } from '@core/backl
 import type { Game } from '@core/domain';
 import { summarizeLibrary } from '@core/stats';
 import { CategoryProvider } from '@/lib/categories';
-import { HoursByYear } from './hours-by-year';
+import { GamesByYear } from './games-by-year';
 import { KpiGrid } from './kpi-grid';
+import { PlaytimeBuckets } from './playtime-buckets';
 import { StateBreakdown } from './state-breakdown';
 import { TopGames } from './top-games';
 
@@ -43,7 +44,8 @@ export const Dashboard = memo(function Dashboard({
                 <div className="dashboard__panels">
                     <StateBreakdown summary={summary} />
                     <TopGames summary={summary} />
-                    <HoursByYear settingsUrl={settingsUrl} summary={summary} />
+                    <GamesByYear settingsUrl={settingsUrl} summary={summary} />
+                    <PlaytimeBuckets summary={summary} />
                 </div>
             </div>
         </CategoryProvider>
