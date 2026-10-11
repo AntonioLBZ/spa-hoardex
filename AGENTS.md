@@ -62,6 +62,7 @@ fixtures/  anonymized or synthetic only
 
 - `vercel.json` pins `"framework": "vite"` (the `hono` dependency makes Vercel pick the backend preset: "No entrypoint found") and rewrites `/api/:path*` → `/api` (catch-all file names only match one segment outside Next.js).
 - SPA fallback is **one rewrite per client route** (`/p/:profile`, `/demo`, `/privacy`, `/account` → `/index.html`); a new route needs its own. Never a catch-all `/(.*)`: `vercel dev` would rewrite Vite's module requests to HTML.
+- `api/index.ts` exports one handler per HTTP method; Vercel answers 405 to a method it doesn't export (`tests/api-entry.test.ts`).
 - Relative imports in `api/`, `server/`, `core/` need `.js` extensions (ESM, else `ERR_MODULE_NOT_FOUND`). `scripts/` imports `.ts` (`allowImportingTsExtensions`, safe under `noEmit`).
 - `buildCommand` runs migrations before the new deployment is live: each one must work with the previous code (add, never rename or drop).
 - **CSP** (`vercel.json`): `'self'` plus `cdn.cloudflare.steamstatic.com`, `shared.steamstatic.com` and `avatars.steamstatic.com` for images, no inline code. A new third-party host or an inline `<script>`/`<style>` needs the CSP changed first, or production blocks it with no build error.
