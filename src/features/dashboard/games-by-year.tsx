@@ -9,7 +9,7 @@ import { PrivacySettingsLink } from '@/components/privacy-settings-link';
 import { ChartSkeleton } from '@/components/skeleton';
 import { STEP, useChartMotion } from '@/lib/motion';
 import { useAfterPaint } from '@/lib/use-after-paint';
-import { TOOLTIP_CURSOR, TOOLTIP_STYLE } from './chart-style';
+import { TOOLTIP_PROPS } from './chart-style';
 
 import './games-by-year.scss';
 
@@ -57,8 +57,7 @@ export function GamesByYear({ summary, settingsUrl }: GamesByYearProps) {
                                 width={48}
                             />
                             <Tooltip
-                                contentStyle={TOOLTIP_STYLE}
-                                cursor={TOOLTIP_CURSOR}
+                                {...TOOLTIP_PROPS}
                                 formatter={(value) => [format.number(Number(value)), t('games')]}
                             />
                             <Bar dataKey="games" fill="var(--color-accent)" {...chartMotion} radius={[4, 4, 0, 0]} />

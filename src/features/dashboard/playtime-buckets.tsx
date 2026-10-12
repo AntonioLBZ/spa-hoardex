@@ -9,7 +9,7 @@ import { Switch } from '@/components/switch';
 import { STEP, useChartMotion } from '@/lib/motion';
 import { useAfterPaint } from '@/lib/use-after-paint';
 import { useHours } from '@/lib/use-hours';
-import { TOOLTIP_CURSOR, TOOLTIP_STYLE } from './chart-style';
+import { TOOLTIP_PROPS } from './chart-style';
 
 import './playtime-buckets.scss';
 
@@ -63,8 +63,7 @@ export function PlaytimeBuckets({ summary }: { summary: LibrarySummary }) {
                                 width={72}
                             />
                             <Tooltip
-                                contentStyle={TOOLTIP_STYLE}
-                                cursor={TOOLTIP_CURSOR}
+                                {...TOOLTIP_PROPS}
                                 formatter={(_, __, item) => [
                                     t('tooltip', {
                                         games: Number(item.payload.games),

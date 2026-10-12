@@ -14,7 +14,7 @@ Web dashboard for a Steam library (hours, backlog, achievements, wishlist) with 
 - No license (all rights reserved, `UNLICENSED`, no `LICENSE` file). Domain `hoardex.vercel.app`. PR restrictions are decided when the repo goes public (visibility only, no contributions).
 - The weight of Motion and GSAP is an open decision left for the end (`TODO.md`): ask the owner, don't pick.
 - *Pausado* stays separate from *En curso*.
-- The API key acts as its owner: for the owner's friends Steam returns "friends only" data and the app shows it (accepted risk, §12). **Privacy can't be tested with the owner's account or a friend's**: `GetOwnedGames`/`GetWishlist` ignore the setting for the owner, and friends see more than a stranger.
+- The API key acts as its owner: for the owner's friends Steam returns "friends only" data and the app shows it (accepted risk, §12). **Privacy can't be tested with the owner's account or a friend's**: `GetOwnedGames`/`GetWishlist` ignore the setting for the owner, and friends see more than a stranger. `GetWishlist`/`GetWishlistItemCount` without the key show the stranger's view (§5.4).
 
 ## Commands
 
@@ -88,7 +88,7 @@ The library renders first; the **client** then requests achievements in batches 
 - Input: SteamID64 `^765611\d{11}$`; vanity `^[A-Za-z0-9_-]{2,32}$`; SteamID2/3 via `BigInt`; `/id/<vanity>` and `/profiles/<id64>` URLs.
 - **Decide privacy by body and `x-eresult`, never by status alone.** Wishlist: 200 `{}` for both private and empty (`x-eresult` 15 vs 1). `GetOwnedGames` on a friends-only profile: 200, `x-eresult` 15, `{"response":{}}`. A public profile does not imply visible game details (a separate setting `GetPlayerSummaries` doesn't expose).
 - 429: `x-eresult: 84`, body `{"response":{}}`, **no `Retry-After`**, bucket seems shared → `rateLimited`.
-- Quirks: rarity `percent` is a **string**; `playtime_forever` is the truth; hidden achievements have an empty `description`; `GetPlayerBans` is PascalCase. `GetAchievementsProgress` is unusable (401). Wishlist = `GetWishlist` + `IStoreBrowseService/GetItems` (≤ 150 ids per GET, 275 gives 414; omit `data_request`).
+- Quirks: rarity `percent` is a **string**; `playtime_forever` is the truth; hidden achievements have an empty `description`; `GetPlayerBans` is PascalCase; `rtime_last_played` and the per-platform playtimes come only for the key owner's own account, never for another profile (§7). `GetAchievementsProgress` is unusable (401). Wishlist = `GetWishlist` + `IStoreBrowseService/GetItems` (≤ 150 ids per GET, 275 gives 414; omit `data_request`).
 - Terms only clearly cover data "as requested by the end user" and Valve can revoke the key: keep the Steam layer isolated, per-user caches short, the demo working without a key, the Valve trademark notice and non-affiliation disclaimer in the footer, and the privacy policy. No literal "Powered by Steam".
 
 ## Frontend
