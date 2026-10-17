@@ -87,6 +87,17 @@ describe('verifySteamLogin', () => {
         expect(fetch).not.toHaveBeenCalled();
     });
 
+    it.each(['before', 'after'])('rejects a field repeated %s the signed one without asking Steam', async (place) => {
+        const other = 'https://steamcommunity.com/openid/id/76561198000000002';
+        const repeated = new URLSearchParams({ 'openid.claimed_id': other, 'openid.identity': other });
+        const query = place === 'before' ? repeated : assertion();
+        for (const [name, value] of place === 'before' ? assertion() : repeated) query.append(name, value);
+        const { result, fetch, claimNonce } = verify(query);
+        expect(await result).toEqual({ kind: 'invalid', reason: 'malformed' });
+        expect(fetch).not.toHaveBeenCalled();
+        expect(claimNonce).not.toHaveBeenCalled();
+    });
+
     it('rejects an assertion meant for another callback', async () => {
         const { result, fetch } = verify(assertion({ 'openid.return_to': 'https://evil.example/callback' }));
         expect(await result).toEqual({ kind: 'invalid', reason: 'returnTo' });

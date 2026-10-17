@@ -85,6 +85,7 @@ The library renders first; the **client** then requests achievements in batches 
 
 - Own client with `fetch` + Zod 4, `fetch` injected (tests need no MSW). **Not the `steamapi` npm package.** Zod at the border: `safeParse`, `z.looseObject`, optional fields, `.catch()` on dubious enums; on drift log, don't throw.
 - **No generic proxy:** closed host allowlist (`api.steampowered.com`, `store.steampowered.com`, `steamcommunity.com` for OpenID only); every upstream URL built server side.
+- **OpenID callback:** reject any repeated query key; the local checks and `check_authentication` must read the same values (else a foreign `claimed_id` before a valid assertion signs in as someone else).
 - Input: SteamID64 `^765611\d{11}$`; vanity `^[A-Za-z0-9_-]{2,32}$`; SteamID2/3 via `BigInt`; `/id/<vanity>` and `/profiles/<id64>` URLs.
 - **Decide privacy by body and `x-eresult`, never by status alone.** Wishlist: 200 `{}` for both private and empty (`x-eresult` 15 vs 1). `GetOwnedGames` on a friends-only profile: 200, `x-eresult` 15, `{"response":{}}`. A public profile does not imply visible game details (a separate setting `GetPlayerSummaries` doesn't expose).
 - 429: `x-eresult: 84`, body `{"response":{}}`, **no `Retry-After`**, bucket seems shared → `rateLimited`.

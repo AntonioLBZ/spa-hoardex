@@ -193,6 +193,23 @@ describe('GET /api/auth/steam/callback', () => {
         expect(steam).not.toHaveBeenCalled();
     });
 
+    it('fails when a field is repeated, so the session cannot go to another account', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const recordLogin = vi.fn(async () => 0);
+        const { request, steam } = setup({ recordLogin });
+        const login = await startLogin(request);
+        const other = encodeURIComponent('https://steamcommunity.com/openid/id/76561198000000002');
+        const path = steamAssertion(login.returnToUrl).replace(
+            '?',
+            `?openid.claimed_id=${other}&openid.identity=${other}&`
+        );
+        const response = await request(path, { headers: { cookie: `hx_login=${login.loginCookie}` } });
+        expect(response.headers.get('location')).toBe('/?login=failed');
+        expect(cookiesOf(response)['hx_session=']).toBeUndefined();
+        expect(steam).not.toHaveBeenCalled();
+        expect(recordLogin).not.toHaveBeenCalled();
+    });
+
     it('fails when Steam does not confirm the assertion', async () => {
         vi.spyOn(console, 'warn').mockImplementation(() => {});
         const { request } = setup({ valid: false });

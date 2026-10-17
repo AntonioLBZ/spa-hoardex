@@ -4,7 +4,12 @@ Delete each item when it is done. Design notes for every item are in `ARCHITECTU
 
 ### Unverified with real data
 
-- `libraryPrivate` and `wishlistPrivate` (needs another account).
+- `libraryPrivate`: needs a public profile whose game details the key's account can't see (a non-friend with friends-only or private details, or a friend with private ones). None of the four accounts tried on 2026-10-11 was one (`ARCHITECTURE.md` §5.4, §17). `wishlistPrivate` is verified at Steam's end; the adapter maps it in phase 3.
+
+### Owner decisions from the 2026-10-11 real-data check
+
+- Games without a last-played date: Steam sends `rtime_last_played` only for the key's own account, so on every other profile *En curso* and *Pausado* are 0 and every game played for 60 minutes or more is *Completado*, even ones played in the last two weeks (`ARCHITECTURE.md` §7). Keep that, use `playtime_2weeks` to mark *En curso*, or something else? The locked «Games by year» text sends people to privacy settings that can't fix it.
+- The friends-only leak (§12, confirmed): before serving a library, check `GetWishlistItemCount` without the key and answer `libraryPrivate` on `x-eresult: 15`?
 
 ### Later phases
 

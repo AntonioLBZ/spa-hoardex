@@ -58,7 +58,13 @@ export async function verifySteamLogin(
 ): Promise<SteamLoginResult> {
     const { expectedReturnTo, claimNonce, now = () => new Date(), timeoutMs = DEFAULT_TIMEOUT_MS } = options;
     const doFetch: typeof fetch = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
-    const field = (name: string) => query.get(`openid.${name}`);
+    // Steam never repeats a key; a repeat would let our checks and Steam's read different values
+    const fields = new Map<string, string>();
+    for (const [name, value] of query) {
+        if (fields.has(name)) return { kind: 'invalid', reason: 'malformed' };
+        fields.set(name, value);
+    }
+    const field = (name: string) => fields.get(`openid.${name}`);
 
     if (field('ns') !== OPENID_NS || field('mode') !== 'id_res') return { kind: 'invalid', reason: 'malformed' };
     if (field('op_endpoint') !== STEAM_OPENID_ENDPOINT) return { kind: 'invalid', reason: 'malformed' };
@@ -80,7 +86,7 @@ export async function verifySteamLogin(
     if (!(await claimNonce(nonce))) return { kind: 'invalid', reason: 'replayed' };
 
     const body = new URLSearchParams();
-    for (const [name, value] of query) if (name.startsWith('openid.')) body.set(name, value);
+    for (const [name, value] of fields) if (name.startsWith('openid.')) body.set(name, value);
     body.set('openid.mode', 'check_authentication');
 
     let text: string;
