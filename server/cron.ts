@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { runSnapshots } from '../core/accounts/index.js';
 import type { CachedAdapter } from '../core/cache/cached-adapter.js';
 import type { Accounts } from './deps.js';
-import { NO_STORE, failure } from './http.js';
+import { failure, noStore } from './http.js';
 
 export interface CronRouteDeps {
     getData: () => CachedAdapter;
@@ -36,7 +36,7 @@ export function createCronRoutes({ getData, getAccounts, getCronSecret, budgetMs
             deadline: Date.now() + budgetMs,
         });
         console.info('[cron] snapshots', JSON.stringify(result));
-        c.header('Cache-Control', NO_STORE);
+        noStore(c);
         return c.json(result);
     });
 

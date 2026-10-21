@@ -75,7 +75,7 @@ fixtures/  anonymized or synthetic only
 - `createCachedAdapter` wraps a `StoreAdapter` (`alias:|profile:|lib:|art:` + `{source}:{id}`): every read Zod-validated (mismatch = miss), `rateLimited` never cached, a failing store never fails a request. TTLs live in `CACHE_TTL`. `withBudget` counts Steam requests and past the cap answers like a throttle.
 - **The refresh never deletes:** it claims `refresh:{source}:{id}` with `SET NX GET EX` (10 min; 60 s after a failure) and overwrites only with cacheable results. The POST returns the fresh data because the CDN may still hold the old GET.
 - Achievements: invalidate by fingerprint `hash(playtime_forever, rtime_last_played)`; progress is language-neutral, texts are per `(appid, lang)`.
-- Accounts (§19): Neon is the truth; `bl:` in Redis is a write-through copy. Steam login gives only the SteamID64, never unlocks a private library. Snapshots are opt-in (daily cron); turning them off or deleting the account deletes the data.
+- Accounts (§19): Neon is the truth; `bl:` in Redis is a copy filled on read and dropped on every write. Steam login gives only the SteamID64, never unlocks a private library. Snapshots are opt-in (daily cron); turning them off or deleting the account deletes the data.
 
 ### Progressive achievements (phase 2, designed)
 
@@ -95,7 +95,7 @@ The library renders first; the **client** then requests achievements in batches 
 ## Frontend
 
 - TanStack Router (file-based, Vite plugin). `src/routeTree.gen.ts` is generated but committed (Prettier ignores it). TanStack Query 5: `useQuery` for profile/library (requested together with the same input), `useQueries` + `combine` for achievement batches; no `streamedQuery`.
-- Imports in `src/`: `./` in the same folder, else `@/` (`src/`) and `@core/` (`core/`), never `../`. Aliases work only in `src/`. `src/lib/profile-slug.ts` is the one place the front touches the Steam adapter; import `parseProfileInput`'s file, never the adapter index (it pulls Zod into the bundle).
+- Imports in `src/`: `./` in the same folder, else `@/` (`src/`) and `@core/` (`core/`), never `../`. Aliases work only in `src/`. The front touches the Steam adapter only from `src/lib/` (`profile-slug.ts`, `steam-links.ts`, `covers.ts`), importing the single file it needs (`profile-input`, `images`), never the adapter index (it pulls Zod into the bundle).
 - Layout as in `spa-anicalendar`: folder per component/feature (`name.tsx`, `name.scss`, `index.ts`), BEM; `components/` never imports from `features/`.
 - Controls and surfaces come from `src/components/` (`Button`/`IconButton`/`buttonClass`, `Switch`, `TextField`, `SegmentedControl`, `RadioChip`, `Card`); features only place them. Radii use the scale in `_tokens.scss` (`-small`, base, `-large`, `-xlarge`, `-pill`), never literal values.
 - **Chunks:** `Dashboard` and `LibraryView` load through `useProfileContent` (not `React.lazy`). Route files import `parseLibrarySearch` from `library-view/library-search`, never the feature index.

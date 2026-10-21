@@ -401,6 +401,7 @@ describe('refresh', () => {
             setMany: () => Promise.reject(new Error('down')),
             setIfAbsent: () => Promise.reject(new Error('down')),
             increment: () => Promise.reject(new Error('down')),
+            delete: () => Promise.reject(new Error('down')),
         };
         const { cached, errors } = setup(undefined, broken);
         expect((await cached.refresh(byId)).kind).toBe('refreshed');
@@ -432,6 +433,7 @@ describe('a misbehaving store', () => {
             setMany: () => Promise.reject(new Error('down')),
             setIfAbsent: () => Promise.reject(new Error('down')),
             increment: () => Promise.reject(new Error('down')),
+            delete: () => Promise.reject(new Error('down')),
         };
         const { cached, calls, errors } = setup(undefined, broken);
         expect(await cached.getLibrary(ID)).toEqual({ kind: 'ok', data: LIBRARY });

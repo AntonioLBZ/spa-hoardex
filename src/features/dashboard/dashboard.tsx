@@ -13,7 +13,7 @@ import { TopGames } from './top-games';
 import './dashboard.scss';
 
 interface DashboardProps {
-    // The games, not the library: a refresh renews the library's fetch time, but Query keeps the list if nothing changed
+    // The games, not the library: a refresh renews its fetch time, but Query keeps the list if nothing changed
     games: Game[];
     // The owner's manual states; a stable reference, or the charts replay
     overrides?: Overrides;
@@ -23,7 +23,7 @@ interface DashboardProps {
     settingsUrl?: string | null;
 }
 
-// Memoized: the filters below live in the URL and re-render the page on every keystroke, which would replay the chart animations
+// Memoized: filters live in the URL and re-render the page per keystroke, which would replay the charts
 const NO_OVERRIDES: Overrides = Object.freeze({});
 
 export const Dashboard = memo(function Dashboard({

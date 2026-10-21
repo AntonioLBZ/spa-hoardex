@@ -5,8 +5,7 @@ const APPID = /^\d{1,10}$/;
 const ASSET_FILE = /^(?:[0-9a-f]{40}\/)?[A-Za-z0-9_.-]+\.(?:jpg|png)$/;
 const ASSET_FORMAT = /^steam\/apps\/(\d{1,10})\/\$\{FILENAME\}(?:\?t=(\d{1,12}))?$/;
 
-// Cover candidates in order of preference: the portrait capsule, then the landscape header.
-// Not every app has the portrait one (unverified), so the UI falls back along the list
+// Cover candidates, best first: the portrait capsule, then the landscape header (the portrait is unverified)
 export function steamCoverUrls(appid: string): string[] {
     if (!APPID.test(appid)) return [];
     return [`${APP_IMAGE_BASE}/${appid}/library_600x900.jpg`, `${APP_IMAGE_BASE}/${appid}/header.jpg`];

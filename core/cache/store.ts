@@ -13,6 +13,8 @@ export interface CacheStore {
     setIfAbsent(key: string, value: unknown, ttlSeconds: number): Promise<unknown>;
     // Atomic counter; sets the expiry on creation
     increment(key: string, ttlSeconds: number): Promise<number>;
+    // Nothing happens when the key is missing
+    delete(key: string): Promise<void>;
 }
 
 export function createUpstashStore(redis: Redis, namespace: string): CacheStore {
@@ -41,6 +43,9 @@ export function createUpstashStore(redis: Redis, namespace: string): CacheStore 
             const count = await redis.incr(scoped(key));
             if (count === 1) await redis.expire(scoped(key), ttlSeconds);
             return count;
+        },
+        async delete(key) {
+            await redis.del(scoped(key));
         },
     };
 }
@@ -92,6 +97,9 @@ export function createMemoryStore({ now = Date.now }: { now?: () => number } = {
             const count = entry === undefined ? 1 : Number(entry.value) + 1;
             entries.set(key, { value: String(count), expiresAt: entry?.expiresAt ?? now() + ttlSeconds * 1000 });
             return count;
+        },
+        async delete(key) {
+            entries.delete(key);
         },
     };
 }

@@ -67,8 +67,12 @@ export interface AccountRepository {
         createdAt: string
     ): Promise<'created' | 'limit' | 'name' | 'taken'>;
     updateCategory(userId: string, id: CustomId, fields: CategoryFields): Promise<'updated' | 'notFound' | 'name'>;
-    // Only while no manual state uses it
-    deleteCategory(userId: string, id: CustomId): Promise<'deleted' | 'notFound' | 'notEmpty'>;
+    // Only while no owned game uses it (null: no library to tell, so any manual state counts)
+    deleteCategory(
+        userId: string,
+        id: CustomId,
+        ownedGameIds: readonly string[] | null
+    ): Promise<'deleted' | 'notFound' | 'notEmpty'>;
     // Its colour goes with it
     removeState(userId: string, state: Exclude<BacklogState, 'untouched'>): Promise<void>;
     // Back below MAX_CATEGORIES; `notFound` unless it was removed

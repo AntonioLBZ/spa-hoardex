@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { readMigrations } from './migrations.js';
-import { createSqlRepository } from './repository.js';
+import { createSqlRepository, type Query } from './repository.js';
 import { createTestDatabase } from './test-db.js';
 import { DatabaseError } from './types.js';
 
@@ -31,6 +31,23 @@ describe('createSqlRepository', () => {
 
         const { rows } = await database.db.query<{ n: number }>('select count(*)::int as n from users');
         expect(rows[0]?.n).toBe(2);
+    });
+
+    it('removes the user a lost first sign-in race leaves without identity, and tries again', async () => {
+        let lost = true;
+        const racing: Query = async (text, params) => {
+            if (lost && text.includes('with found as')) {
+                lost = false;
+                await database.db.query('insert into users (last_login_at) values ($1)', [NOW.toISOString()]);
+                return [];
+            }
+            return database.query(text, params);
+        };
+        const repository = createSqlRepository(racing);
+
+        expect(await repository.recordLogin(ME, NOW)).toEqual({ userId: expect.any(String), sessionEpoch: 0 });
+        const { rows } = await database.db.query<{ n: number }>('select count(*)::int as n from users');
+        expect(rows[0]?.n).toBe(1);
     });
 
     it('stores one state per game, replaces it, and clears it', async () => {
@@ -192,11 +209,37 @@ describe('createSqlRepository', () => {
         await repository.createCategory(userId, { id: 'c-00000001', name: 'One', color: 'p1' }, 12, NOW.toISOString());
         await repository.setOverrides(userId, 'steam', [GAME], 'c-00000001', NOW.toISOString());
 
-        expect(await repository.deleteCategory(userId, 'c-00000001')).toBe('notEmpty');
+        expect(await repository.deleteCategory(userId, 'c-00000001', ['620'])).toBe('notEmpty');
+        expect(await repository.deleteCategory(userId, 'c-00000001', null)).toBe('notEmpty');
         await repository.clearOverrides(userId, 'steam', ['620']);
-        expect(await repository.deleteCategory(userId, 'c-00000001')).toBe('deleted');
-        expect(await repository.deleteCategory(userId, 'c-00000001')).toBe('notFound');
+        expect(await repository.deleteCategory(userId, 'c-00000001', ['620'])).toBe('deleted');
+        expect(await repository.deleteCategory(userId, 'c-00000001', ['620'])).toBe('notFound');
         expect((await repository.listCategories(ME)).custom).toEqual([]);
+    });
+
+    it('deletes a category whose only games left the library, and forgets their states', async () => {
+        const repository = createSqlRepository(database.query);
+        const { userId } = await repository.recordLogin(ME, NOW);
+        await repository.createCategory(userId, { id: 'c-00000001', name: 'One', color: 'p1' }, 12, NOW.toISOString());
+        await repository.createCategory(userId, { id: 'c-00000002', name: 'Two', color: 'p2' }, 12, NOW.toISOString());
+        await repository.setOverrides(userId, 'steam', [GAME], 'c-00000001', NOW.toISOString());
+        await repository.setOverrides(userId, 'steam', [{ gameId: '70', minutes: 5 }], 'c-00000002', NOW.toISOString());
+
+        expect(await repository.deleteCategory(userId, 'c-00000001', ['70', '10'])).toBe('deleted');
+        expect(await repository.listOverrides(ME)).toEqual({
+            '70': { state: 'c-00000002', minutesAtSet: 5, setAt: '2026-10-09T16:00:00.000Z' },
+        });
+    });
+
+    it('keeps the states of a category it refuses to delete', async () => {
+        const repository = createSqlRepository(database.query);
+        const { userId } = await repository.recordLogin(ME, NOW);
+        await repository.createCategory(userId, { id: 'c-00000001', name: 'One', color: 'p1' }, 12, NOW.toISOString());
+        await repository.setOverrides(userId, 'steam', [GAME], 'c-00000001', NOW.toISOString());
+        await repository.setOverrides(userId, 'steam', [{ gameId: '70', minutes: 5 }], 'c-00000001', NOW.toISOString());
+
+        expect(await repository.deleteCategory(userId, 'c-00000001', ['620'])).toBe('notEmpty');
+        expect(Object.keys(await repository.listOverrides(ME)).sort()).toEqual(['620', '70']);
     });
 
     it('never stores the Backlog as removed, nor a malformed category', async () => {

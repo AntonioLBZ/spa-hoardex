@@ -70,8 +70,7 @@ export function LibraryToolbar({
     const searchRef = useRef<HTMLInputElement>(null);
     const strip = useRef<HTMLFieldSetElement>(null);
 
-    // Follow the URL when it changes elsewhere (back button, clear filters). While typing it only echoes the box,
-    // and syncing then could put an older value back over the next keystrokes
+    // Follows the URL when it changes elsewhere, never while typing: syncing then could undo keystrokes
     useEffect(() => {
         if (document.activeElement !== searchRef.current) setText(search.q ?? '');
     }, [search.q]);

@@ -34,6 +34,9 @@ select id as user_id, session_epoch from found
 union all
 select c.id as user_id, c.session_epoch from created c join linked l on l.user_id = c.id`;
 
+// A first sign-in inserts user and identity in one statement, so a committed user without identity lost a race
+const DELETE_ORPHAN_USERS = 'delete from users u where not exists (select 1 from identities i where i.user_id = u.id)';
+
 const FIND_ACCOUNT = `
 select u.id as user_id, u.session_epoch from users u
 join identities i on i.user_id = u.id
@@ -98,13 +101,20 @@ with taken as (
 select exists (select 1 from backlog_categories where user_id = $1 and category_id = $2) as found,
     (select taken from taken) as taken`;
 
-// Only while no manual state uses it; `found` sees the rows as they were before the delete
+// Only while no owned game ($3) is in it, stale states go with it; `found` sees the rows from before the delete
 const DELETE_CATEGORY = `
 with used as (
-    select exists (select 1 from backlog_overrides where user_id = $1 and state = $2) as used
+    select exists (
+        select 1 from backlog_overrides
+        where user_id = $1 and state = $2 and ($3::text[] is null or game_id = any($3::text[]))
+    ) as used
 ), deleted as (
     delete from backlog_categories where user_id = $1 and category_id = $2 and not (select used from used)
     returning 1
+), forgotten as (
+    delete from backlog_overrides
+    where user_id = $1 and state = $2 and not (select used from used)
+        and exists (select 1 from backlog_categories where user_id = $1 and category_id = $2)
 )
 select exists (select 1 from backlog_categories where user_id = $1 and category_id = $2) as found,
     (select used from used) as used`;
@@ -215,6 +225,7 @@ export function createSqlRepository(query: Query): AccountRepository {
             for (let attempt = 0; attempt < 2; attempt++) {
                 const [row] = await run(RECORD_LOGIN, [source, externalId, now.toISOString()]);
                 if (row !== undefined) return toAccount(row);
+                await run(DELETE_ORPHAN_USERS, []);
             }
             throw new DatabaseError('Sign-in could not be recorded');
         },
@@ -290,8 +301,10 @@ export function createSqlRepository(query: Query): AccountRepository {
             return parsed.data.taken ? 'name' : 'updated';
         },
 
-        async deleteCategory(userId, id) {
-            const parsed = categoryDeleteRowSchema.safeParse((await run(DELETE_CATEGORY, [userId, id]))[0]);
+        async deleteCategory(userId, id, ownedGameIds) {
+            const parsed = categoryDeleteRowSchema.safeParse(
+                (await run(DELETE_CATEGORY, [userId, id, ownedGameIds === null ? null : [...ownedGameIds]]))[0]
+            );
             if (!parsed.success) throw new DatabaseError('Unexpected category result');
             if (!parsed.data.found) return 'notFound';
             return parsed.data.used ? 'notEmpty' : 'deleted';

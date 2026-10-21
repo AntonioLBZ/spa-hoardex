@@ -21,7 +21,7 @@ function load() {
 
 load();
 
-// Recharts, Motion and GSAP load beside the API call. Not React.lazy: its first render suspends even when loaded, and React then holds the content back 300 ms
+// Recharts, Motion and GSAP load beside the API call; not React.lazy, which holds the content back 300 ms
 export function useProfileContent(): ProfileContent | null {
     return useSyncExternalStore(
         (notify) => {

@@ -32,8 +32,7 @@ interface CoverProps {
     withImages: boolean;
 }
 
-// Tries each candidate image in turn and ends on a coloured placeholder.
-// When the guessed portrait fails (recent games keep theirs under hashed paths), asks the store for its own paths
+// Tries each candidate image, ends on a placeholder; a failed guessed portrait asks the store for its own paths
 export function Cover({ id, name, withImages }: CoverProps) {
     const owner = useContext(ArtOwnerContext);
     const [failed, setFailed] = useState(0);

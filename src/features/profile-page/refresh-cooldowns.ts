@@ -5,33 +5,43 @@ const STORAGE_KEY = 'hoardex:refresh-cooldowns';
 // End of each account's refresh cooldown, in epoch milliseconds. A hint: the server holds the truth
 const endings = new Map<string, number>();
 const listeners = new Set<() => void>();
+// The last text read from storage and what it parsed to
+let stored: { raw: string | null; endings: Map<string, number> } | null = null;
 
 function subscribe(notify: () => void) {
     listeners.add(notify);
     return () => void listeners.delete(notify);
 }
 
-// What earlier pages (or other tabs) stored, as account id to cooldown end
-function readStored(): Map<string, number> {
-    const stored = new Map<string, number>();
+// What earlier pages (or other tabs) stored, as account id to cooldown end; parsed again only when the text changes
+function readStored(): ReadonlyMap<string, number> {
+    let raw: string | null = null;
     try {
-        const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+        raw = localStorage.getItem(STORAGE_KEY);
+    } catch {
+        // Blocked storage: only this page's cooldowns count
+    }
+    if (stored?.raw === raw) return stored.endings;
+
+    const parsedEndings = new Map<string, number>();
+    try {
+        const parsed: unknown = JSON.parse(raw ?? '{}');
         if (typeof parsed === 'object' && parsed !== null) {
             for (const [accountId, until] of Object.entries(parsed)) {
-                if (typeof until === 'number') stored.set(accountId, until);
+                if (typeof until === 'number') parsedEndings.set(accountId, until);
             }
         }
     } catch {
-        // Blocked or unreadable storage: only this page's cooldowns count
+        // Unreadable text
     }
-    return stored;
+    stored = { raw, endings: parsedEndings };
+    return parsedEndings;
 }
 
 // Keyed by account id, so a vanity and its id share it
 export function startCooldown(accountId: string, until: number): void {
     endings.set(accountId, until);
-    const stored = readStored().set(accountId, until);
-    const running = [...stored].filter(([, end]) => end > Date.now());
+    const running = [...new Map(readStored()).set(accountId, until)].filter(([, end]) => end > Date.now());
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(running)));
     } catch {

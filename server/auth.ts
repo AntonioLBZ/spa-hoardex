@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { buildSteamLoginUrl, verifySteamLogin } from '../core/adapters/steam/openid.js';
 import { AUTH_TTL } from '../core/auth/ttl.js';
+import { noStore } from './http.js';
 import { endSession, isSecure, readSession, startSession } from './session.js';
 
 export interface AuthDeps {
@@ -34,7 +35,14 @@ export function safeReturnTo(value: string | undefined): string | null {
     const base = 'https://base.invalid';
     const url = new URL(value, base);
     if (url.origin !== base || url.pathname === '/api' || url.pathname.startsWith('/api/')) return null;
+    if (url.pathname.startsWith('//')) return null;
     return url.pathname + url.search;
+}
+
+// The state (never holds a dot), then the percent-encoded return path (may)
+function splitLoginCookie(cookie: string): [string, string] {
+    const dot = cookie.indexOf('.');
+    return dot === -1 ? [cookie, ''] : [cookie.slice(0, dot), cookie.slice(dot + 1)];
 }
 
 function randomState(): string {
@@ -57,10 +65,6 @@ function originOf(c: Context): string {
 export function isSameOrigin(c: Context, auth: Pick<AuthDeps, 'isAllowedOrigin'>): boolean {
     const origin = c.req.header('origin');
     return origin !== undefined && origin === originOf(c) && auth.isAllowedOrigin(origin);
-}
-
-export function noStore(c: Context) {
-    c.header('Cache-Control', 'no-store');
 }
 
 // `getAuth` runs per request, like `getData`: a config error is a 500
@@ -99,7 +103,7 @@ export function createAuthRoutes(getAuth: () => AuthDeps) {
 
         const cookie = getCookie(c, LOGIN_COOKIE) ?? '';
         deleteCookie(c, LOGIN_COOKIE, { path: LOGIN_PATH, secure: isSecure(c), httpOnly: true, sameSite: 'Lax' });
-        const [state = '', encodedReturnTo = ''] = cookie.split('.');
+        const [state, encodedReturnTo] = splitLoginCookie(cookie);
         if (state === '' || c.req.query('state') !== state) {
             console.warn('[auth] login failed: state');
             return c.redirect(FAILED_REDIRECT);

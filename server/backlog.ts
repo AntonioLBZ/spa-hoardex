@@ -15,12 +15,10 @@ import {
     type CategoryId,
 } from '../core/backlog/index.js';
 import type { CachedAdapter } from '../core/cache/cached-adapter.js';
-import type { EntityId } from '../core/domain/index.js';
 import type { AuthDeps } from './auth.js';
 import type { Accounts } from './deps.js';
-import { NO_STORE, access, failure } from './http.js';
+import { access, failure, noStore } from './http.js';
 import { requireOwner, type Owner } from './owner.js';
-import { readSession, type Session } from './session.js';
 
 export interface BacklogRouteDeps {
     getData: () => CachedAdapter;
@@ -45,12 +43,8 @@ interface Change {
     state: CategoryId | null;
 }
 
-function steamIdentity(session: Session): EntityId {
-    return { source: 'steam', externalId: session.steamId };
-}
-
 function ok(c: Context, data: BacklogData) {
-    c.header('Cache-Control', NO_STORE);
+    noStore(c);
     return c.json({ kind: 'ok', data });
 }
 
@@ -75,20 +69,20 @@ function outcome(c: Context, result: CategoryOutcome) {
 export function createBacklogRoutes({ getData, getAuth, getAccounts }: BacklogRouteDeps) {
     const routes = new Hono();
 
-    // Same input as /profile and /library
+    // Same input as /profile and /library; a library that is not visible hides its states too
     routes.get('/backlog/:input', async (c) => {
         const data = getData();
         const input = data.parseInput(c.req.param('input'));
         if (input.kind === 'invalid') return failure(c, 'invalidInput', 400);
-        const id = await data.resolveId(input);
-        if (id.kind !== 'ok') return access(c, id);
-        return access(c, { kind: 'ok', data: await getAccounts().backlog.read(id.data) });
+        const library = await data.resolveLibrary(input);
+        if (library.kind !== 'ok') return access(c, library);
+        return access(c, { kind: 'ok', data: await getAccounts().backlog.read(library.data.owner) });
     });
 
     routes.get('/me/backlog', async (c) => {
-        const session = await readSession(c, getAuth().secret);
-        if (session === null) return failure(c, 'signedOut', 401);
-        return ok(c, await getAccounts().backlog.read(steamIdentity(session)));
+        const found = await requireOwner(c, getAuth, getAccounts, { mutation: false });
+        if ('error' in found) return found.error;
+        return ok(c, await found.accounts.backlog.read(found.identity));
     });
 
     const owner = (c: Context) => requireOwner(c, getAuth, getAccounts, { mutation: true });
@@ -170,7 +164,7 @@ export function createBacklogRoutes({ getData, getAuth, getAccounts }: BacklogRo
         })
     );
 
-    // Only while empty; a built-in state needs the library to know that
+    // Only while empty among the library's games; with no library, own ones count every state and built-in ones stay
     routes.delete('/me/categories/:id', (c) =>
         withCategory(c, async ({ accounts, account, identity }) => {
             const id = c.req.param('id');
@@ -182,7 +176,9 @@ export function createBacklogRoutes({ getData, getAuth, getAccounts }: BacklogRo
             }
             const custom = customIdSchema.safeParse(id);
             if (!custom.success) return failure(c, 'unknownCategory', 404);
-            return outcome(c, await accounts.backlog.deleteCategory(account, identity, custom.data));
+            const library = await getData().getLibrary(identity);
+            const games = library.kind === 'ok' ? library.data.games : null;
+            return outcome(c, await accounts.backlog.deleteCategory(account, identity, custom.data, games));
         })
     );
 

@@ -17,7 +17,7 @@ export interface BacklogServiceOptions {
     repository: AccountRepository;
     store: CacheStore;
     // Store failures never fail a request
-    onStoreError?: (operation: 'get' | 'set', error: unknown) => void;
+    onStoreError?: (operation: 'get' | 'set' | 'delete', error: unknown) => void;
     now?: () => Date;
     newCategoryId?: () => CustomId;
 }
@@ -40,7 +40,13 @@ export interface BacklogService {
         id: CustomId,
         fields: CategoryFields
     ): Promise<CategoryOutcome>;
-    deleteCategory(account: Account, identity: EntityId, id: CustomId): Promise<CategoryOutcome>;
+    // Empty is judged on the library's games; null when there is none to look at
+    deleteCategory(
+        account: Account,
+        identity: EntityId,
+        id: CustomId,
+        games: readonly Game[] | null
+    ): Promise<CategoryOutcome>;
     // A built-in state is empty only if no game of the library lands in it, computed or by hand
     removeState(
         account: Account,
@@ -57,7 +63,7 @@ export interface BacklogService {
         state: BacklogState,
         color: string | null
     ): Promise<CategoryOutcome>;
-    // After the account is deleted: its copy becomes empty at once
+    // After the account is deleted: the next read finds it empty
     forget(identity: EntityId): Promise<void>;
 }
 
@@ -66,7 +72,7 @@ function randomCategoryId(): CustomId {
     return `c-${[...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
 }
 
-// Neon is the truth; `bl:{source}:{id}` is a write-through copy of an account's overrides and categories
+// Neon is the truth; `bl:{source}:{id}` copies it for public reads, filled on read and dropped on write
 export function createBacklogService({
     repository,
     store,
@@ -94,7 +100,7 @@ export function createBacklogService({
         return { overrides, categories };
     }
 
-    // Always rereads the database, so the copy never keeps a half-applied write
+    // Reads the database and fills the copy
     async function reload(identity: EntityId): Promise<BacklogData> {
         const data = await fresh(identity);
         try {
@@ -105,7 +111,21 @@ export function createBacklogService({
         return data;
     }
 
-    const ok = async (identity: EntityId): Promise<CategoryOutcome> => ({ kind: 'ok', data: await reload(identity) });
+    // A write drops the copy instead of rewriting it: two writers racing could leave the older snapshot behind
+    async function drop(identity: EntityId): Promise<void> {
+        try {
+            await store.delete(key(identity));
+        } catch (error) {
+            onStoreError?.('delete', error);
+        }
+    }
+
+    async function changed(identity: EntityId): Promise<BacklogData> {
+        await drop(identity);
+        return fresh(identity);
+    }
+
+    const ok = async (identity: EntityId): Promise<CategoryOutcome> => ({ kind: 'ok', data: await changed(identity) });
 
     return {
         async read(identity) {
@@ -116,12 +136,12 @@ export function createBacklogService({
             // One row per game: a repeated one would hit the same row twice in one statement
             const unique = [...new Map(games.map((game) => [game.gameId, game])).values()];
             await repository.setOverrides(account.userId, identity.source, unique, state, now().toISOString());
-            return reload(identity);
+            return changed(identity);
         },
 
         async clear(account, identity, gameIds) {
             await repository.clearOverrides(account.userId, identity.source, [...new Set(gameIds)]);
-            return reload(identity);
+            return changed(identity);
         },
 
         async createCategory(account, identity, { name, color }) {
@@ -145,8 +165,9 @@ export function createBacklogService({
             return result === 'updated' ? ok(identity) : { kind: result };
         },
 
-        async deleteCategory(account, identity, id) {
-            const result = await repository.deleteCategory(account.userId, id);
+        async deleteCategory(account, identity, id, games) {
+            const owned = games === null ? null : games.map((game) => game.id.externalId);
+            const result = await repository.deleteCategory(account.userId, id, owned);
             return result === 'deleted' ? ok(identity) : { kind: result };
         },
 
@@ -170,7 +191,7 @@ export function createBacklogService({
         },
 
         async forget(identity) {
-            await reload(identity);
+            await drop(identity);
         },
     };
 }

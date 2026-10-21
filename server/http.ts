@@ -12,12 +12,16 @@ export const CACHE_CONTROL: Record<ProfileAccessKind, string> = {
 };
 export const NO_STORE = 'no-store';
 
+export function noStore(c: Context) {
+    c.header('Cache-Control', NO_STORE);
+}
+
 export function access(c: Context, result: ProfileAccess<unknown>, cacheControl = CACHE_CONTROL[result.kind]) {
     c.header('Cache-Control', cacheControl);
     return c.json(result);
 }
 
 export function failure(c: Context, error: string, status: 400 | 401 | 403 | 404 | 409 | 500 | 502 | 503) {
-    c.header('Cache-Control', NO_STORE);
+    noStore(c);
     return c.json({ error }, status);
 }

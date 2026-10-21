@@ -126,6 +126,17 @@ describe('browseLibrary filters', () => {
         expect(browseLibrary(odd, { sort: 'name', query: 'pokemon' })).toHaveLength(1);
     });
 
+    it.each([
+        ['Baldur’s Gate 3', 'baldurs gate'],
+        ['Half-Life 2', 'halflife'],
+        ['Marvel’s Spider-Man', 'marvels spider'],
+        ['S.T.A.L.K.E.R.: Shadow of Chernobyl', 'stalker'],
+        ['Dr. Mario', 'dr mario'],
+    ])('finds %s when the query leaves out its punctuation', (name, query) => {
+        const library = classifyLibrary([makeGame('7', name, 0, null), makeGame('6', 'Unrelated', 0, null)], NOW);
+        expect(browseLibrary(library, { sort: 'name', query }).map((entry) => entry.game.name)).toEqual([name]);
+    });
+
     it('matches everything for an empty or symbol-only query', () => {
         expect(names({ sort: 'name', query: '' })).toHaveLength(5);
         expect(names({ sort: 'name', query: '  ™ ' })).toHaveLength(5);

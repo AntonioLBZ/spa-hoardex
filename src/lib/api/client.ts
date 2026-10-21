@@ -1,3 +1,4 @@
+import type { AccountSettings, CategoryFields } from '@core/accounts/types';
 import type { BacklogData, BacklogState, CategoryId, CustomId } from '@core/backlog';
 import type { GameArt, Library, Profile, ProfileAccess } from '@core/domain';
 
@@ -23,6 +24,15 @@ function errorCode(body: unknown): string {
 
 function isAccess(body: unknown): body is ProfileAccess<unknown> {
     return typeof body === 'object' && body !== null && 'kind' in body && typeof body.kind === 'string';
+}
+
+// One account call: a non-200 answer or a body of the wrong shape is an ApiError
+async function accountCall<T>(path: string, init: RequestInit, check: (body: unknown) => body is T): Promise<T> {
+    const response = await fetch(path, init);
+    const body: unknown = await response.json().catch(() => null);
+    if (!response.ok) throw new ApiError(response.status, errorCode(body));
+    if (!check(body)) throw new ApiError(response.status, 'badResponse');
+    return body;
 }
 
 async function getAccess<T>(path: string, signal?: AbortSignal): Promise<ProfileAccess<T>> {
@@ -100,19 +110,12 @@ function isMe(body: unknown): body is Me {
     return body.user === null || (isRecord(body.user) && typeof body.user.steamId === 'string');
 }
 
-export async function fetchMe(signal?: AbortSignal): Promise<Me> {
-    const response = await fetch('/api/me', { signal });
-    const body: unknown = await response.json().catch(() => null);
-    if (!response.ok) throw new ApiError(response.status, errorCode(body));
-    if (!isMe(body)) throw new ApiError(response.status, 'badResponse');
-    return body;
+export function fetchMe(signal?: AbortSignal): Promise<Me> {
+    return accountCall('/api/me', { signal }, isMe);
 }
 
-export async function postLogout(): Promise<Me> {
-    const response = await fetch('/api/auth/logout', { method: 'POST' });
-    const body: unknown = await response.json().catch(() => null);
-    if (!response.ok) throw new ApiError(response.status, errorCode(body));
-    return { user: null };
+export function postLogout(): Promise<Me> {
+    return accountCall('/api/auth/logout', { method: 'POST' }, isMe);
 }
 
 // A plain navigation: Steam's page is a full redirect, and the CSP's form-action would block a form
@@ -120,7 +123,7 @@ export function loginHref(returnTo: string): string {
     return `/api/auth/steam/login?returnTo=${encodeURIComponent(returnTo)}`;
 }
 
-export type { BacklogData };
+export type { AccountSettings, BacklogData, CategoryFields };
 
 // Anyone's manual states, cached by the CDN like the library
 export function fetchBacklog(input: string, signal?: AbortSignal) {
@@ -132,13 +135,13 @@ export function fetchMyBacklog(signal?: AbortSignal) {
     return getAccess<BacklogData>('/api/me/backlog', signal);
 }
 
+function isBacklogAnswer(body: unknown): body is { kind: 'ok'; data: BacklogData } {
+    return isAccess(body) && body.kind === 'ok';
+}
+
 // Answers with every manual state and category after the change
 async function writeBacklog(path: string, init: RequestInit): Promise<BacklogData> {
-    const response = await fetch(path, init);
-    const body: unknown = await response.json().catch(() => null);
-    if (!response.ok) throw new ApiError(response.status, errorCode(body));
-    if (!isAccess(body) || body.kind !== 'ok') throw new ApiError(response.status, 'badResponse');
-    return (body as { data: BacklogData }).data;
+    return (await accountCall(path, init, isBacklogAnswer)).data;
 }
 
 function jsonBody(method: string, body: unknown): RequestInit {
@@ -156,12 +159,6 @@ export function deleteBacklogState(appid: string): Promise<BacklogData> {
 // Up to MAX_BULK_CHANGE games; null sends them back to the computed state
 export function putBacklogStates(appids: readonly string[], state: CategoryId | null): Promise<BacklogData> {
     return writeBacklog('/api/me/backlog', jsonBody('PUT', { appids, state }));
-}
-
-export interface CategoryFields {
-    name: string;
-    // A palette token or #rrggbb
-    color: string;
 }
 
 export function postCategory(fields: CategoryFields): Promise<BacklogData> {
@@ -187,24 +184,8 @@ export function restoreState(state: BacklogState): Promise<BacklogData> {
     return writeBacklog(`/api/me/categories/${encodeURIComponent(state)}/restore`, { method: 'POST' });
 }
 
-export interface AccountSettings {
-    // ISO 8601; null when snapshots are off
-    snapshotsSince: string | null;
-    snapshotDays: number;
-    // YYYY-MM-DD
-    lastSnapshotOn: string | null;
-}
-
 function isSettings(body: unknown): body is AccountSettings {
     return isRecord(body) && typeof body.snapshotDays === 'number' && 'snapshotsSince' in body;
-}
-
-async function accountCall<T>(path: string, init: RequestInit, check: (body: unknown) => body is T): Promise<T> {
-    const response = await fetch(path, init);
-    const body: unknown = await response.json().catch(() => null);
-    if (!response.ok) throw new ApiError(response.status, errorCode(body));
-    if (!check(body)) throw new ApiError(response.status, 'badResponse');
-    return body;
 }
 
 export function fetchAccount(signal?: AbortSignal) {

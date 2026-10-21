@@ -82,6 +82,14 @@ function fold(text: string): string {
         .trim();
 }
 
+const withoutSpaces = (text: string) => text.replace(/ /g, '');
+
+// Also compared without spaces: "halflife" finds "Half-Life" and "stalker" finds "S.T.A.L.K.E.R."
+function nameMatches(name: string, needle: string): boolean {
+    const folded = fold(name);
+    return folded.includes(needle) || withoutSpaces(folded).includes(withoutSpaces(needle));
+}
+
 function compareText(a: string, b: string): number {
     return a < b ? -1 : a > b ? 1 : 0;
 }
@@ -129,7 +137,7 @@ export function browseLibrary(entries: readonly BrowseEntry[], options: BrowseOp
         .filter(
             (entry) =>
                 (state === undefined || entry.state === state) &&
-                (needle === '' || fold(entry.game.name).includes(needle))
+                (needle === '' || nameMatches(entry.game.name, needle))
         )
         .sort(comparator(sort, direction, locale));
 }

@@ -5,8 +5,7 @@ import { useTranslations } from 'use-intl';
 
 import { loginHref, meQuery, postLogout, profileQuery } from '@/lib/api';
 
-// Nothing until the session is known, so a signed-in visitor never sees "Sign in" flash; signed in, a link to
-// the visitor's own library sits in the header's middle
+// Nothing until the session is known, so a signed-in visitor never sees "Sign in" flash
 export function AccountControl() {
     const t = useTranslations('account');
     const me = useQuery(meQuery());

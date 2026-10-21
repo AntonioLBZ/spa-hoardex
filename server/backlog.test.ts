@@ -23,8 +23,10 @@ beforeAll(async () => {
 afterAll(() => database.db.close());
 beforeEach(() => database.reset());
 
-function setup() {
-    const steam = createFakeFetch(routes({ vanity: 'ResolveVanityURL.found', ownedGames: 'GetOwnedGames.library' }));
+function setup({ ownedGames = 'GetOwnedGames.library' }: { ownedGames?: string } = {}) {
+    const steam = createFakeFetch(
+        routes({ vanity: 'ResolveVanityURL.found', summaries: 'GetPlayerSummaries.public', ownedGames })
+    );
     const adapter = createSteamAdapter({ apiKey: TEST_KEY, fetch: steam.fetch, onDrift: () => {} });
     const store = createMemoryStore();
     const data = createCachedAdapter({ adapter, store });
@@ -227,8 +229,22 @@ describe('GET /api/backlog/:input', () => {
     it('resolves a vanity name, and rejects input that is not a profile', async () => {
         const { call, steamCalls } = setup();
         expect((await call('GET', '/api/backlog/some_name', { origin: null })).body).toMatchObject({ kind: 'ok' });
-        expect(steamCalls()).toBe(1);
+        expect(steamCalls()).toBe(2);
         expect((await call('GET', '/api/backlog/%20', { origin: null })).response.status).toBe(400);
+    });
+
+    it('hides the states once the library is no longer visible, but not from the owner', async () => {
+        const open = setup();
+        const cookie = await open.session();
+        await open.call('PUT', `/api/me/backlog/${OWNED}`, { cookie, body: { state: 'abandoned' } });
+
+        const closed = setup({ ownedGames: 'GetOwnedGames.private' });
+        const visitor = await closed.call('GET', `/api/backlog/${ID}`, { origin: null });
+        expect(visitor.body).toEqual({ kind: 'libraryPrivate' });
+        expect(visitor.response.headers.get('cache-control')).toBe('public, s-maxage=30');
+
+        const mine = await closed.call('GET', '/api/me/backlog', { cookie, origin: null });
+        expect(mine.body).toMatchObject({ kind: 'ok', data: { overrides: { [OWNED]: { state: 'abandoned' } } } });
     });
 });
 
@@ -238,6 +254,15 @@ describe('GET /api/me/backlog', () => {
         const response = await call('GET', '/api/me/backlog', { origin: null });
         expect(response.response.status).toBe(401);
         expect(response.body).toEqual({ error: 'signedOut' });
+    });
+
+    it('refuses a session that was ended from another device', async () => {
+        const { call, session } = setup();
+        const cookie = await session();
+        await call('PUT', `/api/me/backlog/${OWNED}`, { cookie, body: { state: 'abandoned' } });
+        const ended = await call('GET', '/api/me/backlog', { cookie: await session(1), origin: null });
+        expect(ended.response.status).toBe(401);
+        expect(ended.body).toEqual({ error: 'signedOut' });
     });
 });
 

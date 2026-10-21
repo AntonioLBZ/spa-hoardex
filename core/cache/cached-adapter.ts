@@ -35,8 +35,6 @@ export interface CachedAdapter {
     readonly parseInput: StoreAdapter['parseInput'];
     resolveProfile(input: ResolvableInput): Promise<ProfileAccess<Profile>>;
     getLibrary(id: EntityId): Promise<ProfileAccess<Library>>;
-    // Account id for an id or an alias, through the alias cache
-    resolveId(input: ResolvableInput): Promise<ProfileAccess<EntityId>>;
     // Library for an id or an alias, so the client does not wait for the profile to learn the id
     resolveLibrary(input: ResolvableInput): Promise<ProfileAccess<Library>>;
     // Asks Steam again past the cache, at most once per cooldown per account
@@ -213,6 +211,12 @@ export function createCachedAdapter({
         }
     }
 
+    async function libraryOf(input: ResolvableInput): Promise<ProfileAccess<Library>> {
+        if (input.kind === 'id') return libraryById(input.id);
+        const resolved = await idByAlias(input.alias);
+        return resolved.kind === 'ok' ? libraryById(resolved.data) : resolved;
+    }
+
     async function artFor(library: Library, games: readonly string[]): Promise<ProfileAccess<Record<string, GameArt>>> {
         const owned = new Set(library.games.map((game) => game.id.externalId));
         const wanted = [...new Set(games)].filter((externalId) => owned.has(externalId)).sort();
@@ -244,22 +248,10 @@ export function createCachedAdapter({
 
         getLibrary: libraryById,
 
-        resolveId: (input) =>
-            input.kind === 'id' ? Promise.resolve({ kind: 'ok', data: input.id }) : idByAlias(input.alias),
-
-        async resolveLibrary(input) {
-            if (input.kind === 'id') return libraryById(input.id);
-            const resolved = await idByAlias(input.alias);
-            return resolved.kind === 'ok' ? libraryById(resolved.data) : resolved;
-        },
+        resolveLibrary: libraryOf,
 
         async resolveArt(input, games) {
-            const library =
-                input.kind === 'id'
-                    ? await libraryById(input.id)
-                    : await idByAlias(input.alias).then((resolved) =>
-                          resolved.kind === 'ok' ? libraryById(resolved.data) : resolved
-                      );
+            const library = await libraryOf(input);
             return library.kind === 'ok' ? artFor(library.data, games) : library;
         },
 

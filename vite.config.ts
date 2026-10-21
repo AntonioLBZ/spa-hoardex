@@ -2,7 +2,7 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-// `pnpm dev` sends /api to `vercel dev`, which serves the functions; its own page is blank locally (the CSP blocks Vite's inline dev scripts)
+// `pnpm dev` sends /api to `vercel dev`; its own page is blank locally (the CSP blocks Vite's inline scripts)
 const API_TARGET = process.env.HOARDEX_API_URL ?? 'http://localhost:3000';
 
 export default defineConfig({

@@ -2,12 +2,20 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { createMemoryStore } from '../cache/store.js';
 import { createBacklogService } from './backlog.js';
 import { createSqlRepository } from './repository.js';
+import type { CustomId } from '../backlog/index.js';
 import type { Game } from '../domain/index.js';
 import { createTestDatabase } from './test-db.js';
 
 const ME = { source: 'steam', externalId: '76561198000000001' } as const;
 const EMPTY = { overrides: {}, categories: { removed: [], custom: [], colors: {} } };
 const GAME = { gameId: '620', minutes: 42 } as const;
+const GAME_ENTRY: Game = {
+    id: { source: 'steam', externalId: '620' },
+    name: 'Portal 2',
+    iconUrl: null,
+    hasVisibleStats: true,
+    playtime: { totalMinutes: 42, recentMinutes: 0, lastPlayedAt: null, platforms: null },
+};
 const NOW = new Date('2026-10-09T16:00:00Z');
 
 let database: Awaited<ReturnType<typeof createTestDatabase>>;
@@ -34,21 +42,36 @@ describe('createBacklogService', () => {
         expect(listOverrides).toHaveBeenCalledOnce();
     });
 
-    it('writes through: a change is in the copy before the next read', async () => {
-        const { repository, listOverrides, service } = setup();
+    it('drops the copy on a change, and the next read fills it again from the database', async () => {
+        const { repository, listOverrides, store, service } = setup();
         const account = await repository.recordLogin(ME, NOW);
+        const copy = 'bl:steam:76561198000000001';
         await service.read(ME);
+        expect(await store.get(copy)).toEqual(EMPTY);
 
         const expected = {
             ...EMPTY,
             overrides: { '620': { state: 'abandoned', minutesAtSet: 42, setAt: NOW.toISOString() } },
         };
         expect(await service.set(account, ME, [GAME], 'abandoned')).toEqual(expected);
+        expect(await store.get(copy)).toBeNull();
         expect(await service.read(ME)).toEqual(expected);
+        expect(await store.get(copy)).toEqual(expected);
 
         expect(await service.clear(account, ME, ['620'])).toEqual(EMPTY);
+        expect(await store.get(copy)).toBeNull();
         expect(await service.read(ME)).toEqual(EMPTY);
-        expect(listOverrides).toHaveBeenCalledTimes(3);
+        expect(listOverrides).toHaveBeenCalledTimes(5);
+    });
+
+    it('still answers a change, and reports it, when the copy cannot be dropped', async () => {
+        const { repository } = setup();
+        const account = await repository.recordLogin(ME, NOW);
+        const broken = { ...createMemoryStore(), delete: () => Promise.reject(new Error('down')) };
+        const onStoreError = vi.fn();
+        const service = createBacklogService({ repository, store: broken, onStoreError, now: () => NOW });
+        expect((await service.set(account, ME, [GAME], 'abandoned')).overrides).toHaveProperty('620');
+        expect(onStoreError).toHaveBeenCalledWith('delete', expect.any(Error));
     });
 
     it('changes a game given twice once', async () => {
@@ -137,9 +160,10 @@ describe('createBacklogService', () => {
         });
 
         await service.set(account, ME, [GAME], 'c-00000002');
-        expect(await service.deleteCategory(account, ME, 'c-00000002')).toEqual({ kind: 'notEmpty' });
+        expect(await service.deleteCategory(account, ME, 'c-00000002', [GAME_ENTRY])).toEqual({ kind: 'notEmpty' });
+        expect(await service.deleteCategory(account, ME, 'c-00000002', null)).toEqual({ kind: 'notEmpty' });
         await service.clear(account, ME, ['620']);
-        expect((await service.deleteCategory(account, ME, 'c-00000002')).kind).toBe('ok');
+        expect((await service.deleteCategory(account, ME, 'c-00000002', [GAME_ENTRY])).kind).toBe('ok');
         expect((await service.read(ME)).categories.custom).toHaveLength(1);
     });
 
@@ -154,6 +178,18 @@ describe('createBacklogService', () => {
         const account = await repository.recordLogin(ME, NOW);
         for (let i = 0; i < 6; i++) await service.createCategory(account, ME, { name: `Shelf ${i}`, color: 'p1' });
         expect(await service.createCategory(account, ME, { name: 'One more', color: 'p1' })).toEqual({ kind: 'limit' });
+    });
+
+    it('deletes a category whose games left the library, with their states', async () => {
+        const { repository, service } = setup();
+        const account = await repository.recordLogin(ME, NOW);
+        await service.createCategory(account, ME, { name: 'Co-op', color: 'p2' });
+        const [category] = (await service.read(ME)).categories.custom;
+        await service.set(account, ME, [GAME], category?.id as CustomId);
+
+        const deleted = await service.deleteCategory(account, ME, category?.id as CustomId, []);
+        expect(deleted).toEqual({ kind: 'ok', data: EMPTY });
+        expect(await repository.listOverrides(ME)).toEqual({});
     });
 
     it('removes a built-in state only when no game lands in it, and never the Backlog', async () => {

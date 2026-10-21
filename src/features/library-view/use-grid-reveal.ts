@@ -7,7 +7,7 @@ import { DURATION, EASE, MOTION_QUERY, STAGGER } from '@/lib/motion/tokens';
 // Past this many cards entering at once (a fast scroll), they simply appear
 const MAX_STAGGERED = 48;
 
-// Delay per card for a diagonal wave, from the rectangles the observer already measured: GSAP's `grid` stagger would read the layout
+// Delay per card for a diagonal wave, from rectangles the observer measured (GSAP's grid stagger reads layout)
 export function waveDelays(entries: IntersectionObserverEntry[]): number[] {
     const sorted = (values: number[]) => Array.from(new Set(values.map(Math.round))).sort((a, b) => a - b);
     const columns = sorted(entries.map((entry) => entry.boundingClientRect.left));
@@ -24,9 +24,7 @@ interface Reveal {
     fadeList: () => void;
 }
 
-// New cards fade in, in a wave, as they enter the screen; cards already shown never animate again.
-// A new filter or order fades the whole list once. Only opacity: a translation cost 300 ms of long frames at CPU x6.
-// Nothing is hidden without motion or IntersectionObserver
+// Cards fade in once as they enter the screen, the whole list on a new filter; opacity only (§10)
 export function useGridReveal(grid: RefObject<HTMLUListElement | null>, fadeKey: string) {
     const reveal = useRef<Reveal | null>(null);
     const shown = useRef(new WeakSet<Element>());

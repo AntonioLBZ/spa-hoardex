@@ -81,6 +81,14 @@ describe('memory store', () => {
         expect(await store.get('k')).toBe(3);
     });
 
+    it('forgets a key, and ignores one that is missing', async () => {
+        const store = createMemoryStore();
+        await store.set('k', 1, 60);
+        await store.delete('k');
+        await store.delete('missing');
+        expect(await store.get('k')).toBeNull();
+    });
+
     it('counts up from one and keeps the expiry set by the first increment', async () => {
         const time = clock();
         const store = createMemoryStore({ now: time.now });

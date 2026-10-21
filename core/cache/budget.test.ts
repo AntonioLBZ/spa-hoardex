@@ -35,6 +35,7 @@ describe('daily budget', () => {
                 seen.push(key);
                 return 1;
             },
+            delete: async () => {},
         };
         const now = () => new Date('2026-10-07T12:00:00Z');
         await createDailyBudget({ store, name: 'steam', limit: 5, now }).tryConsume();
@@ -51,6 +52,7 @@ describe('daily budget', () => {
             setMany: async () => {},
             setIfAbsent: async () => null,
             increment: () => Promise.reject(new Error('down')),
+            delete: async () => {},
         };
         const budget = createDailyBudget({ store, name: 'steam', limit: 1, onStoreError: (e) => errors.push(e) });
         expect(await budget.tryConsume()).toBe(true);

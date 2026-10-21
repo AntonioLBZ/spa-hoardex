@@ -178,10 +178,16 @@ describe('GET /api/auth/steam/callback', () => {
         expect(response.headers.get('location')).toBe('/p/someone?state=backlog');
     });
 
-    it('ignores a return path that leaves the site', async () => {
+    it.each(['//evil.example/p', '/.//evil.example/p'])('ignores the return path %s', async (path) => {
         const { request } = setup();
-        const { response } = await signIn(request, '//evil.example/p');
+        const { response } = await signIn(request, path);
         expect(response.headers.get('location')).toBe(`/p/${ID}`);
+    });
+
+    it('keeps a return path that holds a dot', async () => {
+        const { request } = setup();
+        const { response } = await signIn(request, '/p/someone?q=dr. mario');
+        expect(response.headers.get('location')).toBe('/p/someone?q=dr.%20mario');
     });
 
     it('fails without the login cookie, so another browser cannot finish the sign-in', async () => {
@@ -301,6 +307,10 @@ describe('safeReturnTo', () => {
         'https://evil.example/',
         '//evil.example',
         '/\\evil.example',
+        '/.//evil.example',
+        '/a/..//evil.example',
+        '/%2e//evil.example',
+        '/./\\evil.example',
         '/api/me',
         '/api',
         '/p/\nx',

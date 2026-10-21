@@ -8,7 +8,7 @@ import { createAccountRoutes } from './account.js';
 import { createBacklogRoutes } from './backlog.js';
 import { createCronRoutes } from './cron.js';
 import { ConfigError, type Accounts } from './deps.js';
-import { CACHE_CONTROL, NO_STORE, access, failure } from './http.js';
+import { CACHE_CONTROL, access, failure, noStore } from './http.js';
 import { DatabaseError } from '../core/accounts/index.js';
 
 // The demo never changes meaningfully, so the CDN can hold it for long
@@ -25,7 +25,7 @@ function parseAppids(raw: string | undefined): string[] | null {
 }
 
 function retryLater(c: Context, error: string, status: 429 | 503, retryAfterSeconds: number) {
-    c.header('Cache-Control', NO_STORE);
+    noStore(c);
     c.header('Retry-After', String(retryAfterSeconds));
     return c.json({ error, retryAfterSeconds }, status);
 }
@@ -85,7 +85,7 @@ export function createApp(
         return access(c, result, result.kind === 'ok' ? ART_CACHE_CONTROL : undefined);
     });
 
-    // Asks Steam again past the cache, once per cooldown per account. The answer carries the fresh data: the CDN may still hold the old GET
+    // Asks Steam again past the cache, once per cooldown; the answer carries the fresh data (the CDN may hold the old GET)
     app.post('/refresh/:input', async (c) => {
         const data = getData();
         const input = data.parseInput(c.req.param('input'));
@@ -94,7 +94,7 @@ export function createApp(
         const result = await data.refresh(input);
         if (result.kind === 'cooldown') return retryLater(c, 'cooldown', 429, result.retryAfterSeconds);
         if (result.kind === 'rateLimited') return retryLater(c, 'rateLimited', 503, result.retryAfterSeconds);
-        c.header('Cache-Control', NO_STORE);
+        noStore(c);
         return c.json(result);
     });
 

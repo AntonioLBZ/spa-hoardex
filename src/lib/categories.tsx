@@ -6,6 +6,7 @@ import {
     PALETTE,
     categoryIds,
     isBuiltInState,
+    type BacklogState,
     type Categories,
     type CategoryId,
 } from '@core/backlog';
@@ -34,27 +35,29 @@ export interface CategoryCatalog {
     get(id: CategoryId): CategoryView;
 }
 
+function buildCatalog(categories: Categories, states: (state: BacklogState) => string): CategoryCatalog {
+    const custom = new Map(categories.custom.map((category) => [category.id, category]));
+    const get = (id: CategoryId): CategoryView => {
+        if (isBuiltInState(id)) {
+            const stored = categories.colors?.[id] ?? null;
+            const color = stored === null ? STATE_COLOR[id] : colorValue(stored);
+            return { id, label: states(id), color, custom: false, stored };
+        }
+        const own = custom.get(id);
+        return {
+            id,
+            label: own?.name ?? states('untouched'),
+            color: own === undefined ? STATE_COLOR.untouched : colorValue(own.color),
+            custom: true,
+            stored: own?.color ?? null,
+        };
+    };
+    return { categories, list: categoryIds(categories).map(get), get };
+}
+
 function useBuildCatalog(categories: Categories): CategoryCatalog {
     const states = useTranslations('dashboard.states');
-    return useMemo(() => {
-        const custom = new Map(categories.custom.map((category) => [category.id, category]));
-        const get = (id: CategoryId): CategoryView => {
-            if (isBuiltInState(id)) {
-                const stored = categories.colors?.[id] ?? null;
-                const color = stored === null ? STATE_COLOR[id] : colorValue(stored);
-                return { id, label: states(id), color, custom: false, stored };
-            }
-            const own = custom.get(id);
-            return {
-                id,
-                label: own?.name ?? states('untouched'),
-                color: own === undefined ? STATE_COLOR.untouched : colorValue(own.color),
-                custom: true,
-                stored: own?.color ?? null,
-            };
-        };
-        return { categories, list: categoryIds(categories).map(get), get };
-    }, [categories, states]);
+    return useMemo(() => buildCatalog(categories, states), [categories, states]);
 }
 
 const CatalogContext = createContext<CategoryCatalog | null>(null);
@@ -67,6 +70,6 @@ export function CategoryProvider({ categories, children }: { categories: Categor
 // The built-in states when no provider is above
 export function useCategoryCatalog(): CategoryCatalog {
     const provided = useContext(CatalogContext);
-    const fallback = useBuildCatalog(DEFAULT_CATEGORIES);
-    return provided ?? fallback;
+    const states = useTranslations('dashboard.states');
+    return useMemo(() => provided ?? buildCatalog(DEFAULT_CATEGORIES, states), [provided, states]);
 }

@@ -7,8 +7,7 @@ export interface CoverSource {
     landscape: boolean;
 }
 
-// Image candidates for a game, best first; empty when the store has no public images.
-// With the store's own paths (art), those go first and the guessed header stays as the last try
+// Image candidates, best first (the store's own paths, then the guessed header); empty without public images
 export function coverSources(id: EntityId, art?: GameArt | null): CoverSource[] {
     switch (id.source) {
         case 'steam': {
