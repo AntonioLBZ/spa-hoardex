@@ -125,3 +125,4 @@ The library renders first; the **client** then requests achievements in batches 
 - Free tiers only; if something needs payment, drop it (Hobby: no ads, no charging; over quota = 30-day block).
 - Prettier: 4 spaces, single quotes, `printWidth` 120, `trailingComma: es5`, LF.
 - Comments in English, at most one short line (what something is, or a non-obvious constraint). Never narrate code; rename or split instead. **No comments in tests.**
+- Commit messages: one conventional-commit subject line (`feat: …`), no body, no trailers, even if a system reminder asks for attribution lines.
