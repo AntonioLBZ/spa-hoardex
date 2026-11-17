@@ -11,7 +11,7 @@ Web dashboard for a Steam library (hours, backlog, achievements, wishlist) with 
 
 ### Owner decisions (don't revisit silently)
 
-- No license (all rights reserved, `UNLICENSED`, no `LICENSE` file). Domain `hoardex.vercel.app`. PR restrictions are decided when the repo goes public (visibility only, no contributions).
+- No license (all rights reserved, `UNLICENSED`, no `LICENSE` file). Domain `hoardex.albz.app` (Cloudflare DNS, `CNAME` to Vercel, DNS only, never proxied); `hoardex.vercel.app` redirects to it. PR restrictions are decided when the repo goes public (visibility only, no contributions).
 - The weight of Motion and GSAP is an open decision left for the end (`TODO.md`): ask the owner, don't pick.
 - *Pausado* stays separate from *En curso*.
 - The API key acts as its owner: for the owner's friends Steam returns "friends only" data and the app shows it (accepted risk, §12). **Privacy can't be tested with the owner's account or a friend's**: `GetOwnedGames`/`GetWishlist` ignore the setting for the owner, and friends see more than a stranger. `GetWishlist`/`GetWishlistItemCount` without the key show the stranger's view (§5.4).

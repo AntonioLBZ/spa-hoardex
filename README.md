@@ -2,7 +2,7 @@
 
 A dashboard for your Steam library: hours played, backlog state and most played games, with animated charts.
 
-**Live:** <https://hoardex.vercel.app>, or [explore a fictional library](https://hoardex.vercel.app/demo) without entering anything.
+**Live:** <https://hoardex.albz.app>, or [explore a fictional library](https://hoardex.albz.app/demo) without entering anything.
 
 Hoardex is a personal portfolio project, still in progress: achievements and the wishlist are not built yet.
 
@@ -17,7 +17,7 @@ Hoardex is a personal portfolio project, still in progress: achievements and the
 - A manual refresh with a cooldown, so one profile cannot drain the Steam API.
 - A demo library with fictional data that needs no Steam key.
 - English and Spanish, light and dark.
-- Short-lived caches, and cookies only if you sign in: see the [privacy policy](https://hoardex.vercel.app/privacy).
+- Short-lived caches, and cookies only if you sign in: see the [privacy policy](https://hoardex.albz.app/privacy).
 
 ## Stack
 
@@ -67,4 +67,4 @@ Hoardex is an independent project. It is not affiliated with or endorsed by Valv
 
 ## License
 
-None for now: all rights reserved. The source is public so it can be read; ask before reusing it (the contact address is in the [privacy policy](https://hoardex.vercel.app/privacy)).
+None for now: all rights reserved. The source is public so it can be read; ask before reusing it (the contact address is in the [privacy policy](https://hoardex.albz.app/privacy)).

@@ -13,7 +13,7 @@ Dashboard web de la biblioteca de Steam de un usuario: horas jugadas, backlog, l
 - **Coste:** 0 €. Si algo exige pago, se descarta.
 - **Monetización:** ninguna. Vercel Hobby es solo uso no comercial; pedir donaciones está permitido, anuncios y cobros no.
 - **Futuro:** más stores (RetroAchievements primero; GOG, Epic, PSN, Xbox son frágiles) y backlog editable.
-- **Repo:** `spa-hoardex`, hoy **privado**; se hará público sin aceptar contribuciones (las restricciones de PR se verán entonces, decisión del dueño de 2026-10-09). Proyecto **Hoardex**; dominio de producción `hoardex.vercel.app`, el gratuito de Vercel (decisión del dueño, 2026-10-09: sin dominio propio).
+- **Repo:** `spa-hoardex`, hoy **privado**; se hará público sin aceptar contribuciones (las restricciones de PR se verán entonces, decisión del dueño de 2026-10-09). Proyecto **Hoardex**; dominio de producción `hoardex.albz.app`, subdominio de `albz.app` (del dueño, DNS en Cloudflare: `CNAME` a Vercel en modo *DNS only*, sin el proxy de Cloudflare, que se pondría delante del CDN y del WAF por IP). `hoardex.vercel.app` redirige con 308 al dominio nuevo (decisión del dueño, 2026-11-17; sustituye a la de 2026-10-09 de no tener dominio propio).
 
 ## 2. Decisiones cerradas
 
@@ -494,7 +494,7 @@ Tiene una **puerta de decisión**: si el despliegue de B da guerra más de ~2 ho
 - Refresco: la rewrite `/api/:path*` deja pasar el POST en `vercel dev` (verificado 2026-10-08); falta verlo desplegado (`TODO.md`, «Check in production»). `SET … NX GET` en Upstash: verificado (§8).
 - Si Valve tolera de hecho las consultas a terceros.
 - **Licencia (2026-10-08; cerrada el 2026-10-09: sin licencia):** sin licencia por ahora (todos los derechos reservados: se puede leer, no reutilizar; `package.json` dice `UNLICENSED`). Se valoró MIT (permite usar y vender, incluso en código cerrado), PolyForm Noncommercial 1.0.0 (uso no comercial permitido, no es open source de la OSI) y AGPL-3.0; no se cambia.
-- **Decisiones cerradas el 2026-10-09:** dominio `hoardex.vercel.app`, sin licencia, restricciones de PR cuando se haga público el repo, *Pausado* separado de *En curso* (§7), IntersectionObserver en la cuadrícula (§10) y las barras de horas por año animan al cargar, sin esperar a entrar en pantalla. **Abierta:** el peso de Motion y GSAP (`TODO.md`, «At the very end»; el dueño la deja para el final).
+- **Decisiones cerradas el 2026-10-09:** dominio (cambiado el 2026-11-17 a `hoardex.albz.app`, §1), sin licencia, restricciones de PR cuando se haga público el repo, *Pausado* separado de *En curso* (§7), IntersectionObserver en la cuadrícula (§10) y las barras de horas por año animan al cargar, sin esperar a entrar en pantalla. **Abierta:** el peso de Motion y GSAP (`TODO.md`, «At the very end»; el dueño la deja para el final).
 
 ## 18. Para retomar
 
@@ -521,7 +521,7 @@ Decisiones del dueño (2026-10-09): estados manuales = los seis actuales más *A
 - `GET /api/me` (`no-store`): `{ user: null }` o `{ user: { steamId } }`. `POST /api/auth/logout` borra la cookie.
 - **Mutaciones:** SameSite=Lax más comprobar que `Origin` es el propio.
 - **CDN:** ningún GET público lee la sesión ni envía `Set-Cookie`; solo `/api/me*` y `/api/auth/*` dependen de ella (`no-store`). Así `/api/profile` y `/api/library` siguen cacheándose. Que el CDN de Vercel siga dando HIT a peticiones con cookie está **(sin verificar)** → spike 4.0.
-- **Entornos:** `realm` y `return_to` salen de una lista cerrada (`https://hoardex.vercel.app`, la URL de rama del preview vía `VERCEL_BRANCH_URL`, `http://localhost:3000`), nunca de la cabecera `Host`. Que Steam acepte `localhost` y que el callback funcione detrás de Vercel Authentication está **(sin verificar)** → spike 4.0.
+- **Entornos:** `realm` y `return_to` salen de una lista cerrada (el dominio de producción vía `VERCEL_PROJECT_PRODUCTION_URL`, hoy `https://hoardex.albz.app`; la URL de rama del preview vía `VERCEL_BRANCH_URL`, `http://localhost:3000`), nunca de la cabecera `Host`. Que Steam acepte `localhost` y que el callback funcione detrás de Vercel Authentication está **(sin verificar)** → spike 4.0.
 
 ### 19.3 Almacenamiento
 

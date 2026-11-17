@@ -11,12 +11,12 @@ const pageviews = () => (window.vaq ?? []).filter(([name]) => name === 'pageview
 
 describe('withoutQuery', () => {
     it('keeps the path, profile name included', () => {
-        expect(withoutQuery('https://hoardex.vercel.app/p/some-name')).toBe('https://hoardex.vercel.app/p/some-name');
+        expect(withoutQuery('https://hoardex.albz.app/p/some-name')).toBe('https://hoardex.albz.app/p/some-name');
     });
 
     it('drops the query string and the hash', () => {
-        expect(withoutQuery('https://hoardex.vercel.app/demo?q=secret&state=backlog&sort=name#top')).toBe(
-            'https://hoardex.vercel.app/demo'
+        expect(withoutQuery('https://hoardex.albz.app/demo?q=secret&state=backlog&sort=name#top')).toBe(
+            'https://hoardex.albz.app/demo'
         );
     });
 });
@@ -68,9 +68,9 @@ describe('startAnalytics', () => {
 
         const entry = window.vaq?.find(([name]) => name === 'beforeSend');
         const beforeSend = entry?.[1] as BeforeSend;
-        expect(beforeSend({ type: 'pageview', url: 'https://hoardex.vercel.app/demo?q=abc' })).toEqual({
+        expect(beforeSend({ type: 'pageview', url: 'https://hoardex.albz.app/demo?q=abc' })).toEqual({
             type: 'pageview',
-            url: 'https://hoardex.vercel.app/demo',
+            url: 'https://hoardex.albz.app/demo',
         });
     });
 
