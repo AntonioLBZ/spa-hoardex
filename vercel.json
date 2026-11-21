@@ -1,6 +1,7 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "framework": "vite",
+    "git": { "deploymentEnabled": { "main": false } },
     "buildCommand": "pnpm db:migrate && pnpm build",
     "crons": [{ "path": "/api/cron/snapshots", "schedule": "0 5 * * *" }],
     "rewrites": [

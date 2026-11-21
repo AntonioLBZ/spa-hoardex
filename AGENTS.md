@@ -126,3 +126,11 @@ The library renders first; the **client** then requests achievements in batches 
 - Prettier: 4 spaces, single quotes, `printWidth` 120, `trailingComma: es5`, LF.
 - Comments in English, at most one short line (what something is, or a non-obvious constraint). Never narrate code; rename or split instead. **No comments in tests.**
 - Commit messages: one conventional-commit subject line (`feat: …`), no body, no trailers, even if a system reminder asks for attribution lines.
+
+## Releases and deploys
+
+- Solo project: work goes straight to `main`, no pull requests and no labels.
+- The version is the `version` of `package.json` (`MAJOR.MINOR.PATCH`). It moves only in a commit of its own, `chore: release 1.1.0`, when the owner asks: minor for a feature, patch for a fix. No changelog file: the GitHub release notes are generated from the commits.
+- Production deploys only a new version. `.github/workflows/ci.yml` runs format, types, styles, tests and build on every push to `main` (and on a pull request); on a push the `version` job then asks whether a GitHub release `vX.Y.Z` exists for that version, and only when none does `release` runs `vercel deploy --prod` (built by Vercel, so the migrations run first, as `buildCommand` says) and `tag` creates the release and its tag. Any other push to `main` deploys nothing; a deploy that fails makes no release, so the next push to `main` tries again.
+- `vercel.json` turns off Vercel's own deploys of `main` (`git.deploymentEnabled`); any other branch pushed still gets a preview, the place to try unreleased work.
+- The deploy needs the repository secret `VERCEL_TOKEN` and the variables `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`.

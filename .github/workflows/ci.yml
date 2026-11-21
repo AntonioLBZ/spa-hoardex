@@ -1,0 +1,117 @@
+name: CI
+
+on:
+    pull_request:
+    push:
+        branches: [main]
+
+permissions:
+    contents: read
+
+jobs:
+    build-and-test:
+        name: Build & test
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 12.22.0
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 26
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Format check
+              run: pnpm format:check
+
+            - name: Type-check
+              run: pnpm typecheck
+
+            - name: Lint styles
+              run: pnpm lint:css
+
+            - name: Test
+              run: pnpm test
+
+            - name: Build
+              run: pnpm build
+
+    version:
+        name: Is the version new
+        needs: build-and-test
+        if: github.event_name == 'push'
+        runs-on: ubuntu-latest
+        outputs:
+            new: ${{ steps.release.outputs.new }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Look for its release
+              id: release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  version="v$(node -p "require('./package.json').version")"
+                  if gh release view "$version" > /dev/null 2>&1; then
+                      echo "$version is already released, nothing to deploy"
+                      echo "new=false" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "$version is new"
+                      echo "new=true" >> "$GITHUB_OUTPUT"
+                  fi
+
+    release:
+        name: Deploy to production
+        needs: version
+        if: github.event_name == 'push' && needs.version.outputs.new == 'true'
+        runs-on: ubuntu-latest
+        concurrency:
+            group: release
+            cancel-in-progress: false
+        env:
+            VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+            VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Install the Vercel CLI
+              run: npm install --global vercel@65.12.1
+
+            # Built by Vercel, which runs the migrations first (buildCommand of vercel.json)
+            - name: Deploy, built by Vercel
+              run: vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+              env:
+                  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    tag:
+        name: Tag and release
+        needs: [version, release]
+        if: github.event_name == 'push' && needs.version.outputs.new == 'true'
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Create the GitHub release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  version="v$(node -p "require('./package.json').version")"
+                  if gh release view "$version" > /dev/null 2>&1; then
+                      echo "$version is already released"
+                  else
+                      gh release create "$version" --target "$GITHUB_SHA" --title "$version" --generate-notes
+                  fi
