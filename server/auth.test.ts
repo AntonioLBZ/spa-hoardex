@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STEAM_OPENID_ENDPOINT } from '../core/adapters/steam/openid.js';
 import { createSteamAdapter } from '../core/adapters/steam/index.js';
 import { TEST_KEY, createFakeFetch, routes } from '../core/adapters/steam/test-utils.js';
@@ -12,7 +12,15 @@ const ID = '76561198000000001';
 const SECRET = 'a'.repeat(48);
 const NOW = new Date('2026-10-09T16:00:00Z');
 
-afterEach(() => vi.restoreAllMocks());
+beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+});
+
+afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+});
 
 function setup({
     valid = true,
