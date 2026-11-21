@@ -35,7 +35,7 @@
         "react-is": "19.3.0",
         "recharts": "3.10.1",
         "use-intl": "4.14.9",
-        "zod": "4.6.5"
+        "zod": "4.6.6"
     },
     "devDependencies": {
         "@electric-sql/pglite": "0.5.8",
